@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/requestPickupFragment">
+
+    <fragment
+        android:id="@+id/requestPickupFragment"
+        android:name="com.example.handsonpapb_15sep.ui.fragment.RequestPickupFragment"
+        android:label="Request Pickup"
+        tools:layout="@layout/fragment_request_pickup" />
+
+    <fragment
+        android:id="@+id/collectorDashboardFragment"
+        android:name="com.example.handsonpapb_15sep.ui.fragment.CollectorDashboardFragment"
+        android:label="Collector Dashboard"
+        tools:layout="@layout/fragment_collector_dashboard" />
+
+</navigation>

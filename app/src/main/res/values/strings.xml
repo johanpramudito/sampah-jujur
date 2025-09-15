@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Sampah Jujur</string>
+
+    <!-- Navigation -->
+    <string name="nav_request_pickup">Request Pickup</string>
+    <string name="nav_collector_dashboard">Collector Dashboard</string>
+
+    <!-- Request Pickup Fragment -->
+    <string name="title_request_pickup">Request Pickup</string>
+    <string name="pickup_location">Pickup Location</string>
+    <string name="get_current_location">Get Current Location</string>
+    <string name="waste_items">Waste Items</string>
+    <string name="add_waste_item">Add Waste Item</string>
+    <string name="submit_pickup_request">Submit Pickup Request</string>
+    <string name="additional_notes_optional">Additional notes (optional)</string>
+
+    <!-- Collector Dashboard Fragment -->
+    <string name="title_collector_dashboard">Collector Dashboard</string>
+    <string name="search_by_address_or_waste_type">Search by address or waste type...</string>
+    <string name="pending_requests">Pending Requests</string>
+    <string name="my_requests">My Requests</string>
+    <string name="sort_by_time">Time</string>
+    <string name="sort_by_value">Value</string>
+    <string name="sort_by_distance">Distance</string>
+
+    <!-- General -->
+    <string name="accept">Accept</string>
+    <string name="details">Details</string>
+    <string name="navigate">Navigate</string>
+    <string name="start">Start</string>
+    <string name="complete">Complete</string>
+    <string name="no_pending_requests">No Pending Requests</string>
+    <string name="no_accepted_requests">No Accepted Requests</string>
+    <string name="check_back_later">Check back later for new pickup requests</string>
+    <string name="accept_requests_message">Accept requests from the pending tab to see them here</string>
+</resources>
