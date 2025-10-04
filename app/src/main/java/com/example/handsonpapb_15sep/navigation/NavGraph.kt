@@ -1,6 +1,7 @@
 package com.example.handsonpapb_15sep.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,11 @@ import com.example.handsonpapb_15sep.ui.screens.auth.*
 import com.example.handsonpapb_15sep.ui.screens.collector.*
 import com.example.handsonpapb_15sep.ui.screens.household.*
 import com.example.handsonpapb_15sep.ui.screens.shared.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.example.handsonpapb_15sep.ui.screens.household.AddWasteItemDialog
 
 sealed class Screen(val route: String) {
     // Initial Flow
@@ -168,7 +174,9 @@ fun SampahJujurNavGraph(
         // Household Request Pickup Screen
         composable(Screen.HouseholdRequest.route) {
             // TODO: Get from ViewModel
-            val wasteItems = emptyList<WasteItem>()
+
+            var showAddItemDialog by remember { mutableStateOf(false) }
+            val wasteItems = remember { mutableStateListOf<WasteItem>() }
 
             RequestPickupScreen(
                 wasteItems = wasteItems,
@@ -177,9 +185,11 @@ fun SampahJujurNavGraph(
                 },
                 onAddItemClick = {
                     // TODO: Show add item dialog
+                    showAddItemDialog = true
                 },
                 onRemoveItem = { index ->
                     // TODO: Remove item from ViewModel
+                    wasteItems.removeAt(index)
                 },
                 onSubmitRequest = {
                     // TODO: Submit to ViewModel
@@ -192,6 +202,26 @@ fun SampahJujurNavGraph(
                     }
                 }
             )
+            if (showAddItemDialog) {
+                AddWasteItemDialog(
+                    // The name is 'onAddItem' and it provides four parameters
+                    onAddItem = { type, weight, value, description ->
+                        // Create the WasteItem object here
+                        val newItem = WasteItem(
+                            type = type,
+                            weight = weight,
+                            estimatedValue = value,
+                            description = description
+                        )
+                        wasteItems.add(newItem)       // Add the new item to the list
+                        showAddItemDialog = false     // Close the dialog
+                    },
+                    // The name 'onDismiss' is correct according to your file
+                    onDismiss = {
+                        showAddItemDialog = false     // Close the dialog if the user cancels
+                    }
+                )
+            }
         }
 
         // Household My Requests Screen
