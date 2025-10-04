@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "HandsOnPAPB_15Sep"
+rootProject.name = "sampahjujur"
 include(":app")
  

@@ -7,13 +7,13 @@
 
     <fragment
         android:id="@+id/requestPickupFragment"
-        android:name="com.example.handsonpapb_15sep.ui.fragment.RequestPickupFragment"
+        android:name="sampahjujur.ui.fragment.RequestPickupFragment"
         android:label="Request Pickup"
         tools:layout="@layout/fragment_request_pickup" />
 
     <fragment
         android:id="@+id/collectorDashboardFragment"
-        android:name="com.example.handsonpapb_15sep.ui.fragment.CollectorDashboardFragment"
+        android:name="sampahjujur.ui.fragment.CollectorDashboardFragment"
         android:label="Collector Dashboard"
         tools:layout="@layout/fragment_collector_dashboard" />
 

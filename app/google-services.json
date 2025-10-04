@@ -1,40 +1,29 @@
 {
   "project_info": {
-    "project_number": "123456789000",
-    "project_id": "sampah-jujur-demo",
-    "storage_bucket": "sampah-jujur-demo.appspot.com"
+    "project_number": "727452318383",
+    "project_id": "sampah-jujur",
+    "storage_bucket": "sampah-jujur.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890",
+        "mobilesdk_app_id": "1:727452318383:android:68a1b14747d347fc8f725a",
         "android_client_info": {
-          "package_name": "com.example.handsonpapb_15sep"
+          "package_name": "com.melodi.sampahjujur"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "123456789000-abcdef1234567890.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDemoKey123456789"
+          "current_key": "AIzaSyC5-z3AjDz4z78yuXdyvSXH1HAjzqpTvik"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "123456789000-abcdef1234567890.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
   ],
   "configuration_version": "1"
 }
-

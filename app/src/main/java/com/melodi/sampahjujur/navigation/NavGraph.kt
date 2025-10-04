@@ -1,0 +1,525 @@
+package com.melodi.sampahjujur.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.melodi.sampahjujur.model.PickupRequest
+import com.melodi.sampahjujur.model.User
+import com.melodi.sampahjujur.model.WasteItem
+import com.melodi.sampahjujur.ui.screens.*
+import com.melodi.sampahjujur.ui.screens.auth.*
+import com.melodi.sampahjujur.ui.screens.collector.*
+import com.melodi.sampahjujur.ui.screens.household.*
+import com.melodi.sampahjujur.ui.screens.shared.*
+import com.melodi.sampahjujur.viewmodel.AuthViewModel
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+
+
+sealed class Screen(val route: String) {
+    // Initial Flow
+    object Splash : Screen("splash")
+    object Onboarding : Screen("onboarding")
+    object RoleSelection : Screen("role_selection")
+
+    // Household Auth
+    object HouseholdLogin : Screen("household_login")
+    object HouseholdRegistration : Screen("household_registration")
+
+    // Collector Auth
+    object CollectorLogin : Screen("collector_login")
+    object CollectorRegistration : Screen("collector_registration")
+
+    // Household Main
+    object HouseholdRequest : Screen("household_request")
+    object HouseholdMyRequests : Screen("household_my_requests")
+    object HouseholdRequestDetail : Screen("household_request_detail/{requestId}") {
+        fun createRoute(requestId: String) = "household_request_detail/$requestId"
+    }
+    object HouseholdProfile : Screen("household_profile")
+    object HouseholdEditProfile : Screen("household_edit_profile")
+
+    // Collector Main
+    object CollectorDashboard : Screen("collector_dashboard")
+    object CollectorRequestDetail : Screen("collector_request_detail/{requestId}") {
+        fun createRoute(requestId: String) = "collector_request_detail/$requestId"
+    }
+    object CollectorProfile : Screen("collector_profile")
+    object CollectorEditProfile : Screen("collector_edit_profile")
+
+    // Shared
+    object Settings : Screen("settings")
+    object HelpSupport : Screen("help_support")
+}
+
+@Composable
+fun SampahJujurNavGraph(
+    navController: NavHostController,
+    authViewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    startDestination: String = Screen.Splash.route
+) {
+    val authState by authViewModel.authState.collectAsState()
+
+    // Determine initial destination based on auth state
+    LaunchedEffect(authState) {
+        when (authState) {
+            is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                val user = (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                val destination = if (user.isHousehold()) {
+                    Screen.HouseholdRequest.route
+                } else {
+                    Screen.CollectorDashboard.route
+                }
+
+                // Only navigate if we're still on auth screens
+                val currentRoute = navController.currentBackStackEntry?.destination?.route
+                if (currentRoute == Screen.Splash.route ||
+                    currentRoute == Screen.Onboarding.route ||
+                    currentRoute == Screen.RoleSelection.route ||
+                    currentRoute == Screen.HouseholdLogin.route ||
+                    currentRoute == Screen.HouseholdRegistration.route ||
+                    currentRoute == Screen.CollectorLogin.route ||
+                    currentRoute == Screen.CollectorRegistration.route) {
+                    navController.navigate(destination) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            }
+            else -> {
+                // User not authenticated, stay on current screen
+            }
+        }
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = startDestination
+    ) {
+        // Splash Screen
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                onNavigateToNext = {
+                    navController.navigate(Screen.Onboarding.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Onboarding Screen
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onSkip = {
+                    navController.navigate(Screen.RoleSelection.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                },
+                onFinish = {
+                    navController.navigate(Screen.RoleSelection.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Role Selection Screen
+        composable(Screen.RoleSelection.route) {
+            RoleSelectionScreen(
+                onHouseholdSelected = {
+                    navController.navigate(Screen.HouseholdLogin.route)
+                },
+                onCollectorSelected = {
+                    navController.navigate(Screen.CollectorLogin.route)
+                }
+            )
+        }
+
+        // Household Login
+        composable(Screen.HouseholdLogin.route) {
+            HouseholdLoginScreen(
+                viewModel = authViewModel,
+                onLoginSuccess = {
+                    // AuthViewModel will handle navigation via LaunchedEffect above
+                },
+                onGoogleSignInClick = {
+                    // TODO: Handle Google sign-in
+                },
+                onForgotPasswordClick = {
+                    // TODO: Handle forgot password
+                },
+                onSignUpClick = {
+                    navController.navigate(Screen.HouseholdRegistration.route)
+                }
+            )
+        }
+
+        // Household Registration
+        composable(Screen.HouseholdRegistration.route) {
+            HouseholdRegistrationScreen(
+                viewModel = authViewModel,
+                onRegisterSuccess = {
+                    // AuthViewModel will handle navigation via LaunchedEffect above
+                },
+                onLoginClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Collector Login
+        composable(Screen.CollectorLogin.route) {
+            CollectorLoginScreen(
+                onSendOtpClick = { phone ->
+                    // TODO: Handle OTP send with Firebase
+                    navController.navigate(Screen.CollectorDashboard.route) {
+                        popUpTo(Screen.RoleSelection.route) { inclusive = true }
+                    }
+                },
+                onSignUpClick = {
+                    navController.navigate(Screen.CollectorRegistration.route)
+                }
+            )
+        }
+
+        // Collector Registration
+        composable(Screen.CollectorRegistration.route) {
+            CollectorRegistrationScreen(
+                onSendOtpClick = { fullName, phone, vehicleType, operatingArea ->
+                    // TODO: Handle registration with Firebase
+                    navController.navigate(Screen.CollectorDashboard.route) {
+                        popUpTo(Screen.RoleSelection.route) { inclusive = true }
+                    }
+                },
+                onLoginClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Household Request Pickup Screen
+        composable(Screen.HouseholdRequest.route) {
+            RequestPickupScreen(
+                onNavigate = { route ->
+                    when (route) {
+                        "request" -> { /* Already here */ }
+                        "my_requests" -> navController.navigate(Screen.HouseholdMyRequests.route)
+                        "household_profile" -> navController.navigate(Screen.HouseholdProfile.route)
+                    }
+                }
+            )
+        }
+
+        // Household My Requests Screen
+        composable(Screen.HouseholdMyRequests.route) {
+            // TODO: Get from ViewModel
+            val requests = emptyList<PickupRequest>()
+
+            MyRequestsScreen(
+                requests = requests,
+                onRequestClick = { requestId ->
+                    navController.navigate(Screen.HouseholdRequestDetail.createRoute(requestId))
+                },
+                onNavigate = { route ->
+                    when (route) {
+                        "request" -> navController.navigate(Screen.HouseholdRequest.route)
+                        "my_requests" -> { /* Already here */ }
+                        "household_profile" -> navController.navigate(Screen.HouseholdProfile.route)
+                    }
+                }
+            )
+        }
+
+        // Household Request Detail Screen
+        composable(
+            route = Screen.HouseholdRequestDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
+            // TODO: Get request from ViewModel by ID
+            val dummyRequest = PickupRequest(
+                id = requestId,
+                householdId = "user1",
+                wasteItems = listOf(WasteItem("plastic", 5.0, 10.0, "Bottles")),
+                pickupLocation = PickupRequest.Location(0.0, 0.0, "123 Main St"),
+                status = "pending"
+            )
+
+            RequestDetailScreen(
+                request = dummyRequest,
+                collectorName = null,
+                collectorPhone = null,
+                collectorVehicle = null,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onCancelRequest = {
+                    // TODO: Cancel in ViewModel
+                    navController.popBackStack()
+                },
+                onContactCollector = {
+                    // TODO: Handle contact
+                }
+            )
+        }
+
+        // Household Profile Screen
+        composable(Screen.HouseholdProfile.route) {
+            val user = authViewModel.getCurrentUser() ?: User(
+                id = "user1",
+                fullName = "Test User",
+                email = "test@example.com",
+                phone = "+1234567890",
+                userType = "household"
+            )
+
+            HouseholdProfileScreen(
+                user = user,
+                totalRequests = 0,
+                totalWasteCollected = 0.0,
+                totalEarnings = 0.0,
+                onEditProfileClick = {
+                    navController.navigate(Screen.HouseholdEditProfile.route)
+                },
+                onSettingsClick = {
+                    navController.navigate(Screen.Settings.route)
+                },
+                onHelpSupportClick = {
+                    navController.navigate(Screen.HelpSupport.route)
+                },
+                onAboutClick = {
+                    // TODO: Handle about
+                },
+                onLogoutClick = {
+                    authViewModel.signOut()
+                    navController.navigate(Screen.RoleSelection.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onNavigate = { route ->
+                    when (route) {
+                        "request" -> navController.navigate(Screen.HouseholdRequest.route)
+                        "my_requests" -> navController.navigate(Screen.HouseholdMyRequests.route)
+                        "household_profile" -> { /* Already here */ }
+                    }
+                }
+            )
+        }
+
+        // Household Edit Profile Screen
+        composable(Screen.HouseholdEditProfile.route) {
+            // TODO: Get from ViewModel
+            val user = User(
+                id = "user1",
+                fullName = "Test User",
+                email = "test@example.com",
+                phone = "+1234567890",
+                address = "",
+                userType = "household"
+            )
+
+            EditProfileScreen(
+                user = user,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onSaveClick = { fullName, email, phone, address ->
+                    // TODO: Update in ViewModel
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Collector Dashboard Screen
+        composable(Screen.CollectorDashboard.route) {
+            CollectorDashboardScreen(
+                onRequestClick = { requestId ->
+                    navController.navigate(Screen.CollectorRequestDetail.createRoute(requestId))
+                },
+                onNavigate = { route ->
+                    when (route) {
+                        "collector_dashboard" -> { /* Already here */ }
+                        "map_view" -> { /* TODO: Navigate to map */ }
+                        "collector_profile" -> navController.navigate(Screen.CollectorProfile.route)
+                    }
+                }
+            )
+        }
+
+        // Collector Request Detail Screen
+        composable(
+            route = Screen.CollectorRequestDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
+            // TODO: Get request from ViewModel by ID
+            val dummyRequest = PickupRequest(
+                id = requestId,
+                householdId = "user1",
+                wasteItems = listOf(WasteItem("plastic", 5.0, 10.0, "Bottles")),
+                pickupLocation = PickupRequest.Location(0.0, 0.0, "123 Main St"),
+                status = "pending"
+            )
+
+            CollectorRequestDetailScreen(
+                request = dummyRequest,
+                householdName = "Household User",
+                householdPhone = null,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onAcceptRequest = {
+                    // TODO: Accept in ViewModel
+                    navController.popBackStack()
+                },
+                onNavigateToLocation = {
+                    // TODO: Handle navigation
+                },
+                onStartPickup = {
+                    // TODO: Start pickup in ViewModel
+                },
+                onCompletePickup = {
+                    // TODO: Show complete transaction dialog
+                },
+                onContactHousehold = {
+                    // TODO: Handle contact
+                },
+                onCancelRequest = {
+                    // TODO: Cancel in ViewModel
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Collector Profile Screen
+        composable(Screen.CollectorProfile.route) {
+            val user = authViewModel.getCurrentUser() ?: User(
+                id = "collector1",
+                fullName = "Test Collector",
+                email = "",
+                phone = "+1234567890",
+                userType = "collector"
+            )
+
+            CollectorProfileScreen(
+                user = user,
+                totalCollections = 0,
+                totalWasteCollected = 0.0,
+                totalEarnings = 0.0,
+                completionRate = 0.0,
+                vehicleInfo = "",
+                onEditProfileClick = {
+                    navController.navigate(Screen.CollectorEditProfile.route)
+                },
+                onSettingsClick = {
+                    navController.navigate(Screen.Settings.route)
+                },
+                onEarningsClick = {
+                    // TODO: Handle earnings
+                },
+                onPerformanceClick = {
+                    // TODO: Handle performance
+                },
+                onHelpSupportClick = {
+                    navController.navigate(Screen.HelpSupport.route)
+                },
+                onAboutClick = {
+                    // TODO: Handle about
+                },
+                onLogoutClick = {
+                    authViewModel.signOut()
+                    navController.navigate(Screen.RoleSelection.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onNavigate = { route ->
+                    when (route) {
+                        "collector_dashboard" -> navController.navigate(Screen.CollectorDashboard.route)
+                        "map_view" -> { /* TODO: Navigate to map */ }
+                        "collector_profile" -> { /* Already here */ }
+                    }
+                }
+            )
+        }
+
+        // Collector Edit Profile Screen
+        composable(Screen.CollectorEditProfile.route) {
+            // TODO: Get from ViewModel
+            val user = User(
+                id = "collector1",
+                fullName = "Test Collector",
+                email = "",
+                phone = "+1234567890",
+                userType = "collector"
+            )
+
+            CollectorEditProfileScreen(
+                user = user,
+                vehicleType = "",
+                vehiclePlateNumber = "",
+                operatingArea = "",
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onSaveClick = { fullName, phone, vehicleType, plateNumber, operatingArea ->
+                    // TODO: Update in ViewModel
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Settings Screen
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                notificationsEnabled = true,
+                locationEnabled = true,
+                darkModeEnabled = false,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onNotificationsToggle = { enabled ->
+                    // TODO: Handle toggle
+                },
+                onLocationToggle = { enabled ->
+                    // TODO: Handle toggle
+                },
+                onDarkModeToggle = { enabled ->
+                    // TODO: Handle toggle
+                },
+                onLanguageClick = {
+                    // TODO: Handle language
+                },
+                onPrivacyPolicyClick = {
+                    // TODO: Handle privacy policy
+                },
+                onTermsClick = {
+                    // TODO: Handle terms
+                },
+                onClearCacheClick = {
+                    // TODO: Handle clear cache
+                },
+                onDeleteAccountClick = {
+                    // TODO: Handle delete account
+                }
+            )
+        }
+
+        // Help & Support Screen
+        composable(Screen.HelpSupport.route) {
+            HelpSupportScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onLiveChatClick = {
+                    // TODO: Handle live chat
+                },
+                onSubmitFeedback = { name, email, message ->
+                    // TODO: Handle feedback submission
+                }
+            )
+        }
+    }
+}
