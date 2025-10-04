@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Request Pickup</title>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                        "content-light": "#111712",
+                        "content-dark": "#e3e4e3",
+                        "subtle-light": "#648765",
+                        "subtle-dark": "#9ca3af",
+                        "card-light": "#ffffff",
+                        "card-dark": "#1e2f1f",
+                        "border-light": "#e5e7eb",
+                        "border-dark": "#374151"
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px" },
+                    boxShadow: {
+                        'DEFAULT': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-content-light dark:text-content-dark">
+<div class="flex flex-col min-h-screen">
+<header class="p-4 bg-background-light dark:bg-background-dark sticky top-0 z-10">
+<h1 class="text-2xl font-bold text-center">Request Pickup</h1>
+<p class="text-sm text-center text-subtle-light dark:text-subtle-dark">Complete the form to schedule your pickup</p>
+</header>
+<main class="flex-grow p-4 pb-20 space-y-6">
+<div class="bg-card-light dark:bg-card-dark rounded-lg shadow p-4 space-y-4">
+<h2 class="text-lg font-bold">Pickup Location</h2>
+<div class="h-48 bg-subtle-light/20 dark:bg-subtle-dark/20 rounded flex items-center justify-center">
+<p class="text-subtle-light dark:text-subtle-dark">Map preview placeholder</p>
+</div>
+<p class="text-sm text-subtle-light dark:text-subtle-dark">Tap 'Get Current Location' to set your pickup address.</p>
+<button class="w-full flex items-center justify-center gap-2 px-4 py-3 border border-primary text-primary rounded-lg font-bold hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined">my_location</span>
+<span>Get Current Location</span>
+</button>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg shadow p-4 space-y-4">
+<div class="flex justify-between items-center">
+<h2 class="text-lg font-bold">Waste Items</h2>
+<button class="p-2 rounded-full hover:bg-primary/10 dark:hover:bg-primary/20">
+<span class="material-symbols-outlined text-primary">add</span>
+</button>
+</div>
+<div class="text-center py-8 space-y-4">
+<span class="material-symbols-outlined text-6xl text-subtle-light dark:text-subtle-dark">recycling</span>
+<p class="text-subtle-light dark:text-subtle-dark">No waste items added yet.</p>
+<p class="text-sm text-subtle-light dark:text-subtle-dark">Tap the '+' icon to add items.</p>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-lg font-bold" for="notes">Additional notes (optional)</label>
+<textarea class="w-full p-4 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition" id="notes" name="notes" placeholder="e.g. Leave by the side gate" rows="4"></textarea>
+</div>
+<button class="w-full bg-primary text-background-dark font-bold py-4 rounded-lg shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" disabled="">
+                Submit Pickup Request
+            </button>
+</main>
+<nav class="fixed bottom-0 left-0 right-0 h-20 bg-card-light dark:bg-card-dark border-t border-border-light dark:border-border-dark shadow-t-lg flex justify-around items-center px-4 pb-safe">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">request_quote</span>
+<span class="text-xs font-bold">Request</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-subtle-light dark:text-subtle-dark" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="text-xs">My Requests</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-subtle-light dark:text-subtle-dark" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-xs">Profile</span>
+</a>
+</nav>
+</div>
+
+</body></html>

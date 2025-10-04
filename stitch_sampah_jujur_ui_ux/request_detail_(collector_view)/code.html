@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Design</title>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#20df26",
+            "background-light": "#f6f8f6",
+            "background-dark": "#112112",
+          },
+          fontFamily: {
+            "display": ["Manrope"]
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+  </script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+    body {
+      font-family: 'Manrope', sans-serif;
+    }
+    .form-select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.5rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+      -webkit-print-color-adjust: exact;
+      color-adjust: exact;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="max-w-md mx-auto">
+<div class="fixed top-0 left-0 right-0 z-10 bg-background-light dark:bg-background-dark max-w-md mx-auto">
+<div class="flex items-center p-4">
+<button class="p-2 rounded-full">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-bold text-center flex-grow">Request Details</h1>
+<div class="w-10"></div>
+</div>
+</div>
+<div class="pt-20 pb-40">
+<div class="px-4 space-y-6">
+<div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+<div class="flex justify-between items-center mb-2">
+<span class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-sm font-medium px-3 py-1 rounded-full">Pending</span>
+<span class="text-xs text-gray-500 dark:text-gray-400">#W123456789</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400">Posted 2 hours ago</p>
+</div>
+<div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow space-y-4">
+<h2 class="text-lg font-bold">Requested By</h2>
+<div class="flex items-center space-x-4">
+<img alt="The Smiths" class="w-14 h-14 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDS8Lhv5PY5PI5BMZ-PtnXexS1Qmxmn4LtaYEF9vxqGKrWOmKOd1ejvtPFrxLuHyh2bQ3zHcToygv0K83TgQV1R2GcYqB56UX3U6yrrl2laSCuGxs21UsM8EeAVfiuByebnkwpYog8BWh80rMuqsy82tlf5i47zgqhHT9CziYeuXh64v2apdI6Fk5QwEYUKQj5PoNVXTTvVHXomhaaH2AStbbkfUr4kSocdupWez7w-fnyrN89tXPYLgKFoao444ifKgDO9raL1Rt87"/>
+<div class="flex-grow">
+<p class="font-bold text-lg">The Smiths</p>
+<p class="text-gray-500 dark:text-gray-400">+1 (555) 123-4567</p>
+</div>
+<button class="p-3 bg-primary/10 dark:bg-primary/20 rounded-full text-primary">
+<span class="material-symbols-outlined">call</span>
+</button>
+</div>
+<div class="flex items-start space-x-4 pt-2">
+<div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">location_on</span>
+</div>
+<div>
+<p>123 Elm Street, Anytown, USA</p>
+<div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-sm text-yellow-500">star</span>
+<span>4.8 (123 reviews)</span>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow space-y-4">
+<h2 class="text-lg font-bold">Pickup Location</h2>
+<div class="flex items-start space-x-4">
+<div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">location_on</span>
+</div>
+<div>
+<p>123 Elm Street, Anytown, USA</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">1.2 miles away</p>
+</div>
+</div>
+<img alt="Map Preview" class="rounded-xl w-full h-48 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyCJmOgZiZM8xfIOzFegfCjch3Tt9RopXn9dKop5yqr_8pknLGSpi4LcQJCOoQ9CW7Dfs0_twbb3zHmFA-ecXebq7lH7rufgpAPvalXId2eMsmzb0or0XU36BMngYrskPxHeX3FHPja1QNajvRL_-AXMly2Cm3KdsUs0si4s9gtwUOpDWMQ3jtRsZFixamRgV9dwPbUJZUCY2fnIhe3OugCvnheRI10St-8WBM900QSaCIMksBMUoGdjBuCkRa-a-roMzDCbQoOOj0"/>
+<button class="w-full py-3 border border-primary text-primary rounded-lg font-bold text-center">
+            Get Directions
+          </button>
+</div>
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow">
+<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+<h2 class="text-lg font-bold">Waste Items (3)</h2>
+</div>
+<div class="divide-y divide-gray-200 dark:divide-gray-700">
+<div class="p-4 flex space-x-4">
+<div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">recycling</span>
+</div>
+<div class="flex-grow">
+<p class="font-bold">Plastic</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Assorted plastic bottles and containers</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Weight: 5 lbs · Est. Value: $2.50</p>
+</div>
+</div>
+<div class="p-4 flex space-x-4">
+<div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">recycling</span>
+</div>
+<div class="flex-grow">
+<p class="font-bold">Paper</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Newspapers, magazines, and cardboard boxes</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Weight: 10 lbs · Est. Value: $1.00</p>
+</div>
+</div>
+<div class="p-4 flex space-x-4">
+<div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">recycling</span>
+</div>
+<div class="flex-grow">
+<p class="font-bold">Metal</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Aluminum cans and steel food cans</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Weight: 3 lbs · Est. Value: $1.50</p>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-gray-200 dark:border-gray-700">
+<p class="font-bold text-right">Total Estimated Value: $5.00</p>
+</div>
+</div>
+<div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+<h2 class="text-lg font-bold mb-2">Special Instructions</h2>
+<p class="italic text-gray-600 dark:text-gray-300">Please leave the items on the porch</p>
+</div>
+<div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow space-y-4">
+<h2 class="text-lg font-bold">Collection Details</h2>
+<div>
+<label class="block text-sm font-medium mb-1" for="arrival-time">Estimated Arrival Time</label>
+<select class="form-select w-full bg-gray-100 dark:bg-gray-700 border-none rounded-lg focus:ring-primary" id="arrival-time">
+<option>Select Time</option>
+<option>9:00 AM - 11:00 AM</option>
+<option>11:00 AM - 1:00 PM</option>
+</select>
+</div>
+<div class="flex items-center space-x-4">
+<div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">local_shipping</span>
+</div>
+<div>
+<p class="font-bold">Vehicle Info</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Toyota Prius</p>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium mb-1" for="collection-notes">Collection Method Notes</label>
+<textarea class="w-full bg-gray-100 dark:bg-gray-700 border-none rounded-lg focus:ring-primary" id="collection-notes" placeholder="Enter notes" rows="3"></textarea>
+</div>
+</div>
+</div>
+</div>
+<div class="fixed bottom-20 left-0 right-0 p-4 max-w-md mx-auto">
+<button class="w-full bg-primary text-black font-bold py-4 rounded-xl shadow-lg">
+        Accept Request
+      </button>
+</div>
+<div class="fixed bottom-0 left-0 right-0 border-t border-gray-200 dark:border-gray-700 bg-background-light dark:bg-background-dark max-w-md mx-auto">
+<div class="flex justify-around items-center h-20">
+<a class="text-center text-primary" href="#">
+<span class="material-symbols-outlined text-3xl">list_alt</span>
+<span class="block text-xs font-medium">Requests</span>
+</a>
+<a class="text-center text-gray-500 dark:text-gray-400" href="#">
+<span class="material-symbols-outlined text-3xl">map</span>
+<span class="block text-xs font-medium">Map</span>
+</a>
+<a class="text-center text-gray-500 dark:text-gray-400" href="#">
+<span class="material-symbols-outlined text-3xl">person</span>
+<span class="block text-xs font-medium">Profile</span>
+</a>
+</div>
+</div>
+</div>
+
+</body></html>

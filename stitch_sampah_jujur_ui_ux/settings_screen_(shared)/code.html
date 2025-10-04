@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Design</title>
+<link href="data:image/x-icon;base64," rel="icon" type="image/x-icon"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                        "foreground-light": "#111712",
+                        "foreground-dark": "#E3E4E3",
+                        "subtle-light": "#648765",
+                        "subtle-dark": "#A0B5A1",
+                        "border-light": "#E3E4E3",
+                        "border-dark": "#333d33",
+                        "surface-light": "#FFFFFF",
+                        "surface-dark": "#1A291A",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "0.75rem",
+                        "xl": "1rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        '4': '1rem',
+                        '5': '1.25rem',
+                        '6': '1.5rem',
+                    },
+                    fontSize: {
+                        'xs': '0.75rem',
+                        'sm': '0.875rem',
+                        'base': '1rem',
+                        'lg': '1.125rem',
+                        'xl': '1.25rem',
+                        '2xl': '1.5rem',
+                        '3xl': '1.875rem',
+                        '4xl': '2.25rem',
+                    },
+                    fontWeight: {
+                        'normal': 400,
+                        'medium': 500,
+                        'semibold': 600,
+                        'bold': 700,
+                        'extrabold': 800
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="flex flex-col min-h-screen">
+<header class="sticky top-0 bg-background-light dark:bg-background-dark z-10">
+<div class="flex items-center justify-between p-4">
+<button class="text-foreground-light dark:text-foreground-dark">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="text-xl font-bold text-foreground-light dark:text-foreground-dark">Settings</h1>
+<div class="w-8"></div>
+</div>
+</header>
+<main class="flex-grow overflow-y-auto px-4 pb-24 space-y-6">
+<div class="space-y-2">
+<h2 class="text-sm font-bold uppercase text-subtle-light dark:text-subtle-dark px-4 pt-4">Account</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm">
+<a class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Personal Information</p>
+<p class="text-sm text-subtle-light dark:text-subtle-dark">Edit your personal information</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Change Password</p>
+</div>
+<span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">credit_card</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Manage Payment Methods</p>
+</div>
+<span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">chevron_right</span>
+</a>
+</div>
+</div>
+<div class="space-y-2">
+<h2 class="text-sm font-bold uppercase text-subtle-light dark:text-subtle-dark px-4 pt-4">Notifications</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm">
+<div class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Push Notifications</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<a class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">list</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Notification Categories</p>
+</div>
+<span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">chevron_right</span>
+</a>
+<div class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">email</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Email</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">sms</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">SMS</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<h2 class="text-sm font-bold uppercase text-subtle-light dark:text-subtle-dark px-4 pt-4">Preferences</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm">
+<a class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">language</span>
+</div>
+<div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Language</p>
+<p class="text-sm text-subtle-light dark:text-subtle-dark">English</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Currency</p>
+<p class="text-sm text-subtle-light dark:text-subtle-dark">USD</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">straighten</span>
+</div>
+<div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Units</p>
+<p class="text-sm text-subtle-light dark:text-subtle-dark">Metric</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">chevron_right</span>
+</a>
+<div class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">dark_mode</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Dark Mode</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-4">
+<div class="bg-primary/10 text-primary p-2 rounded-full">
+<span class="material-symbols-outlined">data_saver_on</span>
+</div>
+<p class="font-semibold text-foreground-light dark:text-foreground-dark">Data Saver</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<h2 class="text-sm font-bold uppercase text-subtle-light dark:text-subtle-dark px-4 pt-4">Danger Zone</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm">
+<a class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-red-500/10 text-red-500 p-2 rounded-full">
+<span class="material-symbols-outlined">logout</span>
+</div>
+<p class="font-semibold text-red-500">Log Out</p>
+</div>
+<span class="material-symbols-outlined text-red-500">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4" href="#">
+<div class="flex items-center gap-4">
+<div class="bg-red-500/10 text-red-500 p-2 rounded-full">
+<span class="material-symbols-outlined">delete</span>
+</div>
+<p class="font-semibold text-red-500">Delete Account</p>
+</div>
+<span class="material-symbols-outlined text-red-500">chevron_right</span>
+</a>
+</div>
+</div>
+</main>
+<footer class="fixed bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark border-t border-border-light dark:border-border-dark">
+<nav class="flex justify-around items-center h-20">
+<a class="flex flex-col items-center justify-center text-subtle-light dark:text-subtle-dark" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-xs">Requests</span>
+</a>
+<a class="flex flex-col items-center justify-center text-subtle-light dark:text-subtle-dark" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="text-xs">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-xs font-bold">Profile</span>
+</a>
+</nav>
+</footer>
+</div>
+
+</body></html>

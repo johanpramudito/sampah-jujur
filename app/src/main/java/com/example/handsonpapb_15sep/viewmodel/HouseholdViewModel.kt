@@ -78,12 +78,16 @@ class HouseholdViewModel @Inject constructor(
 
             val pickupRequest = PickupRequest(
                 householdId = currentUser.uid,
-                location = location,
-                timestamp = Timestamp.now(),
+                pickupLocation = PickupRequest.Location(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    address = address
+                ),
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
                 status = PickupRequest.STATUS_PENDING,
                 wasteItems = wasteItems,
                 totalValue = totalValue,
-                address = address,
                 notes = notes
             )
 

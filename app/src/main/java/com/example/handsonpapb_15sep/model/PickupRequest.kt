@@ -10,26 +10,50 @@ import com.google.firebase.firestore.GeoPoint
  * @property id Unique identifier for the pickup request
  * @property householdId ID of the household user who created the request
  * @property collectorId ID of the collector who accepted the request (null if pending)
- * @property location Geographic location of the pickup point
- * @property timestamp When the request was created
+ * @property pickupLocation Geographic location with lat/lng and address
+ * @property createdAt When the request was created (milliseconds)
+ * @property updatedAt When the request was last updated (milliseconds)
  * @property status Current status of the request
  * @property wasteItems List of waste items to be collected
  * @property totalValue Total estimated value of all waste items
- * @property address Human-readable address for the pickup location
  * @property notes Additional notes or instructions from the household
  */
 data class PickupRequest(
     val id: String = "",
     val householdId: String = "",
     val collectorId: String? = null,
-    val location: GeoPoint = GeoPoint(0.0, 0.0),
-    val timestamp: Timestamp = Timestamp.now(),
+    val pickupLocation: Location = Location(),
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
     val status: String = STATUS_PENDING,
     val wasteItems: List<WasteItem> = emptyList(),
     val totalValue: Double = 0.0,
-    val address: String = "",
     val notes: String = ""
 ) {
+    /**
+     * Nested data class for location information
+     */
+    data class Location(
+        val latitude: Double = 0.0,
+        val longitude: Double = 0.0,
+        val address: String = ""
+    ) {
+        fun toGeoPoint(): GeoPoint = GeoPoint(latitude, longitude)
+    }
+
+    // Legacy compatibility
+    @Deprecated("Use pickupLocation instead", ReplaceWith("pickupLocation.toGeoPoint()"))
+    val location: GeoPoint
+        get() = pickupLocation.toGeoPoint()
+
+    @Deprecated("Use pickupLocation.address instead", ReplaceWith("pickupLocation.address"))
+    val address: String
+        get() = pickupLocation.address
+
+    @Deprecated("Use createdAt instead", ReplaceWith("Timestamp(createdAt / 1000, 0)"))
+    val timestamp: Timestamp
+        get() = Timestamp(createdAt / 1000, 0)
+
     companion object {
         const val STATUS_PENDING = "pending"
         const val STATUS_ACCEPTED = "accepted"
@@ -64,5 +88,5 @@ data class PickupRequest(
     fun isValid(): Boolean = householdId.isNotBlank() &&
                             wasteItems.isNotEmpty() &&
                             wasteItems.all { it.isValid() } &&
-                            address.isNotBlank()
+                            pickupLocation.address.isNotBlank()
 }

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Recycle App</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                        "text-light": "#111712",
+                        "text-dark": "#e1e3e1",
+                        "text-secondary-light": "#6f7971",
+                        "text-secondary-dark": "#b0bab3"
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        '4': '1rem',
+                        '6': '1.5rem',
+                        '16': '4rem'
+                    },
+                    boxShadow: {
+                        'elevation-1': '0px 4px 4px rgba(0, 0, 0, 0.04)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+            font-size: 48px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark">
+<div class="flex flex-col h-screen justify-between p-6">
+<div class="flex-grow flex flex-col justify-center items-center text-center">
+<div class="mb-16">
+<h1 class="text-3xl font-bold">I am a...</h1>
+<p class="text-base text-text-secondary-light dark:text-text-secondary-dark mt-2">Select your role to continue</p>
+</div>
+<div class="w-full space-y-4">
+<a class="block bg-white dark:bg-background-dark rounded-xl shadow-elevation-1 p-6 active:bg-primary/10 transition-colors duration-200" href="#">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-primary">home</span>
+<div>
+<h2 class="text-lg font-bold text-left">Household</h2>
+<p class="text-sm text-text-secondary-light dark:text-text-secondary-dark text-left">I want to sell recyclable waste</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark !text-2xl">chevron_right</span>
+</div>
+</a>
+<a class="block bg-white dark:bg-background-dark rounded-xl shadow-elevation-1 p-6 active:bg-primary/10 transition-colors duration-200" href="#">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+<div>
+<h2 class="text-lg font-bold text-left">Collector</h2>
+<p class="text-sm text-text-secondary-light dark:text-text-secondary-dark text-left">I collect recyclable materials</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark !text-2xl">chevron_right</span>
+</div>
+</a>
+</div>
+</div>
+<div class="text-center pb-4">
+<a class="text-primary font-medium" href="#">Already have an account? Log in</a>
+</div>
+</div>
+
+</body></html>

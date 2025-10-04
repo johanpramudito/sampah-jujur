@@ -38,10 +38,11 @@ class AuthRepository @Inject constructor(
             val uid = authResult.user?.uid ?: throw Exception("Failed to get user ID")
 
             val user = User(
-                uid = uid,
-                name = name,
+                id = uid,
+                fullName = name,
+                email = email,
                 phone = phone,
-                role = User.ROLE_HOUSEHOLD
+                userType = User.ROLE_HOUSEHOLD
             )
 
             // Save user data to Firestore
@@ -74,10 +75,10 @@ class AuthRepository @Inject constructor(
             val uid = authResult.user?.uid ?: throw Exception("Failed to get user ID")
 
             val user = User(
-                uid = uid,
-                name = name,
+                id = uid,
+                fullName = name,
                 phone = phone,
-                role = User.ROLE_COLLECTOR
+                userType = User.ROLE_COLLECTOR
             )
 
             // Save user data to Firestore

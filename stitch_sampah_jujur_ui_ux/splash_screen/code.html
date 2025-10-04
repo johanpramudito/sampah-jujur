@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sampah Jujur</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#20df26",
+              "background-light": "#f6f8f6",
+              "background-dark": "#112112",
+            },
+            fontFamily: {
+              display: ["Manrope"],
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+<style>
+      @keyframes loading-bar {
+        0% {
+          width: 0%;
+        }
+        100% {
+          width: 100%;
+        }
+      }
+      .animate-loading-bar {
+        animation: loading-bar 3s ease-in-out infinite;
+      }
+    </style>
+<style>
+      body {
+        min-height: max(884px, 100dvh);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display">
+<div class="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-primary p-4">
+<div class="flex flex-col items-center justify-center text-center">
+<div class="mb-4 flex h-32 w-32 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+<img alt="Sampah Jujur Logo" class="h-20 w-20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSQrlZbaEhyGrNoQzaeMAk1VifZJ2dbImCvsNsrGCv-iMJ2wmiAeXXO77zzG1uEvizEaVFWZIBehsIB2FnghOuq70K0LmsEy_iwCjdMOewNrWR6Nr3pZ3ft2RkN9psGxAm6Tpoznb3hGWdZ4iUO7OmBMLU5C_8LC2heMF5NtHC7FC2dTOj_JuGlUW5U9CZr1SnK7F4IT7sCcBeVS-qiqvGYe1Vh5EeeRm5qI8PZIL8Vestw0SKpGABwtcacMaWBCOspQa51ewR3iTC"/>
+</div>
+<h1 class="text-3xl font-bold text-white">Sampah Jujur</h1>
+<p class="mt-2 text-base text-white/70">Waste to Worth</p>
+</div>
+<div aria-valuemax="100" aria-valuemin="0" class="absolute bottom-10 w-full max-w-xs px-4" role="progressbar">
+<div class="h-2 w-full overflow-hidden rounded-full bg-white/20">
+<div class="animate-loading-bar h-full rounded-full bg-white"></div>
+</div>
+</div>
+</div>
+
+</body></html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create Household Account</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                        "content-light": "#1d291e",
+                        "content-dark": "#e3e4e3",
+                        "subtle-light": "#a2b0a3",
+                        "subtle-dark": "#5e6e5f",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a2c1a",
+                        "surface-input-light": "#f0f4f0",
+                        "surface-input-dark": "#233524",
+                        "error": "#b3261e"
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="container mx-auto px-4 py-8 max-w-md">
+<div class="flex flex-col h-full">
+<h1 class="text-2xl font-bold text-content-light dark:text-content-dark text-center mb-8">Create Household Account</h1>
+<div class="space-y-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-subtle-light dark:text-subtle-dark">person</span>
+<input class="w-full h-14 pl-12 pr-4 rounded-lg bg-surface-input-light dark:bg-surface-input-dark text-content-light dark:text-content-dark placeholder:text-subtle-light dark:placeholder:text-subtle-dark border-0 focus:ring-2 focus:ring-primary" placeholder="Full Name *" type="text"/>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-subtle-light dark:text-subtle-dark">email</span>
+<input class="w-full h-14 pl-12 pr-4 rounded-lg bg-surface-input-light dark:bg-surface-input-dark text-content-light dark:text-content-dark placeholder:text-subtle-light dark:placeholder:text-subtle-dark border-0 focus:ring-2 focus:ring-primary" placeholder="Email Address *" type="email"/>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-subtle-light dark:text-subtle-dark">phone</span>
+<input class="w-full h-14 pl-12 pr-4 rounded-lg bg-surface-input-light dark:bg-surface-input-dark text-content-light dark:text-content-dark placeholder:text-subtle-light dark:placeholder:text-subtle-dark border-0 focus:ring-2 focus:ring-primary" placeholder="Phone Number *" type="tel"/>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-subtle-light dark:text-subtle-dark">lock</span>
+<input class="w-full h-14 pl-12 pr-12 rounded-lg bg-surface-input-light dark:bg-surface-input-dark text-content-light dark:text-content-dark placeholder:text-subtle-light dark:placeholder:text-subtle-dark border-0 focus:ring-2 focus:ring-primary" placeholder="Password *" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-subtle-light dark:text-subtle-dark">
+<span class="material-symbols-outlined">visibility_off</span>
+</button>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-subtle-light dark:text-subtle-dark">lock</span>
+<input class="w-full h-14 pl-12 pr-12 rounded-lg bg-surface-input-light dark:bg-surface-input-dark text-content-light dark:text-content-dark placeholder:text-subtle-light dark:placeholder:text-subtle-dark border-0 focus:ring-2 focus:ring-primary" placeholder="Confirm Password *" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-subtle-light dark:text-subtle-dark">
+<span class="material-symbols-outlined">visibility_off</span>
+</button>
+</div>
+</div>
+<div class="flex items-start mt-6 space-x-3">
+<input class="mt-1 h-5 w-5 rounded-md border-2 border-subtle-light dark:border-subtle-dark bg-transparent checked:bg-primary checked:border-primary text-primary focus:ring-primary/50 focus:ring-offset-0 focus:ring-2" id="terms" type="checkbox"/>
+<label class="text-sm text-content-light dark:text-content-dark" for="terms">
+                I agree to the <a class="font-semibold text-primary" href="#">Terms &amp; Conditions</a> and <a class="font-semibold text-primary" href="#">Privacy Policy</a>
+</label>
+</div>
+<div class="mt-8">
+<button class="w-full h-14 bg-primary text-black font-bold rounded-lg flex items-center justify-center transition-opacity disabled:opacity-50">
+                Create Account
+            </button>
+</div>
+<div class="mt-8 text-center">
+<p class="text-sm text-content-light dark:text-content-dark">
+                Already have an account? 
+                <a class="font-semibold text-primary" href="#">Log in</a>
+</p>
+</div>
+</div>
+</div>
+
+</body></html>

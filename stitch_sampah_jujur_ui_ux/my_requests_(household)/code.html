@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Requests</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#20df26",
+            "background-light": "#f6f8f6",
+            "background-dark": "#112112",
+          },
+          fontFamily: {
+            "display": ["Manrope"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="flex flex-col min-h-screen">
+<header class="sticky top-0 bg-background-light dark:bg-background-dark z-10">
+<div class="flex items-center justify-between p-4">
+<div class="w-12"></div>
+<h1 class="flex-1 text-center text-lg font-bold text-background-dark dark:text-background-light">My Requests</h1>
+<button class="w-12 h-12 flex items-center justify-center text-background-dark dark:text-background-light">
+<svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M144,160H16a8,8,0,0,1,0-16H144a8,8,0,0,1,0,16Zm104-80H16a8,8,0,0,0,0,16H248a8,8,0,0,0,0-16Zm-40,96H16a8,8,0,0,0,0,16H208a8,8,0,0,0,0-16Z"></path></svg>
+</button>
+</div>
+<div class="border-b border-background-dark/10 dark:border-background-light/10">
+<div class="flex px-4 overflow-x-auto whitespace-nowrap">
+<a class="flex-shrink-0 px-4 py-3 text-sm font-bold border-b-2 border-primary text-primary" href="#">All</a>
+<a class="flex-shrink-0 px-4 py-3 text-sm font-bold border-b-2 border-transparent text-background-dark/60 dark:text-background-light/60 hover:text-primary dark:hover:text-primary" href="#">Pending</a>
+<a class="flex-shrink-0 px-4 py-3 text-sm font-bold border-b-2 border-transparent text-background-dark/60 dark:text-background-light/60 hover:text-primary dark:hover:text-primary" href="#">Accepted</a>
+<a class="flex-shrink-0 px-4 py-3 text-sm font-bold border-b-2 border-transparent text-background-dark/60 dark:text-background-light/60 hover:text-primary dark:hover:text-primary" href="#">Completed</a>
+<a class="flex-shrink-0 px-4 py-3 text-sm font-bold border-b-2 border-transparent text-background-dark/60 dark:text-background-light/60 hover:text-primary dark:hover:text-primary" href="#">Cancelled</a>
+</div>
+</div>
+</header>
+<main class="flex-1 pb-24 px-4 space-y-4 pt-4">
+<div class="bg-white dark:bg-background-dark/50 rounded-lg shadow-sm p-4">
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<p class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-yellow-400/20 text-yellow-800 dark:bg-yellow-400/30 dark:text-yellow-200">Pending</p>
+<p class="text-base font-bold text-background-dark dark:text-background-light mt-2">Request #123456</p>
+<p class="text-sm text-background-dark/60 dark:text-background-light/60">123 Elm Street, Anytown, USA</p>
+</div>
+<div class="w-20 h-20 rounded-lg bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAPxegCqc0BtdclRMIiJaMTSsNxk5QVVvV336Pe4jCXOlvjqQIdnLlbn2lv3du20dD5VZQmy3Hzm0NTFbULoccqWnk3n-hFVodhlFXkLpLmf13rtIxh60XhSLj46EbBziv7t7A2JOCboELsiKUA0wQ29p5P6HzCRMq2vDqeYD5-nKChGzaqvJyNSfkrA8gscfnRJmbseuYOvLqIop10VQUlb6TJUxNsx-o4MvUJPgkAAcv247aZexYhZXxJ_Qi73Ri5Rl4V5yQQ869D')"></div>
+</div>
+<div class="border-t border-background-dark/10 dark:border-background-light/10 pt-3 text-sm text-background-dark/60 dark:text-background-light/60">
+<p>5 items • ~2.5 kg • Est. value $15.00</p>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 text-center py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm">View Details</button>
+<button class="flex-1 text-center py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm">Cancel Request</button>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-background-dark/50 rounded-lg shadow-sm p-4">
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<p class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-400/20 text-blue-800 dark:bg-blue-400/30 dark:text-blue-200">Accepted</p>
+<p class="text-base font-bold text-background-dark dark:text-background-light mt-2">Request #789012</p>
+<p class="text-sm text-background-dark/60 dark:text-background-light/60">456 Oak Avenue, Anytown, USA</p>
+</div>
+<div class="w-20 h-20 rounded-lg bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAytcNh-2RYmsRHEEgF4QUDqpFTD3J6ZME5nH9YTFgnqE7_D05cc1DWvAvDx_efFN5QmKWtCRCvDWJ4IrP0zbKJCwUTgOv9DUugbMz32H9nwpXvQ6SbjPTvuPMOeL8j-I6uoIDgSf3wpXZkhwdJYysgczLUOjQm_NZm-_fmkKia0VOGeM94c0BLX0wvxWs7jMDJQw-EpdOz5Js83aA4ochb_ogjO19SwZ8P1GKnP_m6rH1lTfe1v6QrEgd1SVLmWJVxKSuF2rf9HGXa')"></div>
+</div>
+<div class="border-t border-background-dark/10 dark:border-background-light/10 pt-3 text-sm text-background-dark/60 dark:text-background-light/60">
+<p>Collector: John Doe (4.8 ★)</p>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 text-center py-2 rounded-lg bg-primary text-white font-semibold text-sm">Track Collector</button>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-background-dark/50 rounded-lg shadow-sm p-4">
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<p class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-green-400/20 text-green-800 dark:bg-green-400/30 dark:text-green-200">Completed</p>
+<p class="text-base font-bold text-background-dark dark:text-background-light mt-2">Request #345678</p>
+<p class="text-sm text-background-dark/60 dark:text-background-light/60">789 Pine Lane, Anytown, USA</p>
+</div>
+<div class="w-20 h-20 rounded-lg bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDxkbZlvwXxYdptg4IFqcSpKO3Hs2y_PZKafP-pFnulHhKM_m0QZh-I5jBCm_1S5yoqS3SnhRTeYHaNmnXiz4LACAc6cCiCGbFxVqBIgWA8I3uGdCq7o87sQ4Tdk330gOYu0aGQM06e0_oWW9aA7P1A1U5q1a70mcxAj2rlDCvOagLIREcFpJNKb-IDdklahDmdcUNpMYoCSQzUH5oKj3opZpnZQuIk_SOiRkCiNGeDNVgDr_kaDd5Z23rytqc6h4FzzltS2VdD-ogu')"></div>
+</div>
+<div class="border-t border-background-dark/10 dark:border-background-light/10 pt-3 text-sm text-background-dark/60 dark:text-background-light/60">
+<p>Final value: $18.25</p>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 text-center py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm">View Receipt</button>
+<button class="flex-1 text-center py-2 rounded-lg bg-primary text-white font-semibold text-sm">Rate Collector</button>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-background-dark/50 rounded-lg shadow-sm p-4">
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<p class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-red-400/20 text-red-800 dark:bg-red-400/30 dark:text-red-200">Cancelled</p>
+<p class="text-base font-bold text-background-dark dark:text-background-light mt-2">Request #901234</p>
+<p class="text-sm text-background-dark/60 dark:text-background-light/60">101 Maple Drive, Anytown, USA</p>
+</div>
+<div class="w-20 h-20 rounded-lg bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDAM_oFuCe5UDTkLNsQfk-67MnRxWyBm0i82pSF185NCNUkjApu2olbEG86xoUF4jHqZ25cbeuuflCQmBgNWVuy-OBxan3eKwCwYLCs_dx0wx3OC3mvtdoxGE_nnzloVUH2-MgHbMtOB-LMJ2vkaYey4qks7ZMG2nCMp7ckuR5iNmCNa8TZ3VXdCycABSmC1lbRWUvuN9wIlD932m4bFoctU0TFqJykr4p9K68HS3ecW8m5Xx7o1Jcy_GecsE6D6JtS5O_fOuAI52ME')"></div>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 text-center py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm">View Details</button>
+</div>
+</div>
+</div>
+</main>
+<footer class="fixed bottom-0 left-0 right-0 bg-background-light dark:bg-background-dark border-t border-background-dark/10 dark:border-background-light/10">
+<nav class="flex justify-around items-center px-4 pt-2 pb-3">
+<a class="flex flex-col items-center gap-1 text-background-dark/60 dark:text-background-light/60 hover:text-primary dark:hover:text-primary" href="#">
+<svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48.11-.11a16,16,0,0,1,21.53,0,1.14,1.14,0,0,0,.11.11l80,75.48A16,16,0,0,1,224,115.55Z"></path></svg>
+<span class="text-xs font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M128,64a12,12,0,1,0-12-12A12,12,0,0,0,128,64Zm-12,52a12,12,0,1,0,12,12A12,12,0,0,0,116,116Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,116,180Zm100-132H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"></path></svg>
+<span class="text-xs font-bold">My Requests</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-background-dark/60 dark:text-background-light/60 hover:text-primary dark:hover:text-primary" href="#">
+<svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"></path></svg>
+<span class="text-xs font-medium">Profile</span>
+</a>
+</nav>
+</footer>
+</div>
+
+</body></html>

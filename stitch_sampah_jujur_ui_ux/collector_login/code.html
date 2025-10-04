@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Collector Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="flex flex-col min-h-screen justify-center items-center p-4">
+<div class="w-full max-w-sm mx-auto text-center">
+<div class="mb-8">
+<img alt="Logo" class="w-20 h-20 mx-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVUiGj0uOru5VxlJDhBzbAWXlJG0qA60TtLv46RFPSVKCRXak_rKerbeAB2VerQMTGYI15ZYKRmCP9KJt4g3y7v8njW_vvtbOnes-T1ydHSwBJF9HlziVrjXvQ48Oi-TbuDsXM3mPuU3tXboJ8QM7Fxmkwb8DIOv0w9FskBOnC3nQbwo73CjpakCzE0Vc7POQ9vyqRHQlv1KXlOk8uK4_GWdhB-CveS94kt-HQdygqnhyVhJ24My0llXaT6YdFGF-mTJ2bKjoEbP8G"/>
+</div>
+<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Collector Login</h1>
+<p class="mt-2 text-base text-gray-600 dark:text-gray-400">Enter your registered phone number</p>
+<form class="mt-8 space-y-6">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
+                        phone
+                    </span>
+<div class="absolute inset-y-0 left-12 flex items-center">
+<select class="h-full rounded-md border-0 bg-transparent py-0 pl-0 pr-7 text-gray-500 focus:ring-2 focus:ring-inset focus:ring-primary dark:text-gray-400" id="country-code" name="country-code">
+<option>+1</option>
+<option>+91</option>
+<option>+44</option>
+</select>
+</div>
+<input autocomplete="tel" class="block w-full rounded-lg border-0 py-4 pl-28 pr-4 text-gray-900 bg-gray-100 dark:bg-gray-800 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-inset focus:ring-primary dark:text-white" id="phone-number" name="phone-number" placeholder="Phone Number" required="" type="tel"/>
+</div>
+<div>
+<button class="w-full h-[60px] flex justify-center items-center py-4 px-4 border border-transparent rounded-lg shadow-sm text-base font-bold text-black bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" type="submit">
+                        Send OTP
+                    </button>
+</div>
+</form>
+<p class="mt-10 text-center text-sm text-gray-500">
+                New collector?
+                <a class="font-medium text-primary hover:text-primary/90" href="#">
+                    Register here
+                </a>
+</p>
+</div>
+</div>
+
+</body></html>

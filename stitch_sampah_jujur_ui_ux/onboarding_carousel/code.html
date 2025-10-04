@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Design</title>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Manrope%3Awght%40400%3B500%3B700%3B800" onload="this.rel='stylesheet'" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                        "content-light": "#111712",
+                        "content-dark": "#E1E3E1",
+                        "subtle-light": "#648765",
+                        "subtle-dark": "#A5C6A7",
+                        "inactive-light": "#DCE5DC",
+                        "inactive-dark": "#344B36"
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "1.5rem",
+                        "full": "9999px"
+                    },
+                    height: {
+                        '15': '3.75rem', // 60dp
+                    },
+                    spacing: {
+                        '4': '1rem',
+                        '5': '1.25rem'
+                    },
+                    fontSize: {
+                        'headline-medium': ['28px', {
+                            lineHeight: '36px',
+                            fontWeight: '700'
+                        }],
+                        'body-large': ['16px', {
+                            lineHeight: '24px',
+                            fontWeight: '400'
+                        }],
+                        'label-large-bold': ['14px', {
+                            lineHeight: '20px',
+                            fontWeight: '700'
+                        }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .viewpager {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;}
+        .viewpager::-webkit-scrollbar {
+            display: none;}
+        .viewpager > div {
+            flex-shrink: 0;
+            width: 100%;
+            scroll-snap-align: start;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-content-light dark:text-content-dark">
+<div class="relative w-full h-screen flex flex-col">
+<div class="absolute top-0 right-0 p-4 z-10">
+<button class="text-subtle-light dark:text-subtle-dark font-bold text-label-large-bold px-4 py-2">Skip</button>
+</div>
+<div class="viewpager flex-grow">
+<div class="flex flex-col h-full" id="slide1">
+<div class="flex-grow-[3] bg-center bg-no-repeat bg-cover" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC-tjgHRMFKK7IRR9MQ70nbs2g3RkG50DnEjmBqn0LoOW65_YbLrdt912yv92nyQmsQT3YkWw_EVH25PmbCCX4xoc9gcHnMTbDcLY-h21hXPcFHY_HzSeke-O2HU5BMMBisQUssLT6Mci8W1inUOGrfzJ5p2RZbJK_3wpSfiYdpvZKSaPmTNmKMOv9aJtgOYiZT82vcUy2Smkw3W_cn5HJX-fXAjN5gqJsZPVRPkvFQPz_acBw84UErVcsb53qUwL95qD3yKdgRCLOK');"></div>
+<div class="flex-grow-[2] flex flex-col justify-center items-center px-5 text-center">
+<h1 class="text-headline-medium text-content-light dark:text-content-dark">Earn from Your Waste</h1>
+<p class="body-large mt-2 max-w-sm">Turn your recyclable materials into cash. We connect you with local collectors for convenient pickup.</p>
+</div>
+</div>
+<div class="flex flex-col h-full" id="slide2">
+<div class="flex-grow-[3] bg-center bg-no-repeat bg-cover" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCh2hBhCzlveKvGX-rnKDKROmy1C-ATnZS-1NPSXwqjwSQR9fc1kBCC4c5R0f4ZfvkpRSv-PBDmCmPk0WnliBkbrRdVoGPoDXG_KQEZmBbbXl9TpVvTmgUlxNS56TLu4g3VQWPSjrfkz5SersLmxUbPqhRJl1XVf5aYwyNPCRR-94I9Pv0hj1Vv3P2-RLaXW91WfW0Tu3VQuw1657W1lB9UqIVtQ-98kbI414OKH3Id-rVLOKU4Ea4wR3mXqC5GkgQPYyxkWA4ISLci');"></div>
+<div class="flex-grow-[2] flex flex-col justify-center items-center px-5 text-center">
+<h1 class="text-headline-medium text-content-light dark:text-content-dark">Quick &amp; Easy Collection</h1>
+<p class="body-large mt-2 max-w-sm">Schedule pickups at your convenience. Our network of collectors ensures prompt and reliable service.</p>
+</div>
+</div>
+<div class="flex flex-col h-full" id="slide3">
+<div class="flex-grow-[3] bg-center bg-no-repeat bg-cover" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAUx3a-SmZL3pOUrxrpdqBXZ1CBrTh4VKK8dnd7DOdobH1dfeLxVkB7eO4zb2eO1fSPtFGkfY27UAIJkKmNL_vXVYhPeSyJzDxjEbEIL2SJqx8SZbmwpryVowILnz4ragJhWwZbAGeUGrmB_6gFYTg35r80qa3PjmCr6Z0OLSEHGEznllHOy9tCLIy4OgyQS9UgeoIlXSzjGZTstTv5ZZOcFxkga9-1h_sIiqWBh71wuYrijrVXTLKFcG0t4qepCncmba3fOTtQwW_l');"></div>
+<div class="flex-grow-[2] flex flex-col justify-center items-center px-5 text-center">
+<h1 class="text-headline-medium text-content-light dark:text-content-dark">Transparent Pricing</h1>
+<p class="body-large mt-2 max-w-sm">Know the value of your recyclables upfront. Our platform provides clear and fair pricing based on material type and quantity.</p>
+</div>
+</div>
+</div>
+<div class="absolute bottom-0 w-full p-4 flex flex-col items-center gap-4">
+<div class="flex justify-center items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-content-light dark:bg-content-dark"></div>
+<div class="w-2 h-2 rounded-full bg-inactive-light dark:bg-inactive-dark"></div>
+<div class="w-2 h-2 rounded-full bg-inactive-light dark:bg-inactive-dark"></div>
+</div>
+<button class="w-full h-15 bg-primary rounded-full flex items-center justify-center text-label-large-bold text-background-dark">
+                Next
+            </button>
+</div>
+</div>
+
+</body></html>

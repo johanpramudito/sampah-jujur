@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Design</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#20df26",
+            "background-light": "#f6f8f6",
+            "background-dark": "#112112",
+          },
+          fontFamily: {
+            "display": ["Manrope"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      font-family: 'Manrope', sans-serif;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="max-w-md mx-auto min-h-screen flex flex-col">
+<header class="flex items-center justify-between p-4 sticky top-0 bg-background-light dark:bg-background-dark z-10">
+<button class="p-2">
+<span class="material-symbols-outlined text-gray-800 dark:text-gray-200">arrow_back</span>
+</button>
+<h1 class="text-xl font-bold text-center flex-1 text-gray-900 dark:text-gray-100">Edit Profile</h1>
+<div class="w-10"></div>
+</header>
+<main class="flex-grow flex flex-col p-4 space-y-8">
+<div class="flex flex-col items-center space-y-4">
+<div class="relative">
+<div class="w-32 h-32 rounded-full bg-cover bg-center" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC6X8KYaTyBU5LqWpYkZSk3vZb12s3MHofTTgpAaOSxqgafLsoPS-uqG6mLnFohOOiyfygT1x3pYijVonc0GlhYTDxSomoZ7QSNMMnem26-Q7MK9r4rN6gwtxMoxHgC3LkXPm_FW_GFv7goMgpQpgsJedhbcPSGmeQKD1vu7IcERTWU-bN6tblOdsc3m9wP1Afnp0oBg8uS8Gl7rK5nmCVsxNzg1KyT-ed6ZuItdDmthJPtV65EEeGSW3MrRhXvJjTE4KP3q43exOOQ");'></div>
+<button class="absolute bottom-1 right-1 bg-primary rounded-full p-2 text-white">
+<span class="material-symbols-outlined">photo_camera</span>
+</button>
+</div>
+<div class="text-center">
+<p class="text-lg font-bold text-gray-900 dark:text-gray-100">Change Profile Photo</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Tap the camera icon to update</p>
+</div>
+</div>
+<form class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="full-name">Full Name</label>
+<input class="w-full h-14 px-4 bg-gray-100 dark:bg-gray-800 border-transparent focus:ring-primary focus:border-primary rounded-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500" id="full-name" placeholder="Enter your full name" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="phone-number">Phone Number</label>
+<div class="flex items-center space-x-2">
+<input class="flex-grow w-full h-14 px-4 bg-gray-100 dark:bg-gray-800 border-transparent focus:ring-primary focus:border-primary rounded-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500" id="phone-number" placeholder="Enter your phone number" type="tel"/>
+<button class="px-4 py-2 h-14 bg-primary/20 dark:bg-primary/30 text-primary font-bold rounded-lg whitespace-nowrap" type="button">Verify</button>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="vehicle-type">Vehicle Type</label>
+<div class="relative">
+<select class="w-full appearance-none h-14 px-4 bg-gray-100 dark:bg-gray-800 border-transparent focus:ring-primary focus:border-primary rounded-lg text-gray-900 dark:text-gray-100" id="vehicle-type">
+<option>Select vehicle type</option>
+<option>Bicycle</option>
+<option>Motorcycle</option>
+<option>Tricycle</option>
+<option>Van</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="operating-area">Operating Area</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">location_on</span>
+<input class="w-full h-14 pl-12 pr-4 bg-gray-100 dark:bg-gray-800 border-transparent focus:ring-primary focus:border-primary rounded-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500" id="operating-area" placeholder="Enter operating area" type="text"/>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="collection-hours">Collection Hours</label>
+<div class="relative">
+<select class="w-full appearance-none h-14 px-4 bg-gray-100 dark:bg-gray-800 border-transparent focus:ring-primary focus:border-primary rounded-lg text-gray-900 dark:text-gray-100" id="collection-hours">
+<option>Select collection hours</option>
+<option>8:00 AM - 12:00 PM</option>
+<option>12:00 PM - 4:00 PM</option>
+<option>4:00 PM - 8:00 PM</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">expand_more</span>
+</div>
+</div>
+</form>
+</main>
+<footer class="p-4 sticky bottom-0 bg-background-light dark:bg-background-dark">
+<div class="space-y-4">
+<button class="w-full bg-primary text-white font-bold h-14 rounded-xl flex items-center justify-center text-lg">Save Changes</button>
+<button class="w-full text-gray-600 dark:text-gray-400 font-bold py-2">Cancel</button>
+</div>
+</footer>
+</div>
+
+</body></html>

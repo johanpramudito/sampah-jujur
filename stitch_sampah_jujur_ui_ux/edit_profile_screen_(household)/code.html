@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Design</title>
+<link href="data:image/x-icon;base64," rel="icon" type="image/x-icon"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="flex flex-col min-h-screen">
+<header class="flex items-center p-4 sticky top-0 bg-background-light dark:bg-background-dark z-10">
+<button class="text-gray-800 dark:text-white">
+<svg class="h-6 w-6" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M15 18l-6-6 6-6"></path></svg>
+</button>
+<h1 class="flex-1 text-center text-lg font-bold text-gray-900 dark:text-white pr-6">Edit Profile</h1>
+</header>
+<main class="flex-grow overflow-y-auto px-4 space-y-4">
+<div class="flex flex-col items-center py-6">
+<div class="relative">
+<div class="w-32 h-32 rounded-full bg-cover bg-center" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBUY6cqpSKlhJ815x3B9JYPbXzpRbqhf-_DemL6ASQ_4Ix6-JyI611OI0n1-u5h_RRss0H8XJBI-G5uk05vMLuZ-p3UCRsjFmwMoPcqromSeANvyzqoCLcqqs6JBOSAwzbGhm8qyrzGst4recFj3qOgAq6E8zdsfrvFub41T6oCIcdrS5HIm3JSpVaNkA8A7LcJ0mE5uD-lLsVoycu1Xey5oCaL1QdDSAMzA1yS0KwWpooF60oh_TR5v3bMflyKMvU54hEZFJGwSDHk");'></div>
+<button class="absolute bottom-0 right-0 bg-primary rounded-full p-2">
+<span class="material-symbols-outlined text-white">photo_camera</span>
+</button>
+</div>
+<button class="mt-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Change Profile Photo
+                </button>
+</div>
+<form class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="full-name">Full Name</label>
+<input class="w-full h-14 bg-gray-100 dark:bg-gray-800 border-none rounded-lg p-4 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-primary focus:ring-2" id="full-name" placeholder="Enter your full name" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="email">Email</label>
+<input class="w-full h-14 bg-gray-200 dark:bg-gray-700 border-none rounded-lg p-4 text-gray-500 dark:text-gray-400" disabled="" id="email" type="email" value="user@example.com"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="phone">Phone</label>
+<div class="flex items-center">
+<input class="flex-grow w-full h-14 bg-gray-100 dark:bg-gray-800 border-none rounded-l-lg p-4 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-primary focus:ring-2" id="phone" placeholder="Enter your phone number" type="tel"/>
+<button class="h-14 px-4 bg-primary/20 dark:bg-primary/30 text-primary font-semibold rounded-r-lg text-sm" type="button">Verify</button>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="address">Address (Optional)</label>
+<div class="flex items-center">
+<input class="flex-grow w-full h-14 bg-gray-100 dark:bg-gray-800 border-none rounded-l-lg p-4 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-primary focus:ring-2" id="address" placeholder="Enter your address" type="text"/>
+<button class="h-14 px-4 bg-gray-100 dark:bg-gray-800 rounded-r-lg text-gray-600 dark:text-gray-400" type="button">
+<span class="material-symbols-outlined">my_location</span>
+</button>
+</div>
+<button class="mt-2 text-sm font-semibold text-primary" type="button">Use Current Location</button>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="collection-time">Preferred Collection Time</label>
+<select class="w-full h-14 bg-gray-100 dark:bg-gray-800 border-none rounded-lg p-4 text-gray-900 dark:text-white appearance-none bg-no-repeat bg-right pr-8" id="collection-time" style="background-image: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 20 20%27%3e%3cpath stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%271.5%27 d=%27M6 8l4 4 4-4%27/%3e%3c/svg%3e')">
+<option>Morning (8am - 12pm)</option>
+<option>Afternoon (12pm - 4pm)</option>
+<option>Evening (4pm - 8pm)</option>
+</select>
+</div>
+</form>
+</main>
+<footer class="p-4 bg-background-light dark:bg-background-dark sticky bottom-0">
+<div class="space-y-2">
+<button class="w-full h-14 bg-primary text-black font-bold rounded-xl text-base">
+                    Save Changes
+                </button>
+<button class="w-full h-14 text-center text-gray-600 dark:text-gray-400 font-semibold rounded-xl text-base">
+                    Cancel
+                </button>
+</div>
+</footer>
+</div>
+
+</body></html>

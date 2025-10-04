@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Design</title>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Manrope:wght@400;500;700;800" onload="this.rel='stylesheet'" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#20df26",
+            "background-light": "#f6f8f6",
+            "background-dark": "#112112",
+          },
+          fontFamily: {
+            "display": ["Manrope"]
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-black dark:text-white">
+<div class="flex flex-col min-h-screen">
+<main class="flex-grow pb-28">
+<div class="bg-gradient-to-b from-primary to-primary/80 text-white p-6 pt-12 text-center relative">
+<div class="relative inline-block">
+<img alt="Collector's profile picture" class="w-20 h-20 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBb5vQIBN1UVUX-L2srrpluAxBF66zxQMykasbc4HDvIIrcRnmq4esjqma9xgrlfCyQeZ6003NwKk-fN36WuI9rtPPBbzblZV1VenkbZmAka7tePDqiykzg_9EbniTKC_MRWsIhTesZAZlWVBtefoYIaPHvNhGLfly3bAMeNcdo9t2PvpRTlC2-tUfq3xPV3A5zd1Kp1bVAT_78ezHPDKuc-flrhrqdoTwuVbScrWphcjXZ85ALOdeq088_T-ZhdynXq2L2UoFfx5ll"/>
+<button class="absolute bottom-0 right-0 bg-white text-primary rounded-full p-1.5 shadow-md">
+<span class="material-symbols-outlined text-base">edit</span>
+</button>
+</div>
+<h1 class="text-2xl font-bold mt-4">Ethan Carter</h1>
+<p class="text-white/70 text-sm mt-1">+1 (555) 123-4567</p>
+<div class="mt-2 inline-flex items-center gap-1.5 bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm">verified</span>
+          Verified Collector
+        </div>
+<button class="mt-4 w-full max-w-xs mx-auto border border-white text-white font-bold py-2 px-4 rounded-lg text-sm">
+          Edit Profile
+        </button>
+</div>
+<div class="p-4">
+<div class="bg-white dark:bg-background-dark border border-primary/30 dark:border-primary/50 rounded-xl p-4">
+<div class="flex justify-between items-center mb-4">
+<div>
+<h2 class="font-bold text-lg text-black dark:text-white">This Month's Performance</h2>
+<p class="text-sm text-black/60 dark:text-white/60">Oct 1 - Oct 31, 2023</p>
+</div>
+<button class="flex items-center gap-2 text-primary text-sm font-medium">
+<span class="material-symbols-outlined">calendar_today</span>
+<span>Change</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-background-light dark:bg-black/20 p-3 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-1">recycling</span>
+<div>
+<p class="text-2xl font-bold text-black dark:text-white">125</p>
+<p class="text-xs text-black/60 dark:text-white/60">Total Collections</p>
+<p class="text-xs font-bold text-green-500">+10%</p>
+</div>
+</div>
+<div class="bg-background-light dark:bg-black/20 p-3 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-1">paid</span>
+<div>
+<p class="text-2xl font-bold text-black dark:text-white">$2,500</p>
+<p class="text-xs text-black/60 dark:text-white/60">Total Earned</p>
+<p class="text-xs font-bold text-green-500">+15%</p>
+</div>
+</div>
+<div class="bg-background-light dark:bg-black/20 p-3 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-1">call_received</span>
+<div>
+<p class="text-2xl font-bold text-black dark:text-white">5</p>
+<p class="text-xs text-black/60 dark:text-white/60">Active Requests</p>
+<p class="text-xs font-bold text-red-500">-5%</p>
+</div>
+</div>
+<div class="bg-background-light dark:bg-black/20 p-3 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-1">task_alt</span>
+<div>
+<p class="text-2xl font-bold text-black dark:text-white">98%</p>
+<p class="text-xs text-black/60 dark:text-white/60">Completion Rate</p>
+<p class="text-xs font-bold text-green-500">+2%</p>
+</div>
+</div>
+<div class="bg-background-light dark:bg-black/20 p-3 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-1">star</span>
+<div>
+<p class="text-2xl font-bold text-black dark:text-white">4.9</p>
+<p class="text-xs text-black/60 dark:text-white/60">Average Rating</p>
+<p class="text-xs font-bold text-green-500">+0.1</p>
+</div>
+</div>
+<div class="bg-background-light dark:bg-black/20 p-3 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-1">scale</span>
+<div>
+<p class="text-2xl font-bold text-black dark:text-white">500kg</p>
+<p class="text-xs text-black/60 dark:text-white/60">Total Weight</p>
+<p class="text-xs font-bold text-green-500">+8%</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-4">
+<div class="bg-white dark:bg-background-dark rounded-xl p-4 flex justify-between items-center">
+<div>
+<p class="text-sm text-black/60 dark:text-white/60">Current Balance</p>
+<p class="text-3xl font-bold text-primary">$1,250.00</p>
+</div>
+<button class="bg-primary text-white font-bold py-2.5 px-6 rounded-lg text-sm">Withdraw</button>
+</div>
+<div class="text-center mt-2">
+<a class="text-sm text-primary font-medium" href="#">View All Transactions</a>
+</div>
+</div>
+<div class="px-4 mt-6">
+<h2 class="text-lg font-bold text-black dark:text-white mb-3">Recent Collections</h2>
+<div class="space-y-3">
+<div class="flex items-center gap-4 bg-white dark:bg-background-dark p-3 rounded-xl">
+<div class="bg-primary/10 text-primary flex items-center justify-center rounded-lg shrink-0 size-12">
+<span class="material-symbols-outlined">recycling</span>
+</div>
+<div class="flex-grow">
+<p class="font-semibold text-black dark:text-white">Collection #12345</p>
+<p class="text-sm text-black/60 dark:text-white/60">123 Elm Street</p>
+</div>
+<span class="text-sm text-black/60 dark:text-white/60">Completed</span>
+</div>
+<div class="flex items-center gap-4 bg-white dark:bg-background-dark p-3 rounded-xl">
+<div class="bg-primary/10 text-primary flex items-center justify-center rounded-lg shrink-0 size-12">
+<span class="material-symbols-outlined">recycling</span>
+</div>
+<div class="flex-grow">
+<p class="font-semibold text-black dark:text-white">Collection #67890</p>
+<p class="text-sm text-black/60 dark:text-white/60">456 Oak Avenue</p>
+</div>
+<span class="text-sm text-black/60 dark:text-white/60">Completed</span>
+</div>
+<div class="flex items-center gap-4 bg-white dark:bg-background-dark p-3 rounded-xl">
+<div class="bg-primary/10 text-primary flex items-center justify-center rounded-lg shrink-0 size-12">
+<span class="material-symbols-outlined">recycling</span>
+</div>
+<div class="flex-grow">
+<p class="font-semibold text-black dark:text-white">Collection #11223</p>
+<p class="text-sm text-black/60 dark:text-white/60">789 Pine Lane</p>
+</div>
+<span class="text-sm text-black/60 dark:text-white/60">Completed</span>
+</div>
+</div>
+</div>
+<div class="px-4 mt-6">
+<h2 class="text-lg font-bold text-black dark:text-white mb-3">Settings</h2>
+<div class="bg-white dark:bg-background-dark rounded-xl">
+<div class="space-y-px">
+<a class="flex items-center gap-4 p-4 text-black dark:text-white" href="#">
+<span class="material-symbols-outlined text-black/60 dark:text-white/60">person</span>
+<span class="flex-1">Account</span>
+<span class="material-symbols-outlined text-black/40 dark:text-white/40">chevron_right</span>
+</a>
+<hr class="border-background-light dark:border-white/10"/>
+<a class="flex items-center gap-4 p-4 text-black dark:text-white" href="#">
+<span class="material-symbols-outlined text-black/60 dark:text-white/60">notifications</span>
+<span class="flex-1">Preferences</span>
+<span class="material-symbols-outlined text-black/40 dark:text-white/40">chevron_right</span>
+</a>
+<hr class="border-background-light dark:border-white/10"/>
+<a class="flex items-center gap-4 p-4 text-black dark:text-white" href="#">
+<span class="material-symbols-outlined text-black/60 dark:text-white/60">monitoring</span>
+<span class="flex-1">Performance</span>
+<span class="material-symbols-outlined text-black/40 dark:text-white/40">chevron_right</span>
+</a>
+<hr class="border-background-light dark:border-white/10"/>
+<a class="flex items-center gap-4 p-4 text-black dark:text-white" href="#">
+<span class="material-symbols-outlined text-black/60 dark:text-white/60">help_outline</span>
+<span class="flex-1">Support</span>
+<span class="material-symbols-outlined text-black/40 dark:text-white/40">chevron_right</span>
+</a>
+<hr class="border-background-light dark:border-white/10"/>
+<a class="flex items-center gap-4 p-4 text-red-500" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="flex-1">Log Out</span>
+</a>
+</div>
+</div>
+</div>
+</main>
+<footer class="fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t border-black/10 dark:border-white/10 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+<nav class="flex justify-around items-center h-16">
+<a class="flex flex-col items-center gap-1 text-black/60 dark:text-white/60" href="#">
+<span class="material-symbols-outlined">view_list</span>
+<span class="text-xs">Requests</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-black/60 dark:text-white/60" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="text-xs">Map</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-xs font-bold">Profile</span>
+</a>
+</nav>
+<div class="h-safe-area-inset-bottom bg-white dark:bg-background-dark"></div>
+</footer>
+</div>
+
+</body></html>

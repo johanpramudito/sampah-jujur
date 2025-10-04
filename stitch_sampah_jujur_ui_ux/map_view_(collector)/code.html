@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Design</title>
+<link href="data:image/x-icon;base64," rel="icon" type="image/x-icon"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#20df26",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-stone-900 dark:text-stone-100">
+<div class="relative min-h-screen w-full flex flex-col">
+<div class="absolute inset-0 bg-cover bg-center" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBuhxyjftCv1hTJB12UXA-W8aSZj8Y3ZDOcPFdi0TIXLFNxEwYMopWN-nF4qk-KOq-reljneifIS4WnLhpW4i7HiOOpaTbXA3PcZO9lw-luZ_UtAVD4MpI3TTqrscwYfKQ1BEpzha1ItS9AT8uNPja1pql-9pCq5iW1PTjLouZJZ9ImDbcvNV2GaWZ7JV7MbQS_fQOmbzNbiv1q4igc5P76TuumMWZQhtc1WmmN0bIiuqg_-1C5SDMGG9aw5gsrGtwjXuCknQDJE13F");'></div>
+<div class="absolute top-0 left-0 right-0 p-4 z-10 space-y-3">
+<div class="relative">
+<label class="sr-only" for="search-location">Search for a location</label>
+<div class="flex items-center bg-white dark:bg-zinc-800 rounded-lg shadow-md">
+<span class="material-symbols-outlined pl-3 text-stone-500 dark:text-stone-400">search</span>
+<input class="w-full bg-transparent border-0 py-3 pl-2 pr-3 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-0" id="search-location" placeholder="Search for a location" type="text"/>
+</div>
+</div>
+<div class="flex space-x-2 overflow-x-auto pb-2">
+<button class="shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-primary text-white">All Requests</button>
+<button class="shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm text-stone-800 dark:text-stone-200">High Value</button>
+<button class="shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm text-stone-800 dark:text-stone-200">Nearby (&lt; 5km)</button>
+<button class="shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm text-stone-800 dark:text-stone-200">My Accepted</button>
+</div>
+</div>
+<div class="absolute top-1/2 right-4 -translate-y-1/2 z-10 flex flex-col space-y-2">
+<div class="bg-white dark:bg-zinc-800 rounded-lg shadow-md">
+<button class="flex items-center justify-center size-12 text-stone-800 dark:text-stone-200 rounded-t-lg hover:bg-stone-100 dark:hover:bg-zinc-700">
+<span class="material-symbols-outlined">add</span>
+</button>
+<hr class="border-stone-200 dark:border-zinc-700"/>
+<button class="flex items-center justify-center size-12 text-stone-800 dark:text-stone-200 rounded-b-lg hover:bg-stone-100 dark:hover:bg-zinc-700">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+<button class="flex items-center justify-center size-12 bg-white dark:bg-zinc-800 text-stone-800 dark:text-stone-200 rounded-lg shadow-md hover:bg-stone-100 dark:hover:bg-zinc-700">
+<span class="material-symbols-outlined">my_location</span>
+</button>
+<button class="flex items-center justify-center size-12 bg-white dark:bg-zinc-800 text-stone-800 dark:text-stone-200 rounded-lg shadow-md hover:bg-stone-100 dark:hover:bg-zinc-700">
+<span class="material-symbols-outlined">layers</span>
+</button>
+</div>
+<div class="absolute bottom-0 left-0 right-0 z-20">
+<div class="bg-background-light dark:bg-background-dark rounded-t-xl shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
+<div class="flex justify-center py-3">
+<div class="w-8 h-1 bg-stone-300 dark:bg-zinc-600 rounded-full"></div>
+</div>
+<div class="px-4 pb-2">
+<h2 class="text-xl font-bold text-stone-900 dark:text-stone-100">Pending Requests (12)</h2>
+</div>
+<div class="overflow-x-auto whitespace-nowrap px-4 py-3 space-x-4">
+<div class="inline-block w-72 bg-white dark:bg-zinc-800 rounded-lg shadow p-4 align-top">
+<div class="flex items-start justify-between">
+<div class="flex-grow pr-3">
+<p class="text-sm font-bold text-primary">High Value</p>
+<p class="font-bold text-stone-900 dark:text-stone-100 mt-1">Recyclable Materials</p>
+<p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">123 Elm Street, 2.1km</p>
+</div>
+<img alt="Recyclable materials" class="w-16 h-16 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2fshT6YZEgd_WDG7WAFkpUsh-A2IM1kSRiCSRFZHxyuH_2fY3RoqVdlDUBd40YJrDlDaMejZfw_gvBI9agCjyvp1odkcjs9qDzInd8eP3Z-Gz8gRQBo9rGCMATH7wfMqgUhQuBuKix4UNTaWkZU5OgghWlaVRUE2Q1px-fLX9sNfHfnJMfLD2cI5UYYROeRuTgGNJxEId-ncW9BpeSFnYK014DkmoRUmdUlTDCWfbF4LqjDoVKIC96p6aCDgd_Tzemjm1W7P8BfX3"/>
+</div>
+</div>
+<div class="inline-block w-72 bg-white dark:bg-zinc-800 rounded-lg shadow p-4 align-top">
+<div class="flex items-start justify-between">
+<div class="flex-grow pr-3">
+<p class="text-sm font-semibold text-yellow-600 dark:text-yellow-500">Medium Value</p>
+<p class="font-bold text-stone-900 dark:text-stone-100 mt-1">Cardboard Boxes</p>
+<p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">456 Oak Avenue, 3.5km</p>
+</div>
+<img alt="Cardboard boxes" class="w-16 h-16 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK72HSiElb2SFqUMjLqy3IX_Enc2xKVJQgXtZ9eQ7YIoa4AWYiZg8HWP17P9zrOBKuiYAOp55RxTIsJwO87Bx8_nRoWVf1Ap81YZ0ngsunMBansm7C0T1fugv4AQY-UuPFLE_sYKp8nJ3Uasc9JCgtidUmjQkE12zvP1jI6I__ALT0Y8FuezrObJjx3saRj1UUiejsVgEstfu6CE-4eEbP6R2IpJXLJbvA7qTgbP7b3uSMYk71LmoQ_TruWzJ60hHtUbftMcB77JkP"/>
+</div>
+</div>
+<div class="inline-block w-72 bg-white dark:bg-zinc-800 rounded-lg shadow p-4 align-top">
+<div class="flex items-start justify-between">
+<div class="flex-grow pr-3">
+<p class="text-sm font-semibold text-orange-600 dark:text-orange-500">Low Value</p>
+<p class="font-bold text-stone-900 dark:text-stone-100 mt-1">Plastic Bottles</p>
+<p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">789 Pine Lane, 1.8km</p>
+</div>
+<img alt="Plastic bottles" class="w-16 h-16 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBw0N8uzdclFWr3JT1Eg5dMMfN1iVroBS9FdSCosnkKTSLmOg0o1p-sT_QezS2N24YLcMvcv07pEUgz_ieuWjaWvuoVp2AaNJhmFaAi7-pWIUwvF8O8orsCg5qAu7Co1TSic46n3mylWBfj2wjsBZYGMW_IQRPVKJ8jGHvgFIIpXCo413vT8b8TY5L3CgrIhg7bRiYIdW9UV7hxBp0nNFspaUCTasay7WHcMkt-2ciqpRronVsI4vpZalowTLAflTrFlU9CuOy_C9Al"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sticky bottom-0 mt-auto bg-background-light dark:bg-background-dark border-t border-stone-200 dark:border-zinc-700 z-30">
+<div class="flex justify-around px-2 py-1">
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-stone-500 dark:text-stone-400" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="text-xs font-medium">Requests</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-primary" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="text-xs font-bold">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-stone-500 dark:text-stone-400" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-xs font-medium">Profile</span>
+</a>
+</div>
+<div class="h-safe-area-bottom bg-background-light dark:bg-background-dark"></div>
+</div>
+</div>
+
+</body></html>
