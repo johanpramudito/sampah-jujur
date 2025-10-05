@@ -33,6 +33,7 @@ fun RequestPickupScreen(
     val uiState by viewModel.uiState.collectAsState()
     val wasteItems = uiState.currentWasteItems
     val selectedAddress = uiState.selectedAddress
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
@@ -54,6 +55,7 @@ fun RequestPickupScreen(
                 onNavigate = onNavigate
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
         LazyColumn(
@@ -212,7 +214,12 @@ fun RequestPickupScreen(
                             wasteItems.forEachIndexed { index, item ->
                                 WasteItemCard(
                                     item = item,
-                                    onRemove = { viewModel.removeWasteItem(index) }
+                                    onRemove = {
+                                        if (item.id.isBlank()) {
+                                            return@WasteItemCard
+                                        }
+                                        viewModel.removeWasteItem(item.id)
+                                    }
                                 )
                                 if (index < wasteItems.size - 1) {
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -328,11 +335,10 @@ fun RequestPickupScreen(
         }
     }
 
-    // Show error message
-    uiState.errorMessage?.let { error ->
-        LaunchedEffect(error) {
-            // Could show a Snackbar here if needed
-        }
+    LaunchedEffect(uiState.errorMessage) {
+        val errorMessage = uiState.errorMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(errorMessage)
+        viewModel.clearError()
     }
 }
 

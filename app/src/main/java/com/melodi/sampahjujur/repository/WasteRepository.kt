@@ -1,12 +1,16 @@
 package com.melodi.sampahjujur.repository
 
 import com.melodi.sampahjujur.model.PickupRequest
+import com.melodi.sampahjujur.model.User
+import com.melodi.sampahjujur.model.WasteItem
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,6 +25,8 @@ class WasteRepository @Inject constructor(
 
     companion object {
         private const val PICKUP_REQUESTS_COLLECTION = "pickup_requests"
+        private const val USERS_COLLECTION = "users"
+        private const val FIELD_DRAFT_WASTE_ITEMS = "draftWasteItems"
     }
 
     /**
@@ -246,4 +252,125 @@ class WasteRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    fun listenToHouseholdWasteItems(householdId: String): Flow<List<WasteItem>> = callbackFlow {
+        val listener = firestore.collection(USERS_COLLECTION)
+            .document(householdId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val items = snapshot?.toObject(User::class.java)?.draftWasteItems.orEmpty()
+                val normalizedItems = mutableListOf<WasteItem>()
+
+                items.forEach { item ->
+                    if (item.id.isNotBlank()) {
+                        if (normalizedItems.none { it.id == item.id }) {
+                            normalizedItems.add(item)
+                        }
+                    } else {
+                        normalizedItems.add(item)
+                    }
+                }
+
+                val sortedItems = normalizedItems.sortedByDescending { it.createdAt }
+                trySend(sortedItems)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun addWasteItem(householdId: String, wasteItem: WasteItem): Result<WasteItem> {
+        return try {
+            val resultItem = firestore.runTransaction { transaction ->
+                val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
+                val snapshot = transaction.get(userRef)
+                val existing = snapshot.toObject(User::class.java)?.draftWasteItems ?: emptyList()
+
+                val createdAt = if (wasteItem.createdAt == 0L) {
+                    System.currentTimeMillis()
+                } else {
+                    wasteItem.createdAt
+                }
+
+                val itemWithId = wasteItem.copy(
+                    id = wasteItem.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                    createdAt = createdAt
+                )
+
+                val updatedItems = existing.filterNot { it.id == itemWithId.id } + itemWithId
+
+                if (snapshot.exists()) {
+                    transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, updatedItems)
+                } else {
+                    transaction.set(
+                        userRef,
+                        mapOf(FIELD_DRAFT_WASTE_ITEMS to updatedItems),
+                        SetOptions.merge()
+                    )
+                }
+
+                itemWithId
+            }.await()
+
+            Result.success(resultItem)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteWasteItem(householdId: String, wasteItemId: String): Result<Unit> {
+        return try {
+            firestore.runTransaction { transaction ->
+                val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
+                val snapshot = transaction.get(userRef)
+                if (!snapshot.exists()) {
+                    return@runTransaction Unit
+                }
+
+                val existing = snapshot.toObject(User::class.java)?.draftWasteItems ?: emptyList()
+                val updatedItems = existing.filterNot { it.id == wasteItemId }
+
+                if (updatedItems.size == existing.size) {
+                    return@runTransaction Unit
+                }
+
+                transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, updatedItems)
+                Unit
+            }.await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearWasteItems(householdId: String): Result<Unit> {
+        return try {
+            firestore.runTransaction { transaction ->
+                val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
+                val snapshot = transaction.get(userRef)
+
+                if (!snapshot.exists()) {
+                    transaction.set(
+                        userRef,
+                        mapOf(FIELD_DRAFT_WASTE_ITEMS to emptyList<WasteItem>()),
+                        SetOptions.merge()
+                    )
+                } else {
+                    transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, emptyList<WasteItem>())
+                }
+
+                Unit
+            }.await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 }
+

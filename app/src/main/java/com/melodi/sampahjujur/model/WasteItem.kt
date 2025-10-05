@@ -2,18 +2,22 @@ package com.melodi.sampahjujur.model
 
 /**
  * Data class representing an individual waste item within a pickup request.
- * Contains information about the type, weight, and estimated value of recyclable waste.
+ * Contains information about the type, weight, estimated value, and persistence metadata of recyclable waste.
  *
  * @property type Type of waste (e.g., "plastic", "paper", "metal", "glass")
  * @property weight Weight of the waste item in kilograms
  * @property estimatedValue Estimated monetary value in local currency
  * @property description Optional description or notes about the waste item
+ * @property id Document identifier when the item is stored in Firestore (empty for transient items)
+ * @property createdAt Timestamp (milliseconds) recording when the item was created
  */
 data class WasteItem(
     val type: String = "",
     val weight: Double = 0.0,
     val estimatedValue: Double = 0.0,
-    val description: String = ""
+    val description: String = "",
+    val id: String = "",
+    val createdAt: Long = System.currentTimeMillis()
 ) {
     companion object {
         const val TYPE_PLASTIC = "plastic"

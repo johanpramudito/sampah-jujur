@@ -10,6 +10,7 @@ package com.melodi.sampahjujur.model
  * @property phone Phone number for contact purposes
  * @property address Optional address for household users
  * @property userType User type - either "household" or "collector"
+ * @property draftWasteItems Temporary list of waste items drafted by a household user
  */
 data class User(
     val id: String = "",
@@ -17,7 +18,8 @@ data class User(
     val email: String = "",
     val phone: String = "",
     val address: String = "",
-    val userType: String = "" // "household" or "collector"
+    val userType: String = "", // "household" or "collector"
+    val draftWasteItems: List<WasteItem> = emptyList()
 ) {
     // Legacy compatibility
     @Deprecated("Use id instead", ReplaceWith("id"))
