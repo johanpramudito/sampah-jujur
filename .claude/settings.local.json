@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/HP/OneDrive - UGM 365/KULIAH/MATERI/Semester 7/Sebelum UTS/Pengembangan Aplikasi Piranti Bergerak/BelajarUTS/**)",
+      "Read(//c/Users/HP/OneDrive - UGM 365/KULIAH/MATERI/Semester 7/Sebelum UTS/Pengembangan Aplikasi Piranti Bergerak/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
