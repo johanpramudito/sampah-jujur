@@ -10,7 +10,9 @@ import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -26,6 +28,10 @@ class HouseholdViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
+    private var householdId: String? = null
+    private var householdRequestsJob: Job? = null
+    private var wasteItemsJob: Job? = null
+
     private val _uiState = MutableStateFlow(HouseholdUiState())
     val uiState: StateFlow<HouseholdUiState> = _uiState.asStateFlow()
 
@@ -36,7 +42,72 @@ class HouseholdViewModel @Inject constructor(
     val createRequestResult: LiveData<Result<PickupRequest>?> = _createRequestResult
 
     init {
-        loadUserRequests()
+        initializeHouseholdData()
+    }
+
+    private fun initializeHouseholdData() {
+        viewModelScope.launch {
+            val user = authRepository.getCurrentUser()
+            if (user?.isHousehold() == true) {
+                if (householdId != user.uid) {
+                    householdId = user.uid
+                }
+                observeHouseholdRequests(user.uid)
+                observeWasteItems(user.uid)
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "User not authenticated"
+                )
+            }
+        }
+    }
+
+    private fun observeHouseholdRequests(householdUid: String) {
+        householdRequestsJob?.cancel()
+        householdRequestsJob = viewModelScope.launch {
+            wasteRepository.getHouseholdRequests(householdUid)
+                .catch { error ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = error.message ?: "Failed to load requests"
+                    )
+                }
+                .collect { requests ->
+                    _userRequests.value = requests
+                }
+        }
+    }
+
+    private fun observeWasteItems(householdUid: String) {
+        wasteItemsJob?.cancel()
+        wasteItemsJob = viewModelScope.launch {
+            wasteRepository.listenToHouseholdWasteItems(householdUid)
+                .catch { error ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = error.message ?: "Failed to load waste items"
+                    )
+                }
+                .collect { items ->
+                    _uiState.value = _uiState.value.copy(
+                        currentWasteItems = items
+                    )
+                }
+        }
+    }
+
+    private suspend fun ensureHouseholdId(): String? {
+        householdId?.let { return it }
+
+        val currentUser = authRepository.getCurrentUser()
+        return if (currentUser?.isHousehold() == true) {
+            if (householdId != currentUser.uid) {
+                householdId = currentUser.uid
+                observeHouseholdRequests(currentUser.uid)
+                observeWasteItems(currentUser.uid)
+            }
+            currentUser.uid
+        } else {
+            null
+        }
     }
 
     /**
@@ -73,6 +144,8 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
+            householdId = currentUser.uid
+
             val totalValue = wasteItems.sumOf { it.estimatedValue }
 
             val pickupRequest = PickupRequest(
@@ -96,8 +169,12 @@ class HouseholdViewModel @Inject constructor(
             _createRequestResult.value = result
 
             if (result.isSuccess) {
-                // Refresh the user's requests list
-                loadUserRequests()
+                val clearResult = wasteRepository.clearWasteItems(currentUser.uid)
+                if (clearResult.isFailure) {
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = clearResult.exceptionOrNull()?.message ?: "Failed to reset waste items"
+                    )
+                }
             } else {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = result.exceptionOrNull()?.message ?: "Failed to create request"
@@ -138,40 +215,50 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * Loads the current user's pickup requests
-     */
-    private fun loadUserRequests() {
-        viewModelScope.launch {
-            val currentUser = authRepository.getCurrentUser()
-            if (currentUser?.isHousehold() == true) {
-                wasteRepository.getHouseholdRequests(currentUser.uid).collect { requests ->
-                    _userRequests.value = requests
-                }
-            }
-        }
-    }
-
-    /**
      * Adds a waste item to the current request being created
      *
      * @param wasteItem The waste item to add
      */
     fun addWasteItem(wasteItem: WasteItem) {
-        val currentItems = _uiState.value.currentWasteItems.toMutableList()
-        currentItems.add(wasteItem)
-        _uiState.value = _uiState.value.copy(currentWasteItems = currentItems)
+        viewModelScope.launch {
+            val householdUid = ensureHouseholdId()
+            if (householdUid == null) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "User not authenticated"
+                )
+                return@launch
+            }
+
+            val result = wasteRepository.addWasteItem(householdUid, wasteItem)
+            if (result.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to add waste item"
+                )
+            }
+        }
     }
 
     /**
      * Removes a waste item from the current request being created
      *
-     * @param index Index of the waste item to remove
+     * @param wasteItemId Firestore document ID of the waste item to remove
      */
-    fun removeWasteItem(index: Int) {
-        val currentItems = _uiState.value.currentWasteItems.toMutableList()
-        if (index >= 0 && index < currentItems.size) {
-            currentItems.removeAt(index)
-            _uiState.value = _uiState.value.copy(currentWasteItems = currentItems)
+    fun removeWasteItem(wasteItemId: String) {
+        viewModelScope.launch {
+            val householdUid = ensureHouseholdId()
+            if (householdUid == null) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "User not authenticated"
+                )
+                return@launch
+            }
+
+            val result = wasteRepository.deleteWasteItem(householdUid, wasteItemId)
+            if (result.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to remove waste item"
+                )
+            }
         }
     }
 
@@ -206,11 +293,28 @@ class HouseholdViewModel @Inject constructor(
      * Resets the current request form
      */
     fun resetCurrentRequest() {
-        _uiState.value = _uiState.value.copy(
-            currentWasteItems = emptyList(),
-            selectedLocation = null,
-            selectedAddress = ""
-        )
+        viewModelScope.launch {
+            val householdUid = ensureHouseholdId()
+            if (householdUid == null) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "User not authenticated"
+                )
+                return@launch
+            }
+
+            val result = wasteRepository.clearWasteItems(householdUid)
+            if (result.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to reset waste items"
+                )
+            }
+
+            _uiState.value = _uiState.value.copy(
+                currentWasteItems = emptyList(),
+                selectedLocation = null,
+                selectedAddress = ""
+            )
+        }
     }
 }
 
@@ -224,3 +328,4 @@ data class HouseholdUiState(
     val selectedLocation: GeoPoint? = null,
     val selectedAddress: String = ""
 )
+
