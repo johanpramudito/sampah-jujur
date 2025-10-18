@@ -1,6 +1,11 @@
 package com.melodi.sampahjujur.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -15,9 +20,6 @@ import com.melodi.sampahjujur.ui.screens.collector.*
 import com.melodi.sampahjujur.ui.screens.household.*
 import com.melodi.sampahjujur.ui.screens.shared.*
 import com.melodi.sampahjujur.viewmodel.AuthViewModel
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 
 
 sealed class Screen(val route: String) {
@@ -40,6 +42,7 @@ sealed class Screen(val route: String) {
     object HouseholdRequestDetail : Screen("household_request_detail/{requestId}") {
         fun createRoute(requestId: String) = "household_request_detail/$requestId"
     }
+    object HouseholdLocationPicker : Screen("household_location_picker")
     object HouseholdProfile : Screen("household_profile")
     object HouseholdEditProfile : Screen("household_edit_profile")
 
@@ -201,22 +204,49 @@ fun SampahJujurNavGraph(
         }
 
         // Household Request Pickup Screen
-        composable(Screen.HouseholdRequest.route) {
+        composable(Screen.HouseholdRequest.route) { backStackEntry ->
+            // Use navController.getBackStackEntry to share ViewModel between Request and LocationPicker
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(Screen.HouseholdRequest.route)
+            }
+
             RequestPickupScreen(
+                viewModel = androidx.hilt.navigation.compose.hiltViewModel(parentEntry),
                 onNavigate = { route ->
                     when (route) {
                         "request" -> { /* Already here */ }
                         "my_requests" -> navController.navigate(Screen.HouseholdMyRequests.route)
                         "household_profile" -> navController.navigate(Screen.HouseholdProfile.route)
+                        "location_picker" -> navController.navigate(Screen.HouseholdLocationPicker.route)
                     }
+                }
+            )
+        }
+
+        // Household Location Picker Screen
+        composable(Screen.HouseholdLocationPicker.route) { backStackEntry ->
+            // Share the same ViewModel instance with RequestPickupScreen
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(Screen.HouseholdRequest.route)
+            }
+
+            LocationPickerScreen(
+                viewModel = androidx.hilt.navigation.compose.hiltViewModel(parentEntry),
+                onLocationSelected = { geoPoint, address ->
+                    // Location is already set in ViewModel via viewModel.setPickupLocation()
+                    // This callback is redundant but kept for flexibility
+                },
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }
 
         // Household My Requests Screen
         composable(Screen.HouseholdMyRequests.route) {
-            // TODO: Get from ViewModel
-            val requests = emptyList<PickupRequest>()
+            val viewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel =
+                androidx.hilt.navigation.compose.hiltViewModel()
+            val requests by viewModel.userRequests.observeAsState(emptyList())
 
             MyRequestsScreen(
                 requests = requests,
@@ -239,31 +269,36 @@ fun SampahJujurNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-            // TODO: Get request from ViewModel by ID
-            val dummyRequest = PickupRequest(
-                id = requestId,
-                householdId = "user1",
-                wasteItems = listOf(WasteItem("plastic", 5.0, 10.0, "Bottles")),
-                pickupLocation = PickupRequest.Location(0.0, 0.0, "123 Main St"),
-                status = "pending"
-            )
+            val viewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel =
+                androidx.hilt.navigation.compose.hiltViewModel()
+            val requests by viewModel.userRequests.observeAsState(emptyList())
 
-            RequestDetailScreen(
-                request = dummyRequest,
-                collectorName = null,
-                collectorPhone = null,
-                collectorVehicle = null,
-                onBackClick = {
+            // Find the request by ID
+            val request = requests.find { it.id == requestId }
+
+            if (request != null) {
+                RequestDetailScreen(
+                    request = request,
+                    collectorName = null, // TODO: Load collector info from Firestore if assigned
+                    collectorPhone = null,
+                    collectorVehicle = null,
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onCancelRequest = {
+                        viewModel.cancelPickupRequest(requestId)
+                        navController.popBackStack()
+                    },
+                    onContactCollector = {
+                        // TODO: Implement phone call or messaging
+                    }
+                )
+            } else {
+                // Request not found - show error or go back
+                LaunchedEffect(Unit) {
                     navController.popBackStack()
-                },
-                onCancelRequest = {
-                    // TODO: Cancel in ViewModel
-                    navController.popBackStack()
-                },
-                onContactCollector = {
-                    // TODO: Handle contact
                 }
-            )
+            }
         }
 
         // Household Profile Screen
