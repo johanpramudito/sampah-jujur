@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
+import com.melodi.sampahjujur.utils.WastePriceCalculator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,19 +28,20 @@ fun AddWasteItemDialog(
 ) {
     var selectedType by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
-    var estimatedValue by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var showTypeDropdown by remember { mutableStateOf(false) }
 
-    val wasteTypes = listOf(
-        "Plastic",
-        "Paper",
-        "Metal",
-        "Glass",
-        "Electronics",
-        "Cardboard",
-        "Other"
-    )
+    val wasteTypes = WastePriceCalculator.getWasteTypes()
+
+    // Auto-calculate estimated value
+    val calculatedValue = remember(selectedType, weight) {
+        val weightValue = weight.toDoubleOrNull() ?: 0.0
+        if (selectedType.isNotBlank() && weightValue > 0) {
+            WastePriceCalculator.calculateValue(selectedType, weightValue)
+        } else {
+            0.0
+        }
+    }
 
     val isFormValid = selectedType.isNotBlank() &&
                       weight.isNotBlank() &&
@@ -57,16 +59,6 @@ fun AddWasteItemDialog(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(4.dp)
-                    .background(Color.LightGray, shape = RoundedCornerShape(2.dp))
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             Text(
                 text = "Add Waste Item",
                 style = MaterialTheme.typography.headlineSmall.copy(
@@ -105,10 +97,11 @@ fun AddWasteItemDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                    colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryGreen,
                         unfocusedBorderColor = Color.LightGray,
-                        containerColor = Color.White
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -138,10 +131,11 @@ fun AddWasteItemDialog(
                 label = { Text("Weight (kg) *") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
+                colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryGreen,
                     unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(12.dp),
                 supportingText = {
@@ -156,23 +150,47 @@ fun AddWasteItemDialog(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Estimated Value Field
-            OutlinedTextField(
-                value = estimatedValue,
-                onValueChange = { estimatedValue = it },
-                label = { Text("Estimated Value ($) (optional)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = PrimaryGreen,
-                    unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp),
-                placeholder = { Text("e.g. 5.00") }
-            )
+            // Estimated Value Display (Auto-calculated)
+            if (calculatedValue > 0) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PrimaryGreen.copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Estimated Market Value",
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Based on ${"%.2f".format(WastePriceCalculator.getPricePerKg(selectedType))}/kg",
+                                fontSize = 10.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Text(
+                            text = "${"$%.2f".format(calculatedValue)}",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryGreen
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(0.dp))
 
             // Description Field
             OutlinedTextField(
@@ -182,10 +200,11 @@ fun AddWasteItemDialog(
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 3,
-                colors = TextFieldDefaults.outlinedTextFieldColors(
+                colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryGreen,
                     unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(12.dp),
                 placeholder = { Text("e.g. Clean plastic bottles") }
@@ -218,8 +237,7 @@ fun AddWasteItemDialog(
                 Button(
                     onClick = {
                         val weightValue = weight.toDoubleOrNull() ?: 0.0
-                        val valueAmount = estimatedValue.toDoubleOrNull() ?: 0.0
-                        onAddItem(selectedType, weightValue, valueAmount, description)
+                        onAddItem(selectedType, weightValue, calculatedValue, description)
                         onDismiss()
                     },
                     modifier = Modifier

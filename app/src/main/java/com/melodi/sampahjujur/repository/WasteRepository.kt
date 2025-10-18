@@ -27,6 +27,7 @@ class WasteRepository @Inject constructor(
         private const val PICKUP_REQUESTS_COLLECTION = "pickup_requests"
         private const val USERS_COLLECTION = "users"
         private const val FIELD_DRAFT_WASTE_ITEMS = "draftWasteItems"
+        private const val FIELD_DRAFT_LOCATION = "draftPickupLocation"
     }
 
     /**
@@ -365,6 +366,74 @@ class WasteRepository @Inject constructor(
 
                 Unit
             }.await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Saves draft pickup location to the user's document
+     *
+     * @param householdId The household user ID
+     * @param location The location data to save (latitude, longitude, address)
+     * @return Result indicating success or failure
+     */
+    suspend fun saveDraftPickupLocation(
+        householdId: String,
+        location: Map<String, Any>
+    ): Result<Unit> {
+        return try {
+            val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
+
+            userRef.set(
+                mapOf(FIELD_DRAFT_LOCATION to location),
+                SetOptions.merge()
+            ).await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Gets the saved draft pickup location from the user's document
+     *
+     * @param householdId The household user ID
+     * @return Result containing the location map or null if not saved
+     */
+    suspend fun getDraftPickupLocation(householdId: String): Result<Map<String, Any>?> {
+        return try {
+            val snapshot = firestore.collection(USERS_COLLECTION)
+                .document(householdId)
+                .get()
+                .await()
+
+            @Suppress("UNCHECKED_CAST")
+            val location = snapshot.get(FIELD_DRAFT_LOCATION) as? Map<String, Any>
+
+            Result.success(location)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Clears the draft pickup location from the user's document
+     *
+     * @param householdId The household user ID
+     * @return Result indicating success or failure
+     */
+    suspend fun clearDraftPickupLocation(householdId: String): Result<Unit> {
+        return try {
+            val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
+            val snapshot = userRef.get().await()
+
+            if (snapshot.exists()) {
+                userRef.update(FIELD_DRAFT_LOCATION, null).await()
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

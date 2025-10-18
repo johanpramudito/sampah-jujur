@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.repository.AuthRepository
+import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +26,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HouseholdViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
 
     private var householdId: String? = null
@@ -54,6 +56,7 @@ class HouseholdViewModel @Inject constructor(
                 }
                 observeHouseholdRequests(user.uid)
                 observeWasteItems(user.uid)
+                loadDraftPickupLocation(user.uid)
             } else {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "User not authenticated"
@@ -169,12 +172,22 @@ class HouseholdViewModel @Inject constructor(
             _createRequestResult.value = result
 
             if (result.isSuccess) {
+                // Clear waste items from database
                 val clearResult = wasteRepository.clearWasteItems(currentUser.uid)
                 if (clearResult.isFailure) {
                     _uiState.value = _uiState.value.copy(
                         errorMessage = clearResult.exceptionOrNull()?.message ?: "Failed to reset waste items"
                     )
                 }
+
+                // Clear draft location from database
+                wasteRepository.clearDraftPickupLocation(currentUser.uid)
+
+                // Clear location from UI state
+                _uiState.value = _uiState.value.copy(
+                    selectedLocation = null,
+                    selectedAddress = ""
+                )
             } else {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = result.exceptionOrNull()?.message ?: "Failed to create request"
@@ -263,7 +276,7 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * Sets the pickup location for the current request
+     * Sets the pickup location for the current request and saves to database
      *
      * @param location Geographic location
      * @param address Human-readable address
@@ -273,6 +286,99 @@ class HouseholdViewModel @Inject constructor(
             selectedLocation = location,
             selectedAddress = address
         )
+
+        // Save to database for persistence
+        viewModelScope.launch {
+            val householdUid = ensureHouseholdId()
+            if (householdUid != null) {
+                val locationData = mapOf(
+                    "latitude" to location.latitude,
+                    "longitude" to location.longitude,
+                    "address" to address
+                )
+                wasteRepository.saveDraftPickupLocation(householdUid, locationData)
+            }
+        }
+    }
+
+    /**
+     * Gets the current device location and updates the UI state
+     */
+    fun getCurrentLocation() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingLocation = true, errorMessage = null)
+
+            if (!locationRepository.hasLocationPermission()) {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingLocation = false,
+                    errorMessage = "Location permission not granted. Please enable location permission in settings."
+                )
+                return@launch
+            }
+
+            val locationResult = locationRepository.getCurrentLocation()
+
+            if (locationResult.isSuccess) {
+                val geoPoint = locationResult.getOrNull()!!
+
+                // Get address from coordinates
+                val addressResult = locationRepository.getAddressFromLocation(geoPoint)
+
+                if (addressResult.isSuccess) {
+                    val address = addressResult.getOrNull()!!
+                    // Use setPickupLocation to save to database
+                    setPickupLocation(geoPoint, address)
+                    _uiState.value = _uiState.value.copy(isLoadingLocation = false)
+                } else {
+                    // Use coordinates as fallback if address lookup fails
+                    val fallbackAddress = "Lat: ${String.format("%.6f", geoPoint.latitude)}, " +
+                            "Lng: ${String.format("%.6f", geoPoint.longitude)}"
+                    // Use setPickupLocation to save to database
+                    setPickupLocation(geoPoint, fallbackAddress)
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingLocation = false,
+                        errorMessage = "Could not get address, using coordinates"
+                    )
+                }
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingLocation = false,
+                    errorMessage = locationResult.exceptionOrNull()?.message
+                        ?: "Failed to get current location"
+                )
+            }
+        }
+    }
+
+    /**
+     * Checks if location permissions are granted
+     */
+    fun hasLocationPermission(): Boolean {
+        return locationRepository.hasLocationPermission()
+    }
+
+    /**
+     * Loads the saved draft pickup location from database
+     */
+    private fun loadDraftPickupLocation(householdUid: String) {
+        viewModelScope.launch {
+            val result = wasteRepository.getDraftPickupLocation(householdUid)
+            if (result.isSuccess) {
+                val locationData = result.getOrNull()
+                if (locationData != null) {
+                    val latitude = locationData["latitude"] as? Double
+                    val longitude = locationData["longitude"] as? Double
+                    val address = locationData["address"] as? String
+
+                    if (latitude != null && longitude != null && address != null) {
+                        _uiState.value = _uiState.value.copy(
+                            selectedLocation = GeoPoint(latitude, longitude),
+                            selectedAddress = address
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -302,12 +408,16 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
+            // Clear waste items
             val result = wasteRepository.clearWasteItems(householdUid)
             if (result.isFailure) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = result.exceptionOrNull()?.message ?: "Failed to reset waste items"
                 )
             }
+
+            // Clear draft location
+            wasteRepository.clearDraftPickupLocation(householdUid)
 
             _uiState.value = _uiState.value.copy(
                 currentWasteItems = emptyList(),
@@ -323,6 +433,7 @@ class HouseholdViewModel @Inject constructor(
  */
 data class HouseholdUiState(
     val isLoading: Boolean = false,
+    val isLoadingLocation: Boolean = false,
     val errorMessage: String? = null,
     val currentWasteItems: List<WasteItem> = emptyList(),
     val selectedLocation: GeoPoint? = null,

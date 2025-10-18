@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew.bat compileDebugKotlin --console=plain)",
+      "Bash(./gradlew.bat :app:kspDebugKotlin --console=plain)",
+      "Read(//e/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

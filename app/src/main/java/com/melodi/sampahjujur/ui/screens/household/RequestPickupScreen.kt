@@ -1,6 +1,11 @@
 package com.melodi.sampahjujur.ui.screens.household
 
+import android.Manifest
+import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,32 +13,60 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.components.HouseholdBottomNavBar
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestPickupScreen(
-    viewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    viewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel,
     onNavigate: (String) -> Unit = {}
 ) {
     var notes by remember { mutableStateOf("") }
     var showAddItemDialog by remember { mutableStateOf(false) }
+    var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     val uiState by viewModel.uiState.collectAsState()
     val wasteItems = uiState.currentWasteItems
     val selectedAddress = uiState.selectedAddress
+    val isLoadingLocation = uiState.isLoadingLocation
     val snackbarHostState = remember { SnackbarHostState() }
+    val createRequestResult by viewModel.createRequestResult.observeAsState()
+
+    // Permission launcher for location
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineLocationGranted && coarseLocationGranted) {
+            // Permissions granted, get current location
+            viewModel.getCurrentLocation()
+        } else {
+            showPermissionDeniedDialog = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -61,8 +94,8 @@ fun RequestPickupScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -95,57 +128,83 @@ fun RequestPickupScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Map Placeholder
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .background(
-                                    Color.LightGray.copy(alpha = 0.3f),
-                                    RoundedCornerShape(8.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        // Selected Address Display with Map Preview
+                        if (selectedAddress.isNotEmpty() && uiState.selectedLocation != null) {
+                            // Small Map Preview
+                            MapPreview(
+                                latitude = uiState.selectedLocation!!.latitude,
+                                longitude = uiState.selectedLocation!!.longitude,
+                                onClick = { onNavigate("location_picker") }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "Location",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = selectedAddress,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        } else {
                             Text(
-                                text = "Map preview placeholder",
+                                text = "No location selected. Tap 'Select Location' to set your pickup address.",
+                                fontSize = 14.sp,
                                 color = Color.Gray,
-                                fontSize = 14.sp
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = if (selectedAddress.isEmpty())
-                                "Tap 'Get Current Location' to set your pickup address."
-                            else selectedAddress,
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        OutlinedButton(
+                        // Get Current Location Button
+                        Button(
                             onClick = {
-                                // TODO: Implement location picker
-                                // For now, use a mock location
-                                viewModel.setPickupLocation(
-                                    com.google.firebase.firestore.GeoPoint(-7.7956, 110.3695),
-                                    "Jl. Colombo No. 1, Yogyakarta, DIY 55281"
-                                )
+                                if (viewModel.hasLocationPermission()) {
+                                    viewModel.getCurrentLocation()
+                                } else {
+                                    permissionLauncher.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    )
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = PrimaryGreen
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryGreen
                             ),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isLoadingLocation
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Location"
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Get Current Location")
+                            if (isLoadingLocation) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Getting location...")
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.MyLocation,
+                                    contentDescription = "Get Location"
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(if (selectedAddress.isEmpty()) "Get Current Location" else "Update Location")
+                            }
                         }
                     }
                 }
@@ -304,7 +363,11 @@ fun RequestPickupScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Bottom spacer for better scrollability
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -327,11 +390,16 @@ fun RequestPickupScreen(
         )
     }
 
-    // Show success message
-    LaunchedEffect(uiState.isLoading) {
-        if (!uiState.isLoading && uiState.errorMessage == null) {
-            // Request submitted successfully, reset form
+    // Show success dialog when request is created
+    LaunchedEffect(createRequestResult) {
+        if (createRequestResult?.isSuccess == true) {
+            showSuccessDialog = true
             notes = ""
+            viewModel.clearCreateRequestResult()
+        } else if (createRequestResult?.isFailure == true) {
+            val error = createRequestResult?.exceptionOrNull()?.message ?: "Failed to create request"
+            snackbarHostState.showSnackbar(error)
+            viewModel.clearCreateRequestResult()
         }
     }
 
@@ -339,6 +407,91 @@ fun RequestPickupScreen(
         val errorMessage = uiState.errorMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(errorMessage)
         viewModel.clearError()
+    }
+
+    // Permission Denied Dialog
+    if (showPermissionDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDeniedDialog = false },
+            title = { Text("Location Permission Required") },
+            text = {
+                Text(
+                    "This app needs location permission to detect your current location. " +
+                            "You can grant permission in Settings, or manually select a location by tapping the map.",
+                    textAlign = TextAlign.Start
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showPermissionDeniedDialog = false }) {
+                    Text("OK", color = PrimaryGreen)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPermissionDeniedDialog = false
+                    onNavigate("location_picker")
+                }) {
+                    Text("Select Manually", color = PrimaryGreen)
+                }
+            }
+        )
+    }
+
+    // Success Dialog
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Success",
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(64.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Request Submitted!",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Your pickup request has been submitted successfully.",
+                        textAlign = TextAlign.Center,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "A collector will accept your request soon. You can track your request in the 'My Requests' tab.",
+                        textAlign = TextAlign.Center,
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSuccessDialog = false
+                        onNavigate("my_requests")
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryGreen
+                    ),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("View My Requests", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSuccessDialog = false }) {
+                    Text("Close", color = Color.Gray)
+                }
+            }
+        )
     }
 }
 
@@ -388,10 +541,100 @@ fun WasteItemCard(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun RequestPickupScreenPreview() {
-    SampahJujurTheme {
-        RequestPickupScreen()
+fun MapPreview(
+    latitude: Double,
+    longitude: Double,
+    onClick: () -> Unit = {}
+) {
+    val context = LocalContext.current
+
+    // Initialize OSMDroid configuration
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().load(
+            context,
+            context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+        )
+        Configuration.getInstance().userAgentValue = context.packageName
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                MapView(ctx).apply {
+                    setTileSource(TileSourceFactory.MAPNIK)
+
+                    // Make completely non-interactive
+                    setMultiTouchControls(false)
+                    isClickable = false
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    setOnTouchListener { _, _ -> true } // Consume all touch events
+
+                    val location = GeoPoint(latitude, longitude)
+                    controller.setZoom(16.0)
+                    controller.setCenter(location)
+
+                    // Add marker at the location
+                    val marker = Marker(this).apply {
+                        position = location
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        title = "Pickup Location"
+                    }
+                    overlays.add(marker)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Full overlay to block all interactions and indicate clickability
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.05f))
+                .clickable { onClick() } // Only the overlay is clickable
+        )
+
+        // "Tap to change" hint
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp),
+            color = Color.White.copy(alpha = 0.9f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit location",
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Tap to change",
+                    fontSize = 11.sp,
+                    color = Color.DarkGray
+                )
+            }
+        }
     }
 }
+
+// Preview disabled - requires ViewModel injection
+// @Preview(showBackground = true)
+// @Composable
+// fun RequestPickupScreenPreview() {
+//     SampahJujurTheme {
+//         RequestPickupScreen()
+//     }
+// }
