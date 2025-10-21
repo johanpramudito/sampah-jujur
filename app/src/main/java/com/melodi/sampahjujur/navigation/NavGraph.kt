@@ -24,7 +24,7 @@ import com.melodi.sampahjujur.viewmodel.AuthViewModel
 
 sealed class Screen(val route: String) {
     // Initial Flow
-    object Splash : Screen("splash")
+    object Loading : Screen("loading")
     object Onboarding : Screen("onboarding")
     object RoleSelection : Screen("role_selection")
 
@@ -62,12 +62,11 @@ sealed class Screen(val route: String) {
 @Composable
 fun SampahJujurNavGraph(
     navController: NavHostController,
-    authViewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
-    startDestination: String = Screen.Splash.route
+    authViewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsState()
 
-    // Determine initial destination based on auth state
+    // Handle auth state changes during runtime (e.g., after login/logout)
     LaunchedEffect(authState) {
         when (authState) {
             is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
@@ -78,10 +77,9 @@ fun SampahJujurNavGraph(
                     Screen.CollectorDashboard.route
                 }
 
-                // Only navigate if we're still on auth screens
+                // Only navigate if we're on auth/onboarding screens
                 val currentRoute = navController.currentBackStackEntry?.destination?.route
-                if (currentRoute == Screen.Splash.route ||
-                    currentRoute == Screen.Onboarding.route ||
+                if (currentRoute == Screen.Onboarding.route ||
                     currentRoute == Screen.RoleSelection.route ||
                     currentRoute == Screen.HouseholdLogin.route ||
                     currentRoute == Screen.HouseholdRegistration.route ||
@@ -93,26 +91,44 @@ fun SampahJujurNavGraph(
                 }
             }
             else -> {
-                // User not authenticated, stay on current screen
+                // Not authenticated or loading
             }
         }
     }
 
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = Screen.Loading.route
     ) {
-        // Splash Screen
-        composable(Screen.Splash.route) {
-            SplashScreen(
-                onNavigateToNext = {
-                    navController.navigate(Screen.Onboarding.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+        // Loading Screen - shows while checking auth
+        composable(Screen.Loading.route) {
+            LoadingScreen()
+
+            // Navigate based on auth state
+            LaunchedEffect(authState) {
+                when (authState) {
+                    is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                        val user = (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                        val destination = if (user.isHousehold()) {
+                            Screen.HouseholdRequest.route
+                        } else {
+                            Screen.CollectorDashboard.route
+                        }
+                        navController.navigate(destination) {
+                            popUpTo(Screen.Loading.route) { inclusive = true }
+                        }
+                    }
+                    is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Unauthenticated -> {
+                        navController.navigate(Screen.Onboarding.route) {
+                            popUpTo(Screen.Loading.route) { inclusive = true }
+                        }
+                    }
+                    else -> {
+                        // Still loading, do nothing
                     }
                 }
-            )
+            }
         }
-
         // Onboarding Screen
         composable(Screen.Onboarding.route) {
             OnboardingScreen(

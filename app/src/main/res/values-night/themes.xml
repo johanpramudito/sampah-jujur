@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Splash Screen Theme -->
+    <style name="Theme.SampahJujur.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/primary_green_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.SampahJujur</item>
+    </style>
+
     <style name="Theme.SampahJujur" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/purple_200</item>
         <item name="colorPrimaryVariant">@color/purple_700</item>

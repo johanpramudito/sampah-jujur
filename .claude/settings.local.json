@@ -8,7 +8,12 @@
       "Bash(./gradlew.bat assembleDebug)",
       "Bash(./gradlew.bat assembleDebug --stacktrace)",
       "Bash(java:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(move \"adaptive-icon.png\" \"adaptive_icon.png\")",
+      "Bash(move \"splash-icon.png\" \"splash_icon.png\")",
+      "Bash(mv:*)",
+      "Bash(del \"E:\\StudioProjects\\sampah-jujur\\app\\src\\main\\java\\com\\melodi\\sampahjujur\\ui\\screens\\SplashScreen.kt\")",
+      "Bash(gradlew.bat assembleDebug:*)"
     ],
     "deny": [],
     "ask": []
