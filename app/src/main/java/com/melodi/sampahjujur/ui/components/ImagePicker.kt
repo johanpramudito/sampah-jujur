@@ -55,6 +55,16 @@ import java.io.File
  *
  * Handles permission requests automatically
  */
+/**
+ * Composable UI that lets the user pick an image from the camera or gallery and displays the selected image with a removal action.
+ *
+ * When no image is selected, shows a button that opens a dialog to choose the camera or gallery. Manages runtime permissions, creates a temporary file for camera capture, launches the appropriate activity, and forwards the resulting image Uri to the caller.
+ *
+ * @param imageUri The currently selected image Uri, or `null` if none is selected.
+ * @param onImageSelected Callback invoked with the Uri of an image selected or captured by the user.
+ * @param onImageRemoved Callback invoked when the user requests removal of the currently displayed image.
+ * @param modifier Optional [Modifier] to be applied to the root layout.
+ */
 @Composable
 fun ImagePicker(
     imageUri: Uri?,

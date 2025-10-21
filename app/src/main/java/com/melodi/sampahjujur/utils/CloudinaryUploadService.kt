@@ -28,8 +28,12 @@ object CloudinaryUploadService {
     private var isInitialized = false
 
     /**
-     * Initialize Cloudinary MediaManager with credentials from BuildConfig
-     * Must be called before any upload operations
+     * Initialize the Cloudinary MediaManager with credentials from BuildConfig.
+     *
+     * This is idempotent: if Cloudinary is already initialized, the call is a no-op.
+     *
+     * @param context Android Context used to initialize MediaManager.
+     * @throws CloudinaryException if initialization fails.
      */
     fun initialize(context: Context) {
         if (isInitialized) {
@@ -54,11 +58,13 @@ object CloudinaryUploadService {
     }
 
     /**
-     * Upload an image to Cloudinary
-     * @param context Android context
-     * @param imageUri URI of the image to upload
-     * @param folder Optional folder path in Cloudinary (defaults to BuildConfig value)
-     * @return URL of the uploaded image
+     * Uploads an image to Cloudinary and returns its accessible URL.
+     *
+     * @param context Android Context used to initialize Cloudinary and access content.
+     * @param imageUri The content Uri of the image to upload.
+     * @param folder Optional target folder path in Cloudinary; defaults to the BuildConfig upload folder.
+     * @return The URL of the uploaded image.
+     * @throws CloudinaryException If the URI cannot be converted to a file, the upload fails, or another Cloudinary-related error occurs.
      */
     suspend fun uploadImage(
         context: Context,
@@ -84,15 +90,33 @@ object CloudinaryUploadService {
             val requestId = MediaManager.get().upload(file.absolutePath)
                 .options(uploadOptions)
                 .callback(object : UploadCallback {
+                    /**
+                     * Called when an upload request is started.
+                     *
+                     * @param requestId The unique identifier of the upload request.
+                     */
                     override fun onStart(requestId: String) {
                         Log.d(TAG, "Upload started: $requestId")
                     }
 
+                    /**
+                     * Reports upload progress for a given request by logging the percentage completed.
+                     *
+                     * @param requestId Identifier of the upload request.
+                     * @param bytes Number of bytes uploaded so far.
+                     * @param totalBytes Total number of bytes to be uploaded.
+                     */
                     override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
                         val progress = (bytes.toDouble() / totalBytes * 100).toInt()
                         Log.d(TAG, "Upload progress: $progress%")
                     }
 
+                    /**
+                     * Handles a successful upload by extracting the uploaded image URL, deleting the temporary file, and resuming the awaiting continuation with the URL.
+                     *
+                     * @param requestId The upload request identifier.
+                     * @param resultData The response data returned by Cloudinary; expected to contain `secure_url` or `url`.
+                     */
                     override fun onSuccess(requestId: String, resultData: Map<*, *>) {
                         val url = resultData["secure_url"] as? String
                             ?: resultData["url"] as? String
@@ -108,6 +132,13 @@ object CloudinaryUploadService {
                         }
                     }
 
+                    /**
+                     * Handles an upload error by logging the failure, deleting the temporary upload file, and
+                     * resuming the awaiting continuation with a CloudinaryException if it is still active.
+                     *
+                     * @param requestId The identifier of the upload request that failed.
+                     * @param error Details about the upload error.
+                     */
                     override fun onError(requestId: String, error: ErrorInfo) {
                         Log.e(TAG, "Upload failed: ${error.description}")
 
@@ -121,6 +152,14 @@ object CloudinaryUploadService {
                         }
                     }
 
+                    /**
+                     * Handles an upload reschedule event.
+                     *
+                     * Called when a previously started upload has been rescheduled by the uploader.
+                     *
+                     * @param requestId The identifier for the upload request that was rescheduled.
+                     * @param error An ErrorInfo describing why the upload was rescheduled (contains a human-readable description).
+                     */
                     override fun onReschedule(requestId: String, error: ErrorInfo) {
                         Log.w(TAG, "Upload rescheduled: ${error.description}")
                     }
@@ -143,9 +182,10 @@ object CloudinaryUploadService {
     }
 
     /**
-     * Delete an image from Cloudinary by its URL
-     * @param imageUrl The full Cloudinary URL of the image
-     * @return true if deletion was successful, false otherwise
+     * Remove the image referenced by the provided Cloudinary URL from Cloudinary.
+     *
+     * @param imageUrl The full Cloudinary image URL whose corresponding remote resource should be deleted.
+     * @return `true` if the image was deleted successfully, `false` otherwise.
      */
     suspend fun deleteImage(imageUrl: String): Boolean = withContext(Dispatchers.IO) {
         if (imageUrl.isBlank()) {
@@ -208,9 +248,10 @@ object CloudinaryUploadService {
     }
 
     /**
-     * Extract public_id from Cloudinary URL
-     * Example: https://res.cloudinary.com/cloud/image/upload/v123/folder/image.jpg
-     * Returns: folder/image
+     * Derives the Cloudinary public_id (the path under the `/upload/` segment) from a Cloudinary image URL.
+     *
+     * @param imageUrl The full Cloudinary image URL.
+     * @return The `public_id` (e.g., `folder/.../filename`) without any version segment or file extension, or `null` if it cannot be determined.
      */
     private fun extractPublicId(imageUrl: String): String? {
         return try {
@@ -240,7 +281,10 @@ object CloudinaryUploadService {
     }
 
     /**
-     * Generate SHA-1 hash for Cloudinary signature
+     * Computes the SHA-1 hash of the given input and returns it as a lowercase hexadecimal string.
+     *
+     * @param input The string to hash.
+     * @return The SHA-1 digest of `input` encoded as a lowercase hex string.
      */
     private fun sha1(input: String): String {
         val bytes = MessageDigest.getInstance("SHA-1").digest(input.toByteArray())
@@ -248,8 +292,11 @@ object CloudinaryUploadService {
     }
 
     /**
-     * Convert URI to File
-     * Copies content from URI to a temporary file in cache directory
+     * Converts a content `Uri` into a temporary JPG file stored in the app cache directory.
+     *
+     * @param context Android context used to access the content resolver and cache directory.
+     * @param uri The content `Uri` pointing to the source data to copy.
+     * @return A `File` referencing the created temporary file, or `null` if the conversion failed.
      */
     private fun getFileFromUri(context: Context, uri: Uri): File? {
         return try {

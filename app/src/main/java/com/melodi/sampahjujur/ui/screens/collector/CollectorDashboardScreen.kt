@@ -342,6 +342,18 @@ fun MyRequestsTab(
     }
 }
 
+/**
+ * Displays a card summarizing a pickup request with its ID, timestamp, location, item count/weight,
+ * and estimated value, and exposes a contextual action for the request.
+ *
+ * When `showAcceptButton` is true the primary action is an "Accept" button; otherwise the action
+ * presented depends on the request status (e.g., "Navigate" for `"accepted"`, "Complete" for
+ * `"in_progress"`, or "View Details" for other statuses).
+ *
+ * @param request The pickup request to render.
+ * @param showAcceptButton If true, show an "Accept" action; if false, show a status-dependent action.
+ * @param onClick Callback invoked when the card or its action is clicked.
+ */
 @Composable
 fun CollectorRequestCard(
     request: PickupRequest,

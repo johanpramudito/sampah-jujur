@@ -57,7 +57,10 @@ class CollectorViewModel @Inject constructor(
     }
 
     /**
-     * Loads the collector's accepted requests
+     * Subscribes to and exposes the current collector's requests.
+     *
+     * If the current user has a collector role, begins collecting the repository's stream of
+     * collector-specific pickup requests and updates the backing LiveData `_myRequests` with each emission.
      */
     private fun loadMyRequests() {
         viewModelScope.launch {
@@ -71,9 +74,13 @@ class CollectorViewModel @Inject constructor(
     }
 
     /**
-     * Accepts a pickup request and assigns it to the current collector
+     * Attempts to accept the given pickup request on behalf of the current collector and updates UI state.
      *
-     * @param request The pickup request to accept
+     * On success or failure the function updates the ViewModel's UI state and posts the operation result to
+     * `acceptRequestResult`. If no authenticated collector is available, or the request is not pending,
+     * the UI state's `errorMessage` is set accordingly.
+     *
+     * @param request The pickup request to accept.
      */
     fun acceptPickupRequest(request: PickupRequest) {
         viewModelScope.launch {
@@ -171,9 +178,11 @@ class CollectorViewModel @Inject constructor(
     }
 
     /**
-     * Filters pending requests based on search criteria
+     * Filter pending pickup requests by a search query and update the UI state with the results.
      *
-     * @param query Search query (can be address, waste type, etc.)
+     * Matches the query against the pickup location address, any waste item type, and the request notes.
+     *
+     * @param query The search string to filter by (matches address, waste item type, or notes). 
      */
     fun filterPendingRequests(query: String) {
         val allRequests = _pendingRequests.value ?: emptyList()
@@ -195,9 +204,17 @@ class CollectorViewModel @Inject constructor(
     }
 
     /**
-     * Sorts pending requests by different criteria
+     * Updates the UI's pending-request list order according to the given criterion.
      *
-     * @param sortBy Sorting criteria ("distance", "value", "time")
+     * Supported `sortBy` values:
+     * - "value": sort by request total value (descending)
+     * - "time": sort by request creation time (ascending)
+     * - "weight": sort by total waste weight (descending)
+     * - "distance": currently a placeholder that leaves the order unchanged
+     *
+     * When the UI has an active filtered list it will be sorted; otherwise the full pending list is used.
+     *
+     * @param sortBy The sorting criterion to apply.
      */
     fun sortPendingRequests(sortBy: String) {
         val requests = _uiState.value.filteredRequests.ifEmpty {

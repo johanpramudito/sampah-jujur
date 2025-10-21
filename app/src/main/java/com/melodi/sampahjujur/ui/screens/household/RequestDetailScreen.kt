@@ -23,6 +23,25 @@ import com.melodi.sampahjujur.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Display detailed information and actions for a pickup request.
+ *
+ * Shows request metadata, pickup location, listed waste items with totals, optional additional notes,
+ * optional collector information, and context-sensitive action buttons. Certain UI sections are
+ * rendered conditionally:
+ * - Additional notes are shown only when `request.notes` is not blank.
+ * - Collector information is shown only when `collectorName` is provided.
+ * - Action buttons vary based on `request.status` (for example, cancel option for `"pending"`,
+ *   contact option for `"accepted"` or `"in_progress"`).
+ *
+ * @param request The pickup request data to display.
+ * @param collectorName Optional collector display name; when provided, collector details are shown.
+ * @param collectorPhone Optional collector phone number to display alongside collector info.
+ * @param collectorVehicle Optional collector vehicle description displayed under the collector name.
+ * @param onBackClick Callback invoked when the user requests navigation back.
+ * @param onCancelRequest Callback invoked when the user confirms cancellation of the request.
+ * @param onContactCollector Callback invoked when the user chooses to contact the collector.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestDetailScreen(

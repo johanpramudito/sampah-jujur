@@ -38,6 +38,19 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 
+/**
+ * Composable screen that lets household users select a pickup location, add waste items (including optional images),
+ * enter notes, and submit a pickup request while handling location permissions, loading states, and result feedback.
+ *
+ * The screen displays:
+ * - A location card with a small map preview and a button to get or update current location (requests permissions if needed).
+ * - A waste items card where users can add, view, and remove items; shows totals for weight and estimated value.
+ * - A multiline notes field and a submit button that creates a pickup request via the provided view model.
+ * - Dialogs and snackbars for permission denial, add-item input, success confirmation, and error reporting.
+ *
+ * @param viewModel View model that exposes UI state and actions for managing selected location, waste items, and request creation.
+ * @param onNavigate Callback invoked with a navigation route string (examples: "location_picker", "my_requests") when the UI requests navigation.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestPickupScreen(
@@ -499,6 +512,16 @@ fun RequestPickupScreen(
     }
 }
 
+/**
+ * Displays a card summarizing a waste item with an optional thumbnail, item details, and a remove control.
+ *
+ * Shows the item's capitalized type, weight in kilograms, estimated value, and an optional description
+ * (limited to two lines). Renders a cropped image thumbnail when `item.imageUrl` is not blank. Pressing the
+ * delete icon invokes the removal callback.
+ *
+ * @param item The WasteItem to render (uses `type`, `weight`, `estimatedValue`, `description`, and `imageUrl`).
+ * @param onRemove Callback invoked when the user taps the delete button to remove this item.
+ */
 @Composable
 fun WasteItemCard(
     item: WasteItem,

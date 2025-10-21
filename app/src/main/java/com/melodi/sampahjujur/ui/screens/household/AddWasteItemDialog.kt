@@ -25,6 +25,16 @@ import com.melodi.sampahjujur.utils.CloudinaryUploadService
 import com.melodi.sampahjujur.utils.WastePriceCalculator
 import kotlinx.coroutines.launch
 
+/**
+ * Presents a modal bottom sheet UI to collect details for a new waste item and submit it.
+ *
+ * The dialog collects waste type, weight (kg), optional description, and an image; it uploads the image
+ * to the configured image service and invokes `onAddItem` with the submitted values and the uploaded image URL.
+ *
+ * @param onDismiss Called when the dialog is dismissed.
+ * @param onAddItem Called after a successful image upload with the selected `type`, parsed `weight`, computed `value`,
+ *   `description`, and the uploaded `imageUrl`.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddWasteItemDialog(

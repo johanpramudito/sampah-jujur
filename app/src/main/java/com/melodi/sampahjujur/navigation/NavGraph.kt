@@ -59,6 +59,17 @@ sealed class Screen(val route: String) {
     object HelpSupport : Screen("help_support")
 }
 
+/**
+ * Sets up the app navigation graph and navigation behavior for all app flows.
+ *
+ * The graph starts at the loading screen and routes between onboarding, authentication,
+ * household flows, collector flows, and shared screens. It observes authentication state
+ * and automatically navigates to the appropriate authenticated destination (household or
+ * collector) when authentication succeeds, clearing the auth/onboarding back stack.
+ *
+ * @param navController Controller used to perform navigation actions.
+ * @param authViewModel ViewModel that exposes authentication state; defaults to the Hilt-provided instance.
+ */
 @Composable
 fun SampahJujurNavGraph(
     navController: NavHostController,

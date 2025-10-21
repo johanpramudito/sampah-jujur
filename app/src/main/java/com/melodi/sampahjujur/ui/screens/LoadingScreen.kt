@@ -16,6 +16,12 @@ import androidx.compose.ui.unit.sp
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.PrimaryGreenDark
 
+/**
+ * Displays a full-screen branded loading UI containing the app name, a tagline, and a centered progress indicator.
+ *
+ * The screen uses a vertical green gradient background, shows "Sampah Jujur" as the primary title,
+ * displays the "Waste to Worth" tagline, and renders a horizontal linear progress indicator below the text.
+ */
 @Composable
 fun LoadingScreen() {
     Box(

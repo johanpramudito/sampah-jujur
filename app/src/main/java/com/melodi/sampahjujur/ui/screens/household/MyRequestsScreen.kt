@@ -123,6 +123,13 @@ fun MyRequestsScreen(
     }
 }
 
+/**
+ * Displays a tappable card summarizing a pickup request, including status, date, location, items summary,
+ * estimated value, and a context-appropriate action button.
+ *
+ * @param request The PickupRequest to render inside the card.
+ * @param onClick Callback invoked when the card or its action control is tapped.
+ */
 @Composable
 fun RequestCard(
     request: PickupRequest,

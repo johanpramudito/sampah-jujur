@@ -33,6 +33,18 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
+/**
+ * Display a location picker UI with an interactive OSMDroid map allowing the user to choose a location by the map center.
+ *
+ * Shows the device location (when permission is granted), reverse-geocodes the map center to present a human-readable
+ * address, and lets the user confirm the selected location. Confirming persists the pickup location to the provided
+ * ViewModel and invokes the selection callback; the composable also handles requesting location permissions and
+ * displays a permission-denied dialog when necessary.
+ *
+ * @param viewModel ViewModel used to persist the chosen pickup location.
+ * @param onLocationSelected Callback invoked when the user confirms a location; receives the selected `GeoPoint`
+ * and the resolved address string.
+ * @param onBack Callback invoked to navigate back or dismiss the screen.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationPickerScreen(

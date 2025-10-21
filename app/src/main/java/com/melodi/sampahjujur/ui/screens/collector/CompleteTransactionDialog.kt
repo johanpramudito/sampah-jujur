@@ -30,6 +30,19 @@ data class ActualWasteItem(
     var actualValue: String = ""
 )
 
+/**
+ * Displays a modal bottom sheet that lets the user verify and finalize a waste pickup.
+ *
+ * The dialog presents each supplied waste item with editable actual weight and value fields,
+ * shows estimated vs actual totals, allows selecting a payment method, and validates inputs
+ * before enabling completion. When completed, the dialog invokes `onComplete` with the current
+ * list of actual items and the selected payment method; `onDismiss` is invoked to close the sheet.
+ *
+ * @param wasteItems The initial list of waste items to verify; used to populate editable actual values.
+ * @param onDismiss Callback invoked to dismiss the dialog.
+ * @param onComplete Callback invoked when the user completes the transaction. Receives the list of
+ * actualized waste items and the selected payment method.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompleteTransactionDialog(

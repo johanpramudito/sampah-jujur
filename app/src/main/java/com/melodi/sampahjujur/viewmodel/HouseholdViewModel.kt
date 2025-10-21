@@ -53,6 +53,12 @@ class HouseholdViewModel @Inject constructor(
         initializeHouseholdData()
     }
 
+    /**
+     * Initializes household-related state by fetching the current user and, if the user is a household,
+     * stores their id, starts observing household requests and waste items, and loads the draft pickup location.
+     *
+     * If the current user is not an authenticated household, updates the UI state's `errorMessage` to "User not authenticated".
+     */
     private fun initializeHouseholdData() {
         viewModelScope.launch {
             val user = authRepository.getCurrentUser()
@@ -103,6 +109,11 @@ class HouseholdViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Ensures the ViewModel has a household ID and, if the current user is a household, starts observing household requests and waste items.
+     *
+     * @return The household ID if the authenticated user is a household, `null` otherwise.
+     */
     private suspend fun ensureHouseholdId(): String? {
         householdId?.let { return it }
 
@@ -120,12 +131,17 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * Creates a new pickup request with the provided details
+     * Create a pickup request for the current household using the provided waste items and location.
      *
-     * @param wasteItems List of waste items to be collected
-     * @param location Geographic location for pickup
-     * @param address Human-readable address
-     * @param notes Additional notes or instructions
+     * If the current user is not authenticated as a household, the UI state is updated with an error.
+     * On success, the created request result is posted to `createRequestResult`, household waste items
+     * and the draft pickup location are cleared, and the selected pickup location/address in UI state
+     * are reset. On failure, the UI state's `errorMessage` is updated with the failure reason.
+     *
+     * @param wasteItems The list of waste items to include in the pickup request.
+     * @param location The geographic coordinates (latitude/longitude) for the pickup.
+     * @param address The human-readable address for the pickup location.
+     * @param notes Optional additional notes or instructions for the pickup.
      */
     fun createPickupRequest(
         wasteItems: List<WasteItem>,
@@ -258,10 +274,9 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * Removes a waste item from the current request being created
-     * Also deletes the associated image from Cloudinary
+     * Remove the specified waste item from the current draft request and delete its associated image from Cloudinary if present.
      *
-     * @param wasteItemId Firestore document ID of the waste item to remove
+     * @param wasteItemId Firestore document ID of the waste item to remove.
      */
     fun removeWasteItem(wasteItemId: String) {
         viewModelScope.launch {
@@ -466,4 +481,3 @@ data class HouseholdUiState(
     val selectedLocation: GeoPoint? = null,
     val selectedAddress: String = ""
 )
-

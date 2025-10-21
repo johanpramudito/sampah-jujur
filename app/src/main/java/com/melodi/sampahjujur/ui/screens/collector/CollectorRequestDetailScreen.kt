@@ -24,6 +24,20 @@ import com.melodi.sampahjujur.ui.screens.household.WasteItemDetailCard
 import com.melodi.sampahjujur.ui.screens.household.formatDateTime
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 
+/**
+ * Shows a detailed screen for a pickup request including status, household info, pickup location, listed waste items, notes, and context-sensitive action buttons.
+ *
+ * @param request The pickup request to display.
+ * @param householdName Display name for the household; defaults to "Unknown User".
+ * @param householdPhone Optional household phone number shown when non-null.
+ * @param onBackClick Invoked when the back navigation icon is pressed.
+ * @param onAcceptRequest Invoked when the user accepts a pending request.
+ * @param onNavigateToLocation Invoked to open navigation to the pickup location.
+ * @param onStartPickup Invoked when starting an accepted pickup.
+ * @param onCompletePickup Invoked when completing an in-progress pickup.
+ * @param onContactHousehold Invoked to contact the household (for example, to call).
+ * @param onCancelRequest Invoked when the user confirms cancellation of an accepted request.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectorRequestDetailScreen(

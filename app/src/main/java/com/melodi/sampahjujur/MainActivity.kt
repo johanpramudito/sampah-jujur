@@ -17,6 +17,14 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    /**
+     * Initializes the activity: installs the splash screen and sets the Jetpack Compose content.
+     *
+     * Calls the lifecycle super implementation, installs the splash screen before super, and sets the
+     * activity's UI to the root composable.
+     *
+     * @param savedInstanceState A Bundle containing the activity's previously saved state, or `null` if none.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen
         installSplashScreen()
