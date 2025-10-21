@@ -3,7 +3,12 @@
     "allow": [
       "Bash(./gradlew.bat compileDebugKotlin --console=plain)",
       "Bash(./gradlew.bat :app:kspDebugKotlin --console=plain)",
-      "Read(//e/**)"
+      "Read(//e/**)",
+      "Bash(gradlew.bat assembleDebug)",
+      "Bash(./gradlew.bat assembleDebug)",
+      "Bash(./gradlew.bat assembleDebug --stacktrace)",
+      "Bash(java:*)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []

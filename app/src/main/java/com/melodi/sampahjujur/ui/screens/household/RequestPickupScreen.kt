@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.rememberAsyncImagePainter
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.components.HouseholdBottomNavBar
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
@@ -376,13 +379,14 @@ fun RequestPickupScreen(
     if (showAddItemDialog) {
         AddWasteItemDialog(
             onDismiss = { showAddItemDialog = false },
-            onAddItem = { type, weight, value, description ->
+            onAddItem = { type, weight, value, description, imageUrl ->
                 viewModel.addWasteItem(
                     WasteItem(
                         type = type.lowercase(),
                         weight = weight,
                         estimatedValue = value,
-                        description = description
+                        description = description,
+                        imageUrl = imageUrl
                     )
                 )
                 showAddItemDialog = false
@@ -512,6 +516,19 @@ fun WasteItemCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Image thumbnail
+            if (item.imageUrl.isNotBlank()) {
+                Image(
+                    painter = rememberAsyncImagePainter(item.imageUrl),
+                    contentDescription = "Waste item image",
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.type.replaceFirstChar { it.uppercase() },
@@ -529,6 +546,15 @@ fun WasteItemCard(
                     fontSize = 12.sp,
                     color = PrimaryGreen
                 )
+                if (item.description.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = item.description,
+                        fontSize = 11.sp,
+                        color = Color.Gray.copy(alpha = 0.7f),
+                        maxLines = 2
+                    )
+                }
             }
             IconButton(onClick = onRemove) {
                 Icon(

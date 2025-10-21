@@ -1,5 +1,6 @@
 package com.melodi.sampahjujur.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -9,6 +10,7 @@ import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
+import com.melodi.sampahjujur.utils.CloudinaryUploadService
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -29,6 +31,10 @@ class HouseholdViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "HouseholdViewModel"
+    }
 
     private var householdId: String? = null
     private var householdRequestsJob: Job? = null
@@ -51,12 +57,12 @@ class HouseholdViewModel @Inject constructor(
         viewModelScope.launch {
             val user = authRepository.getCurrentUser()
             if (user?.isHousehold() == true) {
-                if (householdId != user.uid) {
-                    householdId = user.uid
+                if (householdId != user.id) {
+                    householdId = user.id
                 }
-                observeHouseholdRequests(user.uid)
-                observeWasteItems(user.uid)
-                loadDraftPickupLocation(user.uid)
+                observeHouseholdRequests(user.id)
+                observeWasteItems(user.id)
+                loadDraftPickupLocation(user.id)
             } else {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "User not authenticated"
@@ -102,12 +108,12 @@ class HouseholdViewModel @Inject constructor(
 
         val currentUser = authRepository.getCurrentUser()
         return if (currentUser?.isHousehold() == true) {
-            if (householdId != currentUser.uid) {
-                householdId = currentUser.uid
-                observeHouseholdRequests(currentUser.uid)
-                observeWasteItems(currentUser.uid)
+            if (householdId != currentUser.id) {
+                householdId = currentUser.id
+                observeHouseholdRequests(currentUser.id)
+                observeWasteItems(currentUser.id)
             }
-            currentUser.uid
+            currentUser.id
         } else {
             null
         }
@@ -147,12 +153,12 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
-            householdId = currentUser.uid
+            householdId = currentUser.id
 
             val totalValue = wasteItems.sumOf { it.estimatedValue }
 
             val pickupRequest = PickupRequest(
-                householdId = currentUser.uid,
+                householdId = currentUser.id,
                 pickupLocation = PickupRequest.Location(
                     latitude = location.latitude,
                     longitude = location.longitude,
@@ -173,7 +179,7 @@ class HouseholdViewModel @Inject constructor(
 
             if (result.isSuccess) {
                 // Clear waste items from database
-                val clearResult = wasteRepository.clearWasteItems(currentUser.uid)
+                val clearResult = wasteRepository.clearWasteItems(currentUser.id)
                 if (clearResult.isFailure) {
                     _uiState.value = _uiState.value.copy(
                         errorMessage = clearResult.exceptionOrNull()?.message ?: "Failed to reset waste items"
@@ -181,7 +187,7 @@ class HouseholdViewModel @Inject constructor(
                 }
 
                 // Clear draft location from database
-                wasteRepository.clearDraftPickupLocation(currentUser.uid)
+                wasteRepository.clearDraftPickupLocation(currentUser.id)
 
                 // Clear location from UI state
                 _uiState.value = _uiState.value.copy(
@@ -214,7 +220,7 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
-            val result = wasteRepository.cancelPickupRequest(requestId, currentUser.uid)
+            val result = wasteRepository.cancelPickupRequest(requestId, currentUser.id)
 
             _uiState.value = if (result.isSuccess) {
                 _uiState.value.copy(isLoading = false)
@@ -253,6 +259,7 @@ class HouseholdViewModel @Inject constructor(
 
     /**
      * Removes a waste item from the current request being created
+     * Also deletes the associated image from Cloudinary
      *
      * @param wasteItemId Firestore document ID of the waste item to remove
      */
@@ -266,11 +273,31 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
+            // Find the waste item to get its image URL before deleting
+            val wasteItem = _uiState.value.currentWasteItems.find { it.id == wasteItemId }
+
+            // Delete from database
             val result = wasteRepository.deleteWasteItem(householdUid, wasteItemId)
             if (result.isFailure) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = result.exceptionOrNull()?.message ?: "Failed to remove waste item"
                 )
+                return@launch
+            }
+
+            // Delete image from Cloudinary if it exists
+            if (wasteItem != null && wasteItem.imageUrl.isNotBlank()) {
+                try {
+                    val deleted = CloudinaryUploadService.deleteImage(wasteItem.imageUrl)
+                    if (deleted) {
+                        Log.d(TAG, "Successfully deleted image for waste item: $wasteItemId")
+                    } else {
+                        Log.w(TAG, "Failed to delete image for waste item: $wasteItemId")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error deleting image for waste item: $wasteItemId", e)
+                    // Don't show error to user - item is already deleted from database
+                }
             }
         }
     }
