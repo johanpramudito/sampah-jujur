@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import com.melodi.sampahjujur.navigation.SampahJujurNavGraph
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
@@ -17,6 +18,9 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
 
         setContent {

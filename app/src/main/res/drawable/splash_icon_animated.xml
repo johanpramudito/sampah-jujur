@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+
+    <!-- Embed the static drawable -->
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="432dp"
+            android:height="432dp"
+            android:viewportWidth="1024"
+            android:viewportHeight="1024">
+
+            <!-- Wrap content in a group for animation -->
+            <group
+                android:name="splash_group"
+                android:pivotX="512"
+                android:pivotY="512"
+                android:scaleX="0.5"
+                android:scaleY="0.5"
+                android:alpha="0">
+
+                <!-- Include the icon paths - referencing the drawable -->
+                <!-- We'll use a path to represent the icon -->
+                <path
+                    android:fillColor="#00C853"
+                    android:pathData="M512,512m-400,0a400,400 0,1 1,800 0a400,400 0,1 1,-800 0" />
+            </group>
+        </vector>
+    </aapt:attr>
+
+    <!-- Animate scale X -->
+    <target android:name="splash_group">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="scaleX"
+                android:duration="600"
+                android:valueFrom="0.5"
+                android:valueTo="1.0"
+                android:interpolator="@android:interpolator/overshoot" />
+        </aapt:attr>
+    </target>
+
+    <!-- Animate scale Y -->
+    <target android:name="splash_group">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="scaleY"
+                android:duration="600"
+                android:valueFrom="0.5"
+                android:valueTo="1.0"
+                android:interpolator="@android:interpolator/overshoot" />
+        </aapt:attr>
+    </target>
+
+    <!-- Animate alpha (fade in) -->
+    <target android:name="splash_group">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="alpha"
+                android:duration="400"
+                android:valueFrom="0.0"
+                android:valueTo="1.0"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+</animated-vector>

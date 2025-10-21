@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Cache directory for temporary images -->
+    <cache-path name="waste_images" path="." />
+
+    <!-- External cache directory -->
+    <external-cache-path name="external_waste_images" path="." />
+</paths>

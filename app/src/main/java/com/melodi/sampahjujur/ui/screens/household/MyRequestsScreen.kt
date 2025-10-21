@@ -212,7 +212,7 @@ fun RequestCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Divider(color = Color.LightGray.copy(alpha = 0.3f))
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
 
             Spacer(modifier = Modifier.height(12.dp))
 

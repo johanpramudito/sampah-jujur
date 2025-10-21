@@ -63,7 +63,7 @@ class CollectorViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = authRepository.getCurrentUser()
             if (currentUser?.isCollector() == true) {
-                wasteRepository.getCollectorRequests(currentUser.uid).collect { requests ->
+                wasteRepository.getCollectorRequests(currentUser.id).collect { requests ->
                     _myRequests.value = requests
                 }
             }
@@ -104,7 +104,7 @@ class CollectorViewModel @Inject constructor(
                 return@launch
             }
 
-            val result = wasteRepository.acceptPickupRequest(request.id, currentUser.uid)
+            val result = wasteRepository.acceptPickupRequest(request.id, currentUser.id)
 
             _uiState.value = _uiState.value.copy(isLoading = false)
             _acceptRequestResult.value = result
@@ -182,7 +182,7 @@ class CollectorViewModel @Inject constructor(
             allRequests
         } else {
             allRequests.filter { request ->
-                request.address.contains(query, ignoreCase = true) ||
+                request.pickupLocation.address.contains(query, ignoreCase = true) ||
                 request.wasteItems.any { it.type.contains(query, ignoreCase = true) } ||
                 request.notes.contains(query, ignoreCase = true)
             }
@@ -206,7 +206,7 @@ class CollectorViewModel @Inject constructor(
 
         val sortedRequests = when (sortBy) {
             "value" -> requests.sortedByDescending { it.totalValue }
-            "time" -> requests.sortedBy { it.timestamp }
+            "time" -> requests.sortedBy { it.createdAt }
             "weight" -> requests.sortedByDescending { it.getTotalWeight() }
             // "distance" would require current location - placeholder for now
             "distance" -> requests // TODO: Implement distance-based sorting
