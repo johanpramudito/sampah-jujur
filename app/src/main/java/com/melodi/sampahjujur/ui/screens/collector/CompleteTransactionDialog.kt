@@ -155,10 +155,11 @@ fun CompleteTransactionDialog(
                                 label = { Text("Actual Weight (kg)") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f),
-                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = PrimaryGreen,
                                     unfocusedBorderColor = Color.LightGray,
-                                    containerColor = Color.White
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White
                                 ),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true,
@@ -182,10 +183,11 @@ fun CompleteTransactionDialog(
                                 label = { Text("Actual Value ($)") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f),
-                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = PrimaryGreen,
                                     unfocusedBorderColor = Color.LightGray,
-                                    containerColor = Color.White
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White
                                 ),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true,
@@ -302,10 +304,11 @@ fun CompleteTransactionDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = PrimaryGreen,
                             unfocusedBorderColor = Color.LightGray,
-                            containerColor = Color.White
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )

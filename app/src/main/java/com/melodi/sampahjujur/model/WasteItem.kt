@@ -8,6 +8,7 @@ package com.melodi.sampahjujur.model
  * @property weight Weight of the waste item in kilograms
  * @property estimatedValue Estimated monetary value in local currency
  * @property description Optional description or notes about the waste item
+ * @property imageUrl URL of the uploaded image (proof of waste item) stored in Cloudinary
  * @property id Document identifier when the item is stored in Firestore (empty for transient items)
  * @property createdAt Timestamp (milliseconds) recording when the item was created
  */
@@ -16,6 +17,7 @@ data class WasteItem(
     val weight: Double = 0.0,
     val estimatedValue: Double = 0.0,
     val description: String = "",
+    val imageUrl: String = "",
     val id: String = "",
     val createdAt: Long = System.currentTimeMillis()
 ) {

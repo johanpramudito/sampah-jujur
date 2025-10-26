@@ -63,6 +63,7 @@ fun HouseholdProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -70,9 +71,7 @@ fun HouseholdProfileScreen(
             // Profile Header Card
             item {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = PrimaryGreen
                     ),
@@ -157,9 +156,7 @@ fun HouseholdProfileScreen(
             // Statistics Card
             item {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     elevation = CardDefaults.cardElevation(2.dp),
                     shape = RoundedCornerShape(12.dp)
@@ -215,16 +212,13 @@ fun HouseholdProfileScreen(
                     text = "Settings & Preferences",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    color = Color.Gray
                 )
             }
 
             item {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     elevation = CardDefaults.cardElevation(2.dp),
                     shape = RoundedCornerShape(12.dp)
@@ -260,7 +254,6 @@ fun HouseholdProfileScreen(
                     onClick = onLogoutClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
                         .height(56.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color.Red
@@ -280,7 +273,8 @@ fun HouseholdProfileScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(16.dp)) }
+            // Bottom spacer for better scrollability
+            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 }

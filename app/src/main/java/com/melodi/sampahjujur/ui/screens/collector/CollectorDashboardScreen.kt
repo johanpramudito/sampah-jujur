@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -209,12 +211,16 @@ fun PendingRequestsTab(
         // Requests List
         if (requests.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(32.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Inbox,
@@ -275,12 +281,15 @@ fun MyRequestsTab(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .background(Color(0xFFF5F5F5)),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.LocalShipping,
@@ -421,7 +430,7 @@ fun CollectorRequestCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Divider(color = Color.LightGray.copy(alpha = 0.3f))
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
 
             Spacer(modifier = Modifier.height(12.dp))
 

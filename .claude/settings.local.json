@@ -1,8 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/HP/OneDrive - UGM 365/KULIAH/MATERI/Semester 7/Sebelum UTS/Pengembangan Aplikasi Piranti Bergerak/BelajarUTS/**)",
-      "Read(//c/Users/HP/OneDrive - UGM 365/KULIAH/MATERI/Semester 7/Sebelum UTS/Pengembangan Aplikasi Piranti Bergerak/**)"
+      "Bash(./gradlew.bat compileDebugKotlin --console=plain)",
+      "Bash(./gradlew.bat :app:kspDebugKotlin --console=plain)",
+      "Read(//e/**)",
+      "Bash(gradlew.bat assembleDebug)",
+      "Bash(./gradlew.bat assembleDebug)",
+      "Bash(./gradlew.bat assembleDebug --stacktrace)",
+      "Bash(java:*)",
+      "Bash(where:*)",
+      "Bash(move \"adaptive-icon.png\" \"adaptive_icon.png\")",
+      "Bash(move \"splash-icon.png\" \"splash_icon.png\")",
+      "Bash(mv:*)",
+      "Bash(del \"E:\\StudioProjects\\sampah-jujur\\app\\src\\main\\java\\com\\melodi\\sampahjujur\\ui\\screens\\SplashScreen.kt\")",
+      "Bash(gradlew.bat assembleDebug:*)"
     ],
     "deny": [],
     "ask": []

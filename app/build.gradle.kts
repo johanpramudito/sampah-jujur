@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -19,6 +22,18 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Load Cloudinary credentials from local.properties
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            FileInputStream(localPropertiesFile).use { localProperties.load(it) }
+        }
+
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${localProperties.getProperty("cloudinary.cloud.name", "")}\"")
+        buildConfigField("String", "CLOUDINARY_API_KEY", "\"${localProperties.getProperty("cloudinary.api.key", "")}\"")
+        buildConfigField("String", "CLOUDINARY_API_SECRET", "\"${localProperties.getProperty("cloudinary.api.secret", "")}\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_FOLDER", "\"${localProperties.getProperty("cloudinary.upload.folder", "sampah-jujur")}\"")
     }
 
     buildTypes {
@@ -41,6 +56,7 @@ android {
         viewBinding = true
         dataBinding = true
         compose = true
+        buildConfig = true
     }
 }
 
@@ -51,6 +67,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     // Fragment and Navigation
     implementation("androidx.fragment:fragment-ktx:1.6.2")
@@ -76,7 +93,9 @@ dependencies {
 
     // Location Services
     implementation("com.google.android.gms:play-services-location:21.0.1")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
+    // OpenStreetMap
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
@@ -116,6 +135,9 @@ dependencies {
 
     // Coil for Image Loading in Compose
     implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // Cloudinary for Image Upload
+    implementation("com.cloudinary:cloudinary-android:2.5.0")
 
     // Testing
     testImplementation(libs.junit)
