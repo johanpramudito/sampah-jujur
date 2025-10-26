@@ -11,9 +11,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.User
-import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.screens.*
 import com.melodi.sampahjujur.ui.screens.auth.*
 import com.melodi.sampahjujur.ui.screens.collector.*
@@ -416,42 +414,9 @@ fun SampahJujurNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-            // TODO: Get request from ViewModel by ID
-            val dummyRequest = PickupRequest(
-                id = requestId,
-                householdId = "user1",
-                wasteItems = listOf(WasteItem("plastic", 5.0, 10.0, "Bottles")),
-                pickupLocation = PickupRequest.Location(0.0, 0.0, "123 Main St"),
-                status = "pending"
-            )
-
-            CollectorRequestDetailScreen(
-                request = dummyRequest,
-                householdName = "Household User",
-                householdPhone = null,
-                onBackClick = {
-                    navController.popBackStack()
-                },
-                onAcceptRequest = {
-                    // TODO: Accept in ViewModel
-                    navController.popBackStack()
-                },
-                onNavigateToLocation = {
-                    // TODO: Handle navigation
-                },
-                onStartPickup = {
-                    // TODO: Start pickup in ViewModel
-                },
-                onCompletePickup = {
-                    // TODO: Show complete transaction dialog
-                },
-                onContactHousehold = {
-                    // TODO: Handle contact
-                },
-                onCancelRequest = {
-                    // TODO: Cancel in ViewModel
-                    navController.popBackStack()
-                }
+            CollectorRequestDetailRoute(
+                requestId = requestId,
+                onBackClick = { navController.popBackStack() }
             )
         }
 
