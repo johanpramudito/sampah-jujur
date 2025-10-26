@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,7 +84,7 @@ fun CollectorRequestDetailRoute(
             onStartPickup = { viewModel.markRequestInProgress(currentRequest.id) },
             onCompletePickup = { showCompleteDialog = true },
             onContactHousehold = { /* TODO: Integrate contact action */ },
-            onCancelRequest = onBackClick
+            onCancelRequest = { viewModel.cancelCollectorRequest(currentRequest.id) }
         )
     }
 
@@ -482,7 +483,7 @@ fun CollectorRequestDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     when (request.status) {
-                        "pending" -> {
+                        PickupRequest.STATUS_PENDING -> {
                             Button(
                                 onClick = onAcceptRequest,
                                 modifier = Modifier
@@ -507,7 +508,7 @@ fun CollectorRequestDetailScreen(
                                 )
                             }
                         }
-                        "accepted" -> {
+                        PickupRequest.STATUS_ACCEPTED -> {
                             Button(
                                 onClick = onStartPickup,
                                 modifier = Modifier
@@ -546,7 +547,7 @@ fun CollectorRequestDetailScreen(
                                 Text("Cancel Request")
                             }
                         }
-                        "in_progress" -> {
+                        PickupRequest.STATUS_IN_PROGRESS -> {
                             Button(
                                 onClick = onCompletePickup,
                                 modifier = Modifier
@@ -570,6 +571,16 @@ fun CollectorRequestDetailScreen(
                                     color = Color.White
                                 )
                             }
+                        }
+                        PickupRequest.STATUS_CANCELLED -> {
+                            Text(
+                                text = "This pickup was cancelled.",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                color = Color.Gray,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }

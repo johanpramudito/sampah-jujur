@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -313,6 +314,42 @@ fun MyRequestsTab(
     requests: List<PickupRequest>,
     onRequestClick: (String) -> Unit
 ) {
+    val statusFilters = listOf(
+        "All" to null,
+        "Accepted" to PickupRequest.STATUS_ACCEPTED,
+        "In Progress" to PickupRequest.STATUS_IN_PROGRESS,
+        "Completed" to PickupRequest.STATUS_COMPLETED,
+        "Cancelled" to PickupRequest.STATUS_CANCELLED
+    )
+
+    var selectedFilter by rememberSaveable { mutableStateOf(statusFilters.first().first) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val statusFilteredRequests = remember(requests, selectedFilter) {
+        val targetStatus = statusFilters.firstOrNull { it.first == selectedFilter }?.second
+        if (targetStatus == null) {
+            requests
+        } else {
+            requests.filter { it.status == targetStatus }
+        }
+    }
+    val filteredRequests = remember(statusFilteredRequests, searchQuery) {
+        val trimmedQuery = searchQuery.trim()
+        if (trimmedQuery.isBlank()) {
+            statusFilteredRequests
+        } else {
+            statusFilteredRequests.filter { request ->
+                request.id.contains(trimmedQuery, ignoreCase = true) ||
+                request.pickupLocation.address.contains(trimmedQuery, ignoreCase = true) ||
+                request.notes.contains(trimmedQuery, ignoreCase = true) ||
+                request.wasteItems.any { item ->
+                    item.type.contains(trimmedQuery, ignoreCase = true) ||
+                    item.description.contains(trimmedQuery, ignoreCase = true)
+                }
+            }
+        }
+    }
+
     if (requests.isEmpty()) {
         Box(
             modifier = Modifier
@@ -349,31 +386,140 @@ fun MyRequestsTab(
             }
         }
     } else {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5)),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+                .background(Color(0xFFF5F5F5))
         ) {
-            item {
-                Text(
-                    text = "${requests.size} active request${if (requests.size != 1) "s" else ""}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                placeholder = { Text("Search by request ID, address, or notes...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.Gray
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear search",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = PrimaryGreen,
+                    unfocusedIndicatorColor = Color.LightGray
+                ),
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(statusFilters) { (label, _) ->
+                    val isSelected = selectedFilter == label
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedFilter = label },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryGreen,
+                            selectedLabelColor = Color.White,
+                            containerColor = Color.White
+                        ),
+                        border = if (isSelected) {
+                            FilterChipDefaults.filterChipBorder(
+                                borderColor = PrimaryGreen,
+                                enabled = true,
+                                selected = true
+                            )
+                        } else {
+                            FilterChipDefaults.filterChipBorder(
+                                borderColor = Color.LightGray,
+                                enabled = true,
+                                selected = false
+                            )
+                        }
+                    )
+                }
             }
 
-            items(requests) { request ->
-                CollectorRequestCard(
-                    request = request,
-                    showAcceptButton = false,
-                    onCardClick = { onRequestClick(request.id) }
-                )
-            }
+            Spacer(modifier = Modifier.height(12.dp))
 
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            if (filteredRequests.isEmpty()) {
+                val emptyMessage = when {
+                    searchQuery.isNotBlank() -> "No requests match \"$searchQuery\""
+                    selectedFilter == "All" -> "No requests yet"
+                    else -> "No ${selectedFilter.lowercase()} requests yet"
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "No requests for filter",
+                            tint = Color.Gray.copy(alpha = 0.5f),
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = emptyMessage,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "${filteredRequests.size} request${if (filteredRequests.size != 1) "s" else ""}",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    items(filteredRequests) { request ->
+                        CollectorRequestCard(
+                            request = request,
+                            showAcceptButton = false,
+                            onCardClick = { onRequestClick(request.id) }
+                        )
+                    }
+
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                }
+            }
         }
     }
 }
@@ -515,7 +661,7 @@ fun CollectorRequestCard(
                     }
                 } else {
                     when (request.status) {
-                        "accepted" -> {
+                        PickupRequest.STATUS_ACCEPTED -> {
                             OutlinedButton(
                                 onClick = onCardClick,
                                 colors = ButtonDefaults.outlinedButtonColors(
@@ -532,7 +678,7 @@ fun CollectorRequestCard(
                                 Text("Navigate", fontWeight = FontWeight.Medium)
                             }
                         }
-                        "in_progress" -> {
+                        PickupRequest.STATUS_IN_PROGRESS -> {
                             Button(
                                 onClick = onCardClick,
                                 colors = ButtonDefaults.buttonColors(
@@ -547,6 +693,11 @@ fun CollectorRequestCard(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Complete", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        PickupRequest.STATUS_CANCELLED -> {
+                            TextButton(onClick = onCardClick) {
+                                Text("View Details", color = Color.Gray)
                             }
                         }
                         else -> {

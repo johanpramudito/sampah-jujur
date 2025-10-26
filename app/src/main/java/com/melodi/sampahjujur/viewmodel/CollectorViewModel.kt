@@ -271,6 +271,47 @@ class CollectorViewModel @Inject constructor(
     }
 
     /**
+     * Cancels a collector's accepted request
+     */
+    fun cancelCollectorRequest(requestId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
+            val currentUser = authRepository.getCurrentUser()
+            if (currentUser == null) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "User not authenticated"
+                )
+                return@launch
+            }
+
+            if (!currentUser.isCollector()) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "Invalid user role"
+                )
+                return@launch
+            }
+
+            val result = wasteRepository.cancelCollectorRequest(requestId, currentUser.id)
+            val currentState = _uiState.value
+
+            _uiState.value = if (result.isSuccess) {
+                currentState.copy(
+                    isLoading = false,
+                    successMessage = "Request cancelled"
+                )
+            } else {
+                currentState.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to cancel request"
+                )
+            }
+        }
+    }
+
+    /**
      * Observes a pickup request by ID for detail screens.
      */
     fun observeRequest(requestId: String): Flow<PickupRequest?> {
