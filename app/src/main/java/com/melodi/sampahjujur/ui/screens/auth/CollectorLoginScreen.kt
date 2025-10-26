@@ -208,14 +208,18 @@ fun CollectorLoginScreen(
             // Sign Up Link
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "New collector? ",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
-                TextButton(onClick = onSignUpClick) {
+                TextButton(
+                    onClick = onSignUpClick,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(
                         text = "Register here",
                         fontSize = 14.sp,

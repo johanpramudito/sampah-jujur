@@ -366,14 +366,18 @@ fun HouseholdLoginScreen(
             // Sign Up Link
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Don't have an account? ",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
-                TextButton(onClick = onSignUpClick) {
+                TextButton(
+                    onClick = onSignUpClick,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(
                         text = "Sign up",
                         fontSize = 14.sp,
