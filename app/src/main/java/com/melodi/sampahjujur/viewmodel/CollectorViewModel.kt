@@ -9,12 +9,14 @@ import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.Transaction
 import com.melodi.sampahjujur.model.TransactionItem
 import com.melodi.sampahjujur.repository.AuthRepository
+import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,7 +27,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectorViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectorUiState())
@@ -33,6 +36,9 @@ class CollectorViewModel @Inject constructor(
 
     private val _earningsState = MutableStateFlow(Earnings())
     val earnings: StateFlow<Earnings> = _earningsState.asStateFlow()
+
+    private val _mapState = MutableStateFlow(CollectorMapState())
+    val mapState: StateFlow<CollectorMapState> = _mapState.asStateFlow()
 
     private val _pendingRequests = MutableLiveData<List<PickupRequest>>()
     val pendingRequests: LiveData<List<PickupRequest>> = _pendingRequests
@@ -47,6 +53,7 @@ class CollectorViewModel @Inject constructor(
         startListeningToPendingRequests()
         loadMyRequests()
         loadCollectorEarnings()
+        refreshCollectorLocation()
     }
 
     /**
@@ -54,20 +61,33 @@ class CollectorViewModel @Inject constructor(
      */
     private fun startListeningToPendingRequests() {
         viewModelScope.launch {
-            wasteRepository.getPendingRequests().collect { requests ->
-                val currentState = _uiState.value
-                val filtered = applyPendingRequestFilters(
-                    requests = requests,
-                    query = currentState.searchQuery,
-                    sortBy = currentState.sortBy
-                )
-                _pendingRequests.value = requests
-                _uiState.value = currentState.copy(
-                    isLoading = false,
-                    hasPendingRequests = requests.isNotEmpty(),
-                    filteredRequests = filtered
-                )
-            }
+            wasteRepository.getPendingRequests()
+                .catch { throwable ->
+                    _pendingRequests.value = emptyList()
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        hasPendingRequests = false,
+                        filteredRequests = emptyList(),
+                        errorMessage = throwable.message
+                    )
+                    _mapState.value = _mapState.value.copy(pendingMarkers = emptyList())
+                }
+                .collect { requests ->
+                    val currentState = _uiState.value
+                    val filtered = applyPendingRequestFilters(
+                        requests = requests,
+                        query = currentState.searchQuery,
+                        sortBy = currentState.sortBy
+                    )
+                    _pendingRequests.value = requests
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        hasPendingRequests = requests.isNotEmpty(),
+                        filteredRequests = filtered,
+                        errorMessage = null
+                    )
+                    updateMapMarkers(requests)
+                }
         }
     }
 
@@ -78,9 +98,11 @@ class CollectorViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = authRepository.getCurrentUser()
             if (currentUser?.isCollector() == true) {
-                wasteRepository.getCollectorRequests(currentUser.id).collect { requests ->
-                    _myRequests.value = requests
-                }
+                wasteRepository.getCollectorRequests(currentUser.id)
+                    .catch { _myRequests.value = emptyList() }
+                    .collect { requests ->
+                        _myRequests.value = requests
+                    }
             } else {
                 _myRequests.value = emptyList()
             }
@@ -91,9 +113,11 @@ class CollectorViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = authRepository.getCurrentUser()
             if (currentUser?.isCollector() == true) {
-                wasteRepository.getCollectorEarnings(currentUser.id).collect { earnings ->
-                    _earningsState.value = earnings
-                }
+                wasteRepository.getCollectorEarnings(currentUser.id)
+                    .catch { _earningsState.value = Earnings() }
+                    .collect { earnings ->
+                        _earningsState.value = earnings
+                    }
             } else {
                 _earningsState.value = Earnings()
             }
@@ -144,6 +168,7 @@ class CollectorViewModel @Inject constructor(
                 val updatedPending = (_pendingRequests.value ?: emptyList())
                     .filterNot { it.id == request.id }
                 _pendingRequests.value = updatedPending
+                updateMapMarkers(updatedPending)
 
                 val filtered = applyPendingRequestFilters(
                     requests = updatedPending,
@@ -407,6 +432,58 @@ class CollectorViewModel @Inject constructor(
     }
 
     /**
+     * Refreshes the collector's current location for map display.
+     */
+    fun refreshCollectorLocation() {
+        viewModelScope.launch {
+            _mapState.value = _mapState.value.copy(isLoadingLocation = true, errorMessage = null)
+
+            val result = locationRepository.getLastKnownLocation()
+            _mapState.value = if (result.isSuccess) {
+                val location = result.getOrNull()
+                _mapState.value.copy(
+                    isLoadingLocation = false,
+                    collectorLocation = location?.let {
+                        PickupRequest.Location(
+                            latitude = it.latitude,
+                            longitude = it.longitude,
+                            address = ""
+                        )
+                    },
+                    errorMessage = null
+                )
+            } else {
+                _mapState.value.copy(
+                    isLoadingLocation = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Unable to fetch current location"
+                )
+            }
+        }
+    }
+
+    private fun updateMapMarkers(requests: List<PickupRequest>) {
+        val markers = requests
+            .filter { request ->
+                request.pickupLocation.latitude != 0.0 || request.pickupLocation.longitude != 0.0
+            }
+            .map { request ->
+                MapMarker(
+                    requestId = request.id,
+                    latitude = request.pickupLocation.latitude,
+                    longitude = request.pickupLocation.longitude,
+                    status = request.status,
+                    address = request.pickupLocation.address
+                )
+            }
+
+        _mapState.value = _mapState.value.copy(pendingMarkers = markers)
+    }
+
+    fun clearMapError() {
+        _mapState.value = _mapState.value.copy(errorMessage = null)
+    }
+
+    /**
      * Gets route to a pickup location
      * This is a placeholder function for map integration
      *
@@ -475,4 +552,19 @@ data class CollectorUiState(
     val selectedRequestForNavigation: PickupRequest? = null,
     val showTransactionSuccess: Boolean = false,
     val completedTransaction: Transaction? = null
+)
+
+data class CollectorMapState(
+    val isLoadingLocation: Boolean = false,
+    val collectorLocation: PickupRequest.Location? = null,
+    val pendingMarkers: List<MapMarker> = emptyList(),
+    val errorMessage: String? = null
+)
+
+data class MapMarker(
+    val requestId: String,
+    val latitude: Double,
+    val longitude: Double,
+    val status: String,
+    val address: String
 )

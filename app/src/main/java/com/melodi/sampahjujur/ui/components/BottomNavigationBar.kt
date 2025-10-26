@@ -19,7 +19,7 @@ sealed class HouseholdNavItem(val route: String, val icon: ImageVector, val labe
 // Navigation items for Collector
 sealed class CollectorNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Requests : CollectorNavItem("collector_dashboard", Icons.Default.List, "Requests")
-    object Map : CollectorNavItem("map_view", Icons.Default.Map, "Map")
+    object Map : CollectorNavItem("collector_map", Icons.Default.Map, "Map")
     object Profile : CollectorNavItem("collector_profile", Icons.Default.Person, "Profile")
 }
 
