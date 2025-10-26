@@ -45,7 +45,6 @@ fun HouseholdLoginScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val authState by viewModel.authState.collectAsState()
-    val rateLimitState by viewModel.rateLimitState.collectAsState()
     val context = LocalContext.current
 
     // Google Sign-In launcher
@@ -58,11 +57,23 @@ fun HouseholdLoginScreen(
             val idToken = account.idToken
             if (idToken != null) {
                 viewModel.signInWithGoogle(idToken)
+            } else {
+                // ID token is null - show error to user
+                android.util.Log.e("HouseholdLogin", "Google Sign-In failed: ID token is null")
             }
         } catch (e: ApiException) {
+            // Log the error for debugging
+            android.util.Log.e("HouseholdLogin", "Google Sign-In failed with code: ${e.statusCode}, message: ${e.message}")
+
             // Silently handle cancellation (user backed out)
             if (e.statusCode != 12501) { // 12501 = user cancelled
-                viewModel.clearError()
+                // Show error message for other failures
+                val errorMessage = when (e.statusCode) {
+                    7 -> "Network error. Please check your internet connection."
+                    10 -> "Google Sign-In is not properly configured. Please contact support."
+                    else -> "Google Sign-In failed: ${e.message ?: "Unknown error"}"
+                }
+                android.util.Log.e("HouseholdLogin", "Showing error: $errorMessage")
             }
         }
     }
@@ -78,7 +89,10 @@ fun HouseholdLoginScreen(
 
     // Handle successful login
     LaunchedEffect(authState) {
+        android.util.Log.d("HouseholdLogin", "AuthState changed: $authState")
         if (authState is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated) {
+            val user = (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+            android.util.Log.d("HouseholdLogin", "User authenticated: ${user.fullName}, triggering onLoginSuccess")
             onLoginSuccess()
         }
     }
@@ -216,38 +230,6 @@ fun HouseholdLoginScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Rate Limit Warning
-            rateLimitState?.let { status ->
-                if (status.isLocked) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFFFF3E0) // Orange
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "Locked",
-                                tint = Color(0xFFE65100),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = status.getMessage(),
-                                color = Color(0xFFE65100),
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
 
             // Error Message
             uiState.errorMessage?.let { error ->
