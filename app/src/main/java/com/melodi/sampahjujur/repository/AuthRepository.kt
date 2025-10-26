@@ -70,6 +70,7 @@ class AuthRepository @Inject constructor(
 
             // Send email verification
             authResult.user?.sendEmailVerification()?.await()
+            android.util.Log.d("AuthRepository", "registerHousehold: Email verification sent to $email")
 
             val user = User(
                 id = uid,
@@ -84,6 +85,12 @@ class AuthRepository @Inject constructor(
                 .document(uid)
                 .set(user, SetOptions.merge())
                 .await()
+
+            android.util.Log.d("AuthRepository", "registerHousehold: User created successfully")
+
+            // Sign out the user to prevent auto-login before email verification
+            auth.signOut()
+            android.util.Log.d("AuthRepository", "registerHousehold: User signed out, awaiting email verification")
 
             Result.success(user)
         } catch (e: Exception) {
@@ -282,10 +289,15 @@ class AuthRepository @Inject constructor(
      */
     suspend fun signInWithGoogle(idToken: String): Result<User> {
         return try {
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Starting Google Sign-In")
+
             // Create Firebase credential from Google ID token
             val credential = GoogleAuthProvider.getCredential(idToken, null)
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Created Firebase credential")
+
             val authResult = auth.signInWithCredential(credential).await()
             val uid = authResult.user?.uid ?: throw Exception("Failed to get user ID")
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Successfully authenticated with Firebase Auth, UID: $uid")
 
             // Check if user exists in Firestore
             val userDoc = firestore.collection("users")
@@ -293,13 +305,19 @@ class AuthRepository @Inject constructor(
                 .get()
                 .await()
 
+            android.util.Log.d("AuthRepository", "signInWithGoogle: User document exists: ${userDoc.exists()}")
+
             val user = if (userDoc.exists()) {
                 // Existing user - verify is household
                 val existingUser = userDoc.toObject(User::class.java)
                     ?: throw Exception("User data not found in database")
 
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Existing user found - " +
+                        "Name: ${existingUser.fullName}, Email: ${existingUser.email}, UserType: ${existingUser.userType}")
+
                 // Verify user role
                 if (!existingUser.isHousehold()) {
+                    android.util.Log.e("AuthRepository", "signInWithGoogle: User is not a household (userType: ${existingUser.userType})")
                     auth.signOut() // Sign out user with wrong role
                     throw Exception("This account is registered as a collector. Please use collector login with your phone number.")
                 }
@@ -307,25 +325,32 @@ class AuthRepository @Inject constructor(
                 // Update profile image if changed
                 val photoUrl = authResult.user?.photoUrl?.toString() ?: ""
                 if (photoUrl != existingUser.profileImageUrl && photoUrl.isNotEmpty()) {
+                    android.util.Log.d("AuthRepository", "signInWithGoogle: Updating profile image")
                     val updatedUser = existingUser.copy(profileImageUrl = photoUrl)
                     firestore.collection("users")
                         .document(uid)
                         .set(updatedUser, SetOptions.merge())
                         .await()
+                    android.util.Log.d("AuthRepository", "signInWithGoogle: Profile image updated successfully")
                     updatedUser
                 } else {
                     existingUser
                 }
             } else {
                 // New user - create household account
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Creating new user account")
+
                 val email = authResult.user?.email
                     ?: throw Exception("Email not available from Google account")
                 val name = authResult.user?.displayName ?: email.substringBefore("@")
                 val photoUrl = authResult.user?.photoUrl?.toString() ?: ""
 
+                android.util.Log.d("AuthRepository", "signInWithGoogle: New user data - Name: $name, Email: $email")
+
                 // Validate email
                 val emailValidation = ValidationUtils.validateEmail(email)
                 if (!emailValidation.isValid) {
+                    android.util.Log.e("AuthRepository", "signInWithGoogle: Email validation failed: ${emailValidation.errorMessage}")
                     auth.signOut()
                     throw Exception(emailValidation.errorMessage)
                 }
@@ -338,17 +363,28 @@ class AuthRepository @Inject constructor(
                     profileImageUrl = photoUrl
                 )
 
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Saving new user to Firestore with userType: ${newUser.userType}")
+
                 // Save user data to Firestore
                 firestore.collection("users")
                     .document(uid)
                     .set(newUser, SetOptions.merge())
                     .await()
 
+                android.util.Log.d("AuthRepository", "signInWithGoogle: New user saved successfully")
+
+                // Verify the save by reading back
+                val verifyDoc = firestore.collection("users").document(uid).get().await()
+                val savedUser = verifyDoc.toObject(User::class.java)
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Verification - Saved user userType: ${savedUser?.userType}")
+
                 newUser
             }
 
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Sign-in completed successfully for user: ${user.fullName}")
             Result.success(user)
         } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "signInWithGoogle: Failed with exception", e)
             val errorMessage = FirebaseErrorHandler.getErrorMessage(e)
             Result.failure(Exception(errorMessage))
         }

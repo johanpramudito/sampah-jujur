@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
-import com.melodi.sampahjujur.utils.RateLimiter
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthProvider
@@ -23,8 +22,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
-    private val rateLimiter: RateLimiter
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -38,9 +36,6 @@ class AuthViewModel @Inject constructor(
 
     private val _otpResendCooldown = MutableStateFlow(0)
     val otpResendCooldown: StateFlow<Int> = _otpResendCooldown.asStateFlow()
-
-    private val _rateLimitState = MutableStateFlow<RateLimiter.LimitStatus?>(null)
-    val rateLimitState: StateFlow<RateLimiter.LimitStatus?> = _rateLimitState.asStateFlow()
 
     // Store verification ID for phone auth
     private var verificationId: String? = null
@@ -72,48 +67,25 @@ class AuthViewModel @Inject constructor(
 
     /**
      * Signs in a household user with email and password
-     * Includes rate limiting to prevent brute force attacks
      */
     fun signInHousehold(email: String, password: String) {
         viewModelScope.launch {
-            // Check rate limit first
-            val limitStatus = rateLimiter.checkLimit(email)
-            if (limitStatus.isLocked) {
-                _rateLimitState.value = limitStatus
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = limitStatus.getMessage()
-                )
-                return@launch
-            }
-
+            android.util.Log.d("AuthViewModel", "signInHousehold: Starting login for email: $email")
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             val result = authRepository.signInHousehold(email, password)
 
             if (result.isSuccess) {
-                // Clear rate limit on successful login
-                rateLimiter.recordSuccessfulAttempt(email)
-                _rateLimitState.value = null
-
                 val user = result.getOrNull()!!
+                android.util.Log.d("AuthViewModel", "signInHousehold: Success - User: ${user.fullName}, Email: ${user.email}, UserType: ${user.userType}")
                 _authState.value = AuthState.Authenticated(user)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } else {
-                // Record failed attempt
-                rateLimiter.recordFailedAttempt(email)
-                val newStatus = rateLimiter.checkLimit(email)
-                _rateLimitState.value = newStatus
-
-                val errorMsg = buildString {
-                    append(result.exceptionOrNull()?.message ?: "Login failed")
-                    if (newStatus.remainingAttempts > 0 && newStatus.remainingAttempts <= 3) {
-                        append(" ${newStatus.getMessage()}")
-                    }
-                }
-
+                val error = result.exceptionOrNull()?.message ?: "Login failed"
+                android.util.Log.e("AuthViewModel", "signInHousehold: Failed - $error")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = errorMsg
+                    errorMessage = error
                 )
             }
         }
@@ -121,22 +93,26 @@ class AuthViewModel @Inject constructor(
 
     /**
      * Signs in a household user with Google
-     * No rate limiting needed as Google handles authentication
      */
     fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
+            android.util.Log.d("AuthViewModel", "signInWithGoogle: Starting")
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             val result = authRepository.signInWithGoogle(idToken)
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
+                android.util.Log.d("AuthViewModel", "signInWithGoogle: Success - User: ${user.fullName}, Email: ${user.email}, UserType: ${user.userType}")
                 _authState.value = AuthState.Authenticated(user)
+                android.util.Log.d("AuthViewModel", "signInWithGoogle: AuthState updated to Authenticated")
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } else {
+                val error = result.exceptionOrNull()?.message ?: "Google sign-in failed"
+                android.util.Log.e("AuthViewModel", "signInWithGoogle: Failed - $error")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = result.exceptionOrNull()?.message ?: "Google sign-in failed"
+                    errorMessage = error
                 )
             }
         }
@@ -144,21 +120,32 @@ class AuthViewModel @Inject constructor(
 
     /**
      * Registers a new household user with email and password
+     * User must verify email before logging in
      */
     fun registerHousehold(fullName: String, email: String, phone: String, password: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            android.util.Log.d("AuthViewModel", "registerHousehold: Starting registration for email: $email")
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, successMessage = null)
 
             val result = authRepository.registerHousehold(email, password, fullName, phone)
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
-                _authState.value = AuthState.Authenticated(user)
-                _uiState.value = _uiState.value.copy(isLoading = false)
-            } else {
+                android.util.Log.d("AuthViewModel", "registerHousehold: Registration successful for user: ${user.fullName}")
+
+                // Don't authenticate - user needs to verify email first
+                // Keep state as Unauthenticated and show success message
+                _authState.value = AuthState.Unauthenticated
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = result.exceptionOrNull()?.message ?: "Registration failed"
+                    successMessage = "Account created successfully! Please check your email (${user.email}) to verify your account before logging in."
+                )
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Registration failed"
+                android.util.Log.e("AuthViewModel", "registerHousehold: Failed - $error")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = error
                 )
             }
         }
