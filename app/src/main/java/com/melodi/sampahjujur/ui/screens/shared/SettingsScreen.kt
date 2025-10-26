@@ -164,7 +164,7 @@ fun SettingsScreen(
                         )
                         Divider(color = Color.LightGray.copy(alpha = 0.2f))
                         SettingsNavigationItem(
-                            icon = Icons.Default.Lock,
+                            icon = Icons.Default.Security,
                             title = "Privacy Policy",
                             subtitle = "View our privacy policy",
                             onClick = onPrivacyPolicyClick

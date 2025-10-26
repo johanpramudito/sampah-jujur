@@ -399,7 +399,6 @@ class AuthViewModel @Inject constructor(
      */
     fun updateHouseholdProfile(
         fullName: String,
-        email: String,
         phone: String,
         address: String,
         profileImageUrl: String
@@ -409,7 +408,6 @@ class AuthViewModel @Inject constructor(
 
             val result = authRepository.updateProfile(
                 fullName = fullName,
-                email = email,
                 phone = phone,
                 address = address,
                 profileImageUrl = profileImageUrl

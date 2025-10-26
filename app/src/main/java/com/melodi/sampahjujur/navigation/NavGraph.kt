@@ -65,6 +65,8 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
     object About : Screen("about")
+    object ChangePassword : Screen("change_password")
+    object LanguageSelection : Screen("language_selection")
     object PrivacyPolicy : Screen("privacy_policy")
     object TermsAndConditions : Screen("terms_and_conditions")
 }
@@ -412,7 +414,10 @@ fun SampahJujurNavGraph(
                 onBackClick = {
                     navController.popBackStack()
                 },
-                onSaveClick = { fullName, email, phone, address, profileImageUrl ->
+                onChangePasswordClick = {
+                    navController.navigate(Screen.ChangePassword.route)
+                },
+                onSaveClick = { fullName, phone, address, profileImageUrl ->
                     // TODO: Update in ViewModel (master has updateHouseholdProfile method)
                     navController.popBackStack()
                 }
@@ -571,7 +576,7 @@ fun SampahJujurNavGraph(
                     navController.popBackStack()
                 },
                 onLanguageClick = {
-                    // TODO: Handle language
+                    navController.navigate(Screen.LanguageSelection.route)
                 },
                 onPrivacyPolicyClick = {
                     navController.navigate(Screen.PrivacyPolicy.route)
@@ -600,6 +605,24 @@ fun SampahJujurNavGraph(
         // About Screen
         composable(Screen.About.route) {
             AboutScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Change Password Screen
+        composable(Screen.ChangePassword.route) {
+            ChangePasswordScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Language Selection Screen
+        composable(Screen.LanguageSelection.route) {
+            LanguageSelectionScreen(
                 onBackClick = {
                     navController.popBackStack()
                 }

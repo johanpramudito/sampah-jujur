@@ -511,15 +511,15 @@ class AuthRepository @Inject constructor(
      * Updates the current user's profile information in Firestore
      *
      * @param fullName Updated full name
-     * @param email Updated email address
      * @param phone Updated phone number
      * @param address Updated address
      * @param profileImageUrl Updated profile image URL (from Cloudinary)
      * @return Result indicating success or failure
+     *
+     * Note: Email is intentionally excluded as it's tied to authentication and cannot be changed
      */
     suspend fun updateProfile(
         fullName: String,
-        email: String,
         phone: String,
         address: String,
         profileImageUrl: String
@@ -528,7 +528,7 @@ class AuthRepository @Inject constructor(
             val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
             val uid = currentUser.uid
 
-            // Get current user data to preserve other fields
+            // Get current user data to preserve other fields (including email)
             val userDoc = firestore.collection("users")
                 .document(uid)
                 .get()
@@ -537,10 +537,9 @@ class AuthRepository @Inject constructor(
             val existingUser = userDoc.toObject(User::class.java)
                 ?: throw Exception("User data not found")
 
-            // Create updated user object
+            // Create updated user object (email is preserved from existing user)
             val updatedUser = existingUser.copy(
                 fullName = fullName,
-                email = email,
                 phone = phone,
                 address = address,
                 profileImageUrl = profileImageUrl
@@ -606,6 +605,63 @@ class AuthRepository @Inject constructor(
             Result.success(updatedUser)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Changes the current user's password
+     *
+     * @param currentPassword User's current password for verification
+     * @param newPassword New password to set
+     * @return Result indicating success or failure
+     */
+    suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ): Result<Unit> {
+        return try {
+            val currentUser = auth.currentUser
+                ?: throw Exception("User not authenticated")
+
+            // Validate current password
+            if (currentPassword.isBlank()) {
+                throw Exception("Current password is required")
+            }
+
+            // Validate new password
+            val passwordValidation = ValidationUtils.validatePassword(newPassword)
+            if (!passwordValidation.isValid) {
+                throw Exception(passwordValidation.errorMessage)
+            }
+
+            // Get user email for re-authentication
+            val email = currentUser.email
+            if (email == null) {
+                throw Exception("Cannot change password for this account type. Please contact support.")
+            }
+
+            // Re-authenticate user with current password
+            val credential = com.google.firebase.auth.EmailAuthProvider
+                .getCredential(email, currentPassword)
+
+            currentUser.reauthenticate(credential).await()
+
+            // If re-authentication successful, update password
+            currentUser.updatePassword(newPassword).await()
+
+            android.util.Log.d("AuthRepository", "Password changed successfully")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "Error changing password", e)
+            val errorMessage = when {
+                e.message?.contains("password is invalid") == true ||
+                e.message?.contains("wrong-password") == true ->
+                    "Current password is incorrect"
+                e.message?.contains("network") == true ->
+                    "Network error. Please check your connection and try again"
+                else -> FirebaseErrorHandler.getErrorMessage(e)
+            }
+            Result.failure(Exception(errorMessage))
         }
     }
 }
