@@ -33,6 +33,13 @@ fun ForgotPasswordScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
+    // Clear messages when screen is first shown
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearMessages()
+        }
+    }
+
     // Handle success
     LaunchedEffect(uiState.successMessage) {
         if (uiState.successMessage != null && !emailSent) {
@@ -247,14 +254,18 @@ fun ForgotPasswordScreen(
                         Text(
                             text = "Email sent to:",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = email,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
+                            color = Color.Black,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

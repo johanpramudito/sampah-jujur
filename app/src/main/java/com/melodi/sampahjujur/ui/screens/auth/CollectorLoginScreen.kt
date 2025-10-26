@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.melodi.sampahjujur.MainActivity
+import com.melodi.sampahjujur.ui.components.OtpVerificationSheet
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 import com.melodi.sampahjujur.viewmodel.PhoneAuthState
@@ -207,14 +208,18 @@ fun CollectorLoginScreen(
             // Sign Up Link
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "New collector? ",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
-                TextButton(onClick = onSignUpClick) {
+                TextButton(
+                    onClick = onSignUpClick,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(
                         text = "Register here",
                         fontSize = 14.sp,
@@ -228,157 +233,15 @@ fun CollectorLoginScreen(
 
     // OTP Bottom Sheet
     if (showOtpSheet) {
-        CollectorOtpVerificationSheet(
+        OtpVerificationSheet(
             phoneNumber = phone,
             viewModel = viewModel,
+            isRegistration = false,
             onDismiss = {
                 showOtpSheet = false
                 viewModel.resetPhoneAuthState()
             }
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CollectorOtpVerificationSheet(
-    phoneNumber: String,
-    viewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel,
-    onDismiss: () -> Unit
-) {
-    var otpValues by remember { mutableStateOf(List(6) { "" }) }
-    val phoneAuthState by viewModel.phoneAuthState.collectAsState()
-    val uiState by viewModel.uiState.collectAsState()
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Drag Handle
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(4.dp)
-                    .background(Color.LightGray, shape = RoundedCornerShape(2.dp))
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Verify Phone Number",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = Color.Black
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Enter 6-digit code sent to $phoneNumber",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // OTP Input Boxes
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                repeat(6) { index ->
-                    OtpBox(
-                        value = otpValues.getOrNull(index) ?: "",
-                        onValueChange = { newValue ->
-                            if (newValue.length <= 1 && (newValue.isEmpty() || newValue.all { it.isDigit() })) {
-                                otpValues = otpValues.toMutableList().apply {
-                                    this[index] = newValue
-                                }
-
-                                // Auto-verify when all digits entered
-                                if (otpValues.all { it.isNotBlank() }) {
-                                    val otp = otpValues.joinToString("")
-                                    viewModel.verifyPhoneCode(otp)
-                                }
-                            }
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Error Message
-            if (phoneAuthState is PhoneAuthState.Error) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFEBEE)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Error",
-                            tint = Color.Red,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = (phoneAuthState as PhoneAuthState.Error).message,
-                            color = Color.Red,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Verify Button
-            Button(
-                onClick = {
-                    val otp = otpValues.joinToString("")
-                    viewModel.verifyPhoneCode(otp)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryGreen
-                ),
-                shape = RoundedCornerShape(28.dp),
-                enabled = otpValues.all { it.isNotBlank() } && !uiState.isLoading
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White
-                    )
-                } else {
-                    Text(
-                        text = "Verify & Login",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
     }
 }
 

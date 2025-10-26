@@ -1,5 +1,8 @@
 package com.melodi.sampahjujur.ui.screens.auth
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -19,6 +23,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.melodi.sampahjujur.di.GoogleSignInModule
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 
@@ -37,10 +45,54 @@ fun HouseholdLoginScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val authState by viewModel.authState.collectAsState()
+    val context = LocalContext.current
+
+    // Google Sign-In launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            if (idToken != null) {
+                viewModel.signInWithGoogle(idToken)
+            } else {
+                // ID token is null - show error to user
+                android.util.Log.e("HouseholdLogin", "Google Sign-In failed: ID token is null")
+            }
+        } catch (e: ApiException) {
+            // Log the error for debugging
+            android.util.Log.e("HouseholdLogin", "Google Sign-In failed with code: ${e.statusCode}, message: ${e.message}")
+
+            // Silently handle cancellation (user backed out)
+            if (e.statusCode != 12501) { // 12501 = user cancelled
+                // Show error message for other failures
+                val errorMessage = when (e.statusCode) {
+                    7 -> "Network error. Please check your internet connection."
+                    10 -> "Google Sign-In is not properly configured. Please contact support."
+                    else -> "Google Sign-In failed: ${e.message ?: "Unknown error"}"
+                }
+                android.util.Log.e("HouseholdLogin", "Showing error: $errorMessage")
+            }
+        }
+    }
+
+    // Get GoogleSignInClient
+    val googleSignInClient = remember {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(GoogleSignInModule.getWebClientId())
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
 
     // Handle successful login
     LaunchedEffect(authState) {
+        android.util.Log.d("HouseholdLogin", "AuthState changed: $authState")
         if (authState is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated) {
+            val user = (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+            android.util.Log.d("HouseholdLogin", "User authenticated: ${user.fullName}, triggering onLoginSuccess")
             onLoginSuccess()
         }
     }
@@ -262,7 +314,15 @@ fun HouseholdLoginScreen(
 
             // Google Sign In Button
             OutlinedButton(
-                onClick = onGoogleSignInClick,
+                onClick = {
+                    // Sign out from Google to force account selection
+                    // This follows Android best practice for Google Sign-In
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        android.util.Log.d("HouseholdLogin", "Google sign-out completed, launching account picker")
+                        val signInIntent = googleSignInClient.signInIntent
+                        googleSignInLauncher.launch(signInIntent)
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -270,7 +330,8 @@ fun HouseholdLoginScreen(
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.White,
                     contentColor = Color.Black
-                )
+                ),
+                enabled = !uiState.isLoading
             ) {
                 // Google Icon placeholder (you can add actual Google icon)
                 Icon(
@@ -292,14 +353,18 @@ fun HouseholdLoginScreen(
             // Sign Up Link
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Don't have an account? ",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
-                TextButton(onClick = onSignUpClick) {
+                TextButton(
+                    onClick = onSignUpClick,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(
                         text = "Sign up",
                         fontSize = 14.sp,

@@ -1,5 +1,7 @@
 package com.melodi.sampahjujur.model
 
+import com.google.firebase.firestore.PropertyName
+
 /**
  * Data class representing a user in the Sampah Jujur application.
  * Supports both household and collector user types.
@@ -13,14 +15,50 @@ package com.melodi.sampahjujur.model
  * @property draftWasteItems Temporary list of waste items drafted by a household user
  */
 data class User(
-    val id: String = "",
-    val fullName: String = "",
-    val email: String = "",
-    val phone: String = "",
-    val address: String = "",
-    val profileImageUrl: String = "",
-    val userType: String = "", // "household" or "collector"
-    val draftWasteItems: List<WasteItem> = emptyList()
+    @get:PropertyName("id")
+    @set:PropertyName("id")
+    var id: String = "",
+
+    @get:PropertyName("fullName")
+    @set:PropertyName("fullName")
+    var fullName: String = "",
+
+    @get:PropertyName("email")
+    @set:PropertyName("email")
+    var email: String = "",
+
+    @get:PropertyName("phone")
+    @set:PropertyName("phone")
+    var phone: String = "",
+
+    @get:PropertyName("address")
+    @set:PropertyName("address")
+    var address: String = "",
+
+    @get:PropertyName("profileImageUrl")
+    @set:PropertyName("profileImageUrl")
+    var profileImageUrl: String = "",
+
+    @get:PropertyName("userType")
+    @set:PropertyName("userType")
+    var userType: String = "", // "household" or "collector"
+
+    // Collector-specific fields
+    @get:PropertyName("vehicleType")
+    @set:PropertyName("vehicleType")
+    var vehicleType: String = "",
+
+    @get:PropertyName("vehiclePlateNumber")
+    @set:PropertyName("vehiclePlateNumber")
+    var vehiclePlateNumber: String = "",
+
+    @get:PropertyName("operatingArea")
+    @set:PropertyName("operatingArea")
+    var operatingArea: String = "",
+
+    @get:PropertyName("draftWasteItems")
+    @set:PropertyName("draftWasteItems")
+    var draftWasteItems: List<WasteItem> = emptyList()
 ) {
     // Legacy compatibility
     @Deprecated("Use id instead", ReplaceWith("id"))

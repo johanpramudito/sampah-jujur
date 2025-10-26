@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.firebase.firestore.GeoPoint
-import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
@@ -40,7 +39,6 @@ fun LocationPickerScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val locationRepository = remember { LocationRepository(context) }
 
     // Get the current UI state from ViewModel
     val uiState by viewModel.uiState.collectAsState()
@@ -72,12 +70,14 @@ fun LocationPickerScreen(
         val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
 
         if (fineLocationGranted && coarseLocationGranted) {
-            // Permissions granted, get current location
+            // Permissions granted, get current location via ViewModel
+            viewModel.getCurrentLocation()
+            // The location will be updated in uiState, so we'll observe it
             scope.launch {
                 isLoadingLocation = true
-                val result = locationRepository.getCurrentLocation()
-                if (result.isSuccess) {
-                    val geoPoint = result.getOrNull()!!
+                // Wait a bit for the ViewModel to update
+                kotlinx.coroutines.delay(500)
+                uiState.selectedLocation?.let { geoPoint ->
                     val newLocation = OsmGeoPoint(geoPoint.latitude, geoPoint.longitude)
                     currentLocation = newLocation
                     mapView?.controller?.apply {
@@ -99,7 +99,7 @@ fun LocationPickerScreen(
             val center = mapView?.mapCenter
             if (center != null) {
                 val geoPoint = GeoPoint(center.latitude, center.longitude)
-                val addressResult = locationRepository.getAddressFromLocation(geoPoint)
+                val addressResult = viewModel.getAddressFromLocation(geoPoint)
                 if (addressResult.isSuccess) {
                     selectedAddress = addressResult.getOrNull() ?: ""
                 } else {
@@ -246,12 +246,14 @@ fun LocationPickerScreen(
             // Current Location Button
             FloatingActionButton(
                 onClick = {
-                    if (locationRepository.hasLocationPermission()) {
+                    if (viewModel.hasLocationPermission()) {
+                        viewModel.getCurrentLocation()
+                        // The location will be updated in uiState
                         scope.launch {
                             isLoadingLocation = true
-                            val result = locationRepository.getCurrentLocation()
-                            if (result.isSuccess) {
-                                val geoPoint = result.getOrNull()!!
+                            // Wait for ViewModel to update
+                            kotlinx.coroutines.delay(500)
+                            uiState.selectedLocation?.let { geoPoint ->
                                 val newLocation = OsmGeoPoint(geoPoint.latitude, geoPoint.longitude)
                                 currentLocation = newLocation
                                 mapView?.controller?.apply {

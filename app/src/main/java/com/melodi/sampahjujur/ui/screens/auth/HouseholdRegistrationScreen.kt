@@ -42,11 +42,12 @@ fun HouseholdRegistrationScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val authState by viewModel.authState.collectAsState()
+    var showVerificationDialog by remember { mutableStateOf(false) }
 
-    // Handle successful registration
-    LaunchedEffect(authState) {
-        if (authState is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated) {
-            onRegisterSuccess()
+    // Handle successful registration - show verification notice
+    LaunchedEffect(uiState.successMessage) {
+        if (uiState.successMessage != null) {
+            showVerificationDialog = true
         }
     }
 
@@ -216,7 +217,7 @@ fun HouseholdRegistrationScreen(
 
             // Terms & Conditions Checkbox
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Checkbox(
@@ -228,28 +229,33 @@ fun HouseholdRegistrationScreen(
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "I agree to the ",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Terms & Conditions",
-                    fontSize = 14.sp,
-                    color = PrimaryGreen,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = " and ",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Privacy Policy",
-                    fontSize = 14.sp,
-                    color = PrimaryGreen,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "I agree to the ",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "Terms & Conditions",
+                        fontSize = 14.sp,
+                        color = PrimaryGreen,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = " and ",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "Privacy Policy",
+                        fontSize = 14.sp,
+                        color = PrimaryGreen,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -411,14 +417,18 @@ fun HouseholdRegistrationScreen(
             // Login Link
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Already have an account? ",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
-                TextButton(onClick = onLoginClick) {
+                TextButton(
+                    onClick = onLoginClick,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(
                         text = "Log in",
                         fontSize = 14.sp,
@@ -429,6 +439,68 @@ fun HouseholdRegistrationScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // Email Verification Dialog
+        if (showVerificationDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showVerificationDialog = false
+                    viewModel.clearSuccessMessage()
+                    onLoginClick() // Navigate to login screen
+                },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.MarkEmailRead,
+                        contentDescription = "Email Sent",
+                        tint = PrimaryGreen,
+                        modifier = Modifier.size(48.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Verify Your Email",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = uiState.successMessage ?: "",
+                            fontSize = 16.sp,
+                            color = Color.DarkGray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Please check your inbox and spam folder for the verification email.",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showVerificationDialog = false
+                            viewModel.clearSuccessMessage()
+                            onLoginClick() // Navigate to login screen
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryGreen
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Go to Login",
+                            color = Color.Black,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }

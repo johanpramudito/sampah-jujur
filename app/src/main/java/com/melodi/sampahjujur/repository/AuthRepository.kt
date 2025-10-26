@@ -5,6 +5,7 @@ import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.utils.FirebaseErrorHandler
 import com.melodi.sampahjujur.utils.ValidationUtils
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
@@ -69,6 +70,7 @@ class AuthRepository @Inject constructor(
 
             // Send email verification
             authResult.user?.sendEmailVerification()?.await()
+            android.util.Log.d("AuthRepository", "registerHousehold: Email verification sent to $email")
 
             val user = User(
                 id = uid,
@@ -84,6 +86,12 @@ class AuthRepository @Inject constructor(
                 .set(user, SetOptions.merge())
                 .await()
 
+            android.util.Log.d("AuthRepository", "registerHousehold: User created successfully")
+
+            // Sign out the user to prevent auto-login before email verification
+            auth.signOut()
+            android.util.Log.d("AuthRepository", "registerHousehold: User signed out, awaiting email verification")
+
             Result.success(user)
         } catch (e: Exception) {
             val errorMessage = FirebaseErrorHandler.getErrorMessage(e)
@@ -98,6 +106,7 @@ class AuthRepository @Inject constructor(
      * @param name Collector's display name
      * @param phone Collector's phone number
      * @param vehicleType Optional vehicle type
+     * @param vehiclePlateNumber Optional vehicle plate number
      * @param operatingArea Optional operating area
      * @return Result containing the User object or error
      */
@@ -106,6 +115,7 @@ class AuthRepository @Inject constructor(
         name: String,
         phone: String,
         vehicleType: String = "",
+        vehiclePlateNumber: String = "",
         operatingArea: String = ""
     ): Result<User> {
         return try {
@@ -148,6 +158,9 @@ class AuthRepository @Inject constructor(
             // Add optional fields if provided
             if (vehicleType.isNotBlank()) {
                 userData["vehicleType"] = vehicleType.trim()
+            }
+            if (vehiclePlateNumber.isNotBlank()) {
+                userData["vehiclePlateNumber"] = vehiclePlateNumber.trim()
             }
             if (operatingArea.isNotBlank()) {
                 userData["operatingArea"] = operatingArea.trim()
@@ -198,6 +211,16 @@ class AuthRepository @Inject constructor(
                 password
             ).await()
             val uid = authResult.user?.uid ?: throw Exception("Failed to get user ID")
+
+            // Check email verification
+            val currentUser = auth.currentUser
+            if (currentUser != null && !currentUser.isEmailVerified) {
+                // Send verification email again
+                currentUser.sendEmailVerification().await()
+
+                auth.signOut()
+                throw Exception("Please verify your email address. A new verification email has been sent to ${email.trim().lowercase()}. Check your inbox and spam folder.")
+            }
 
             // Fetch user data from Firestore
             val userDoc = firestore.collection("users")
@@ -255,6 +278,118 @@ class AuthRepository @Inject constructor(
 
             Result.success(user)
         } catch (e: Exception) {
+            val errorMessage = FirebaseErrorHandler.getErrorMessage(e)
+            Result.failure(Exception(errorMessage))
+        }
+    }
+
+    /**
+     * Signs in a household user with Google authentication
+     *
+     * Handles both new user registration and existing user login.
+     * For household users only - collectors must use phone authentication.
+     *
+     * @param idToken Google ID token from Google Sign-In flow
+     * @return Result containing the User object or error
+     */
+    suspend fun signInWithGoogle(idToken: String): Result<User> {
+        return try {
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Starting Google Sign-In")
+
+            // Create Firebase credential from Google ID token
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Created Firebase credential")
+
+            val authResult = auth.signInWithCredential(credential).await()
+            val uid = authResult.user?.uid ?: throw Exception("Failed to get user ID")
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Successfully authenticated with Firebase Auth, UID: $uid")
+
+            // Check if user exists in Firestore
+            val userDoc = firestore.collection("users")
+                .document(uid)
+                .get()
+                .await()
+
+            android.util.Log.d("AuthRepository", "signInWithGoogle: User document exists: ${userDoc.exists()}")
+
+            val user = if (userDoc.exists()) {
+                // Existing user - verify is household
+                val existingUser = userDoc.toObject(User::class.java)
+                    ?: throw Exception("User data not found in database")
+
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Existing user found - " +
+                        "Name: ${existingUser.fullName}, Email: ${existingUser.email}, UserType: ${existingUser.userType}")
+
+                // Verify user role
+                if (!existingUser.isHousehold()) {
+                    android.util.Log.e("AuthRepository", "signInWithGoogle: User is not a household (userType: ${existingUser.userType})")
+                    auth.signOut() // Sign out user with wrong role
+                    throw Exception("This account is registered as a collector. Please use collector login with your phone number.")
+                }
+
+                // Update profile image if changed
+                val photoUrl = authResult.user?.photoUrl?.toString() ?: ""
+                if (photoUrl != existingUser.profileImageUrl && photoUrl.isNotEmpty()) {
+                    android.util.Log.d("AuthRepository", "signInWithGoogle: Updating profile image")
+                    val updatedUser = existingUser.copy(profileImageUrl = photoUrl)
+                    firestore.collection("users")
+                        .document(uid)
+                        .set(updatedUser, SetOptions.merge())
+                        .await()
+                    android.util.Log.d("AuthRepository", "signInWithGoogle: Profile image updated successfully")
+                    updatedUser
+                } else {
+                    existingUser
+                }
+            } else {
+                // New user - create household account
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Creating new user account")
+
+                val email = authResult.user?.email
+                    ?: throw Exception("Email not available from Google account")
+                val name = authResult.user?.displayName ?: email.substringBefore("@")
+                val photoUrl = authResult.user?.photoUrl?.toString() ?: ""
+
+                android.util.Log.d("AuthRepository", "signInWithGoogle: New user data - Name: $name, Email: $email")
+
+                // Validate email
+                val emailValidation = ValidationUtils.validateEmail(email)
+                if (!emailValidation.isValid) {
+                    android.util.Log.e("AuthRepository", "signInWithGoogle: Email validation failed: ${emailValidation.errorMessage}")
+                    auth.signOut()
+                    throw Exception(emailValidation.errorMessage)
+                }
+
+                val newUser = User(
+                    id = uid,
+                    fullName = name,
+                    email = email.trim().lowercase(),
+                    userType = User.ROLE_HOUSEHOLD,
+                    profileImageUrl = photoUrl
+                )
+
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Saving new user to Firestore with userType: ${newUser.userType}")
+
+                // Save user data to Firestore
+                firestore.collection("users")
+                    .document(uid)
+                    .set(newUser, SetOptions.merge())
+                    .await()
+
+                android.util.Log.d("AuthRepository", "signInWithGoogle: New user saved successfully")
+
+                // Verify the save by reading back
+                val verifyDoc = firestore.collection("users").document(uid).get().await()
+                val savedUser = verifyDoc.toObject(User::class.java)
+                android.util.Log.d("AuthRepository", "signInWithGoogle: Verification - Saved user userType: ${savedUser?.userType}")
+
+                newUser
+            }
+
+            android.util.Log.d("AuthRepository", "signInWithGoogle: Sign-in completed successfully for user: ${user.fullName}")
+            Result.success(user)
+        } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "signInWithGoogle: Failed with exception", e)
             val errorMessage = FirebaseErrorHandler.getErrorMessage(e)
             Result.failure(Exception(errorMessage))
         }
@@ -389,6 +524,57 @@ class AuthRepository @Inject constructor(
                 phone = phone,
                 address = address,
                 profileImageUrl = profileImageUrl
+            )
+
+            // Update in Firestore
+            firestore.collection("users")
+                .document(uid)
+                .set(updatedUser)
+                .await()
+
+            Result.success(updatedUser)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Updates collector profile with vehicle and operating area information
+     *
+     * @param fullName Updated full name
+     * @param phone Updated phone number
+     * @param vehicleType Updated vehicle type
+     * @param vehiclePlateNumber Updated vehicle plate number
+     * @param operatingArea Updated operating area
+     * @return Result indicating success or failure
+     */
+    suspend fun updateCollectorProfile(
+        fullName: String,
+        phone: String,
+        vehicleType: String,
+        vehiclePlateNumber: String,
+        operatingArea: String
+    ): Result<User> {
+        return try {
+            val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
+            val uid = currentUser.uid
+
+            // Get current user data to preserve other fields
+            val userDoc = firestore.collection("users")
+                .document(uid)
+                .get()
+                .await()
+
+            val existingUser = userDoc.toObject(User::class.java)
+                ?: throw Exception("User data not found")
+
+            // Create updated user object
+            val updatedUser = existingUser.copy(
+                fullName = fullName,
+                phone = phone,
+                vehicleType = vehicleType,
+                vehiclePlateNumber = vehiclePlateNumber,
+                operatingArea = operatingArea
             )
 
             // Update in Firestore

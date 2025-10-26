@@ -58,6 +58,21 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // Fix for 16 KB page size compatibility (required for Android 15+ and Google Play)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    // Ensure extractNativeLibs is set to false for proper 16KB alignment
+    androidResources {
+        noCompress += "so"
+    }
 }
 
 dependencies {
@@ -88,6 +103,9 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
 
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+
     // Hilt Dependency Injection
     implementation("com.google.dagger:hilt-android:2.51.1")
     ksp("com.google.dagger:hilt-compiler:2.51.1")
@@ -101,6 +119,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    // DataStore for preferences
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     // SwipeRefreshLayout
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
@@ -134,8 +155,8 @@ dependencies {
     implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
 
-    // Coil for Image Loading in Compose
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    // Coil for Image Loading in Compose (updated for 16KB page size support)
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Cloudinary for Image Upload
     implementation("com.cloudinary:cloudinary-android:2.5.0")

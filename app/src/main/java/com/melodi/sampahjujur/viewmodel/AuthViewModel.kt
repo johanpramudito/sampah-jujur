@@ -9,6 +9,7 @@ import com.google.firebase.FirebaseException
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,9 @@ class AuthViewModel @Inject constructor(
 
     private val _phoneAuthState = MutableStateFlow<PhoneAuthState>(PhoneAuthState.Idle)
     val phoneAuthState: StateFlow<PhoneAuthState> = _phoneAuthState.asStateFlow()
+
+    private val _otpResendCooldown = MutableStateFlow(0)
+    val otpResendCooldown: StateFlow<Int> = _otpResendCooldown.asStateFlow()
 
     // Store verification ID for phone auth
     private var verificationId: String? = null
@@ -66,18 +70,49 @@ class AuthViewModel @Inject constructor(
      */
     fun signInHousehold(email: String, password: String) {
         viewModelScope.launch {
+            android.util.Log.d("AuthViewModel", "signInHousehold: Starting login for email: $email")
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             val result = authRepository.signInHousehold(email, password)
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
+                android.util.Log.d("AuthViewModel", "signInHousehold: Success - User: ${user.fullName}, Email: ${user.email}, UserType: ${user.userType}")
                 _authState.value = AuthState.Authenticated(user)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } else {
+                val error = result.exceptionOrNull()?.message ?: "Login failed"
+                android.util.Log.e("AuthViewModel", "signInHousehold: Failed - $error")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = result.exceptionOrNull()?.message ?: "Login failed"
+                    errorMessage = error
+                )
+            }
+        }
+    }
+
+    /**
+     * Signs in a household user with Google
+     */
+    fun signInWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            android.util.Log.d("AuthViewModel", "signInWithGoogle: Starting")
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.signInWithGoogle(idToken)
+
+            if (result.isSuccess) {
+                val user = result.getOrNull()!!
+                android.util.Log.d("AuthViewModel", "signInWithGoogle: Success - User: ${user.fullName}, Email: ${user.email}, UserType: ${user.userType}")
+                _authState.value = AuthState.Authenticated(user)
+                android.util.Log.d("AuthViewModel", "signInWithGoogle: AuthState updated to Authenticated")
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Google sign-in failed"
+                android.util.Log.e("AuthViewModel", "signInWithGoogle: Failed - $error")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = error
                 )
             }
         }
@@ -85,21 +120,32 @@ class AuthViewModel @Inject constructor(
 
     /**
      * Registers a new household user with email and password
+     * User must verify email before logging in
      */
     fun registerHousehold(fullName: String, email: String, phone: String, password: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            android.util.Log.d("AuthViewModel", "registerHousehold: Starting registration for email: $email")
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, successMessage = null)
 
             val result = authRepository.registerHousehold(email, password, fullName, phone)
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
-                _authState.value = AuthState.Authenticated(user)
-                _uiState.value = _uiState.value.copy(isLoading = false)
-            } else {
+                android.util.Log.d("AuthViewModel", "registerHousehold: Registration successful for user: ${user.fullName}")
+
+                // Don't authenticate - user needs to verify email first
+                // Keep state as Unauthenticated and show success message
+                _authState.value = AuthState.Unauthenticated
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = result.exceptionOrNull()?.message ?: "Registration failed"
+                    successMessage = "Account created successfully! Please check your email (${user.email}) to verify your account before logging in."
+                )
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Registration failed"
+                android.util.Log.e("AuthViewModel", "registerHousehold: Failed - $error")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = error
                 )
             }
         }
@@ -135,6 +181,7 @@ class AuthViewModel @Inject constructor(
         fullName: String,
         phone: String,
         vehicleType: String = "",
+        vehiclePlateNumber: String = "",
         operatingArea: String = ""
     ) {
         viewModelScope.launch {
@@ -145,6 +192,7 @@ class AuthViewModel @Inject constructor(
                 fullName,
                 phone,
                 vehicleType,
+                vehiclePlateNumber,
                 operatingArea
             )
 
@@ -176,6 +224,9 @@ class AuthViewModel @Inject constructor(
             try {
                 _phoneAuthState.value = PhoneAuthState.CodeSent("Sending code...")
 
+                // Start resend cooldown timer
+                startResendCooldown()
+
                 val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                     override fun onVerificationCompleted(credential: PhoneAuthCredential) {
                         // Auto-verification completed
@@ -186,6 +237,8 @@ class AuthViewModel @Inject constructor(
                         _phoneAuthState.value = PhoneAuthState.Error(
                             e.message ?: "Verification failed. Please try again."
                         )
+                        // Reset cooldown on failure
+                        _otpResendCooldown.value = 0
                     }
 
                     override fun onCodeSent(
@@ -205,6 +258,38 @@ class AuthViewModel @Inject constructor(
                 _phoneAuthState.value = PhoneAuthState.Error(
                     e.message ?: "Failed to send verification code"
                 )
+                // Reset cooldown on failure
+                _otpResendCooldown.value = 0
+            }
+        }
+    }
+
+    /**
+     * Resends OTP verification code
+     *
+     * @param phoneNumber Phone number to send code to
+     * @param activity Activity context
+     */
+    fun resendOtp(phoneNumber: String, activity: Activity) {
+        if (_otpResendCooldown.value > 0) {
+            _phoneAuthState.value = PhoneAuthState.Error(
+                "Please wait ${_otpResendCooldown.value} seconds before resending"
+            )
+            return
+        }
+        sendPhoneVerificationCode(phoneNumber, activity)
+    }
+
+    /**
+     * Starts the OTP resend cooldown timer
+     *
+     * @param seconds Cooldown duration in seconds (default: 60)
+     */
+    private fun startResendCooldown(seconds: Int = 60) {
+        viewModelScope.launch {
+            for (i in seconds downTo 0) {
+                _otpResendCooldown.value = i
+                delay(1000)
             }
         }
     }
@@ -287,6 +372,106 @@ class AuthViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    /**
+     * Clears success messages (useful for password reset flow)
+     */
+    fun clearSuccessMessage() {
+        _uiState.value = _uiState.value.copy(successMessage = null)
+    }
+
+    /**
+     * Clears all UI messages (errors and success)
+     */
+    fun clearMessages() {
+        _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
+    }
+
+    /**
+     * Updates household user profile
+     *
+     * @param fullName User's full name
+     * @param email User's email
+     * @param phone User's phone number
+     * @param address User's address
+     * @param profileImageUrl URL to profile image
+     */
+    fun updateHouseholdProfile(
+        fullName: String,
+        email: String,
+        phone: String,
+        address: String,
+        profileImageUrl: String
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.updateProfile(
+                fullName = fullName,
+                email = email,
+                phone = phone,
+                address = address,
+                profileImageUrl = profileImageUrl
+            )
+
+            if (result.isSuccess) {
+                val updatedUser = result.getOrNull()!!
+                _authState.value = AuthState.Authenticated(updatedUser)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Profile updated successfully"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to update profile"
+                )
+            }
+        }
+    }
+
+    /**
+     * Updates collector user profile
+     *
+     * @param fullName Collector's full name
+     * @param phone Collector's phone number
+     * @param vehicleType Vehicle type
+     * @param vehiclePlateNumber Vehicle plate number
+     * @param operatingArea Operating area
+     */
+    fun updateCollectorProfile(
+        fullName: String,
+        phone: String,
+        vehicleType: String,
+        vehiclePlateNumber: String,
+        operatingArea: String
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.updateCollectorProfile(
+                fullName = fullName,
+                phone = phone,
+                vehicleType = vehicleType,
+                vehiclePlateNumber = vehiclePlateNumber,
+                operatingArea = operatingArea
+            )
+
+            if (result.isSuccess) {
+                val updatedUser = result.getOrNull()!!
+                _authState.value = AuthState.Authenticated(updatedUser)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Profile updated successfully"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to update profile"
+                )
+            }
+        }
     }
 
     /**

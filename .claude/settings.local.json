@@ -14,7 +14,8 @@
       "Bash(mv:*)",
       "Bash(del \"E:\\StudioProjects\\sampah-jujur\\app\\src\\main\\java\\com\\melodi\\sampahjujur\\ui\\screens\\SplashScreen.kt\")",
       "Bash(gradlew.bat assembleDebug:*)",
-      "Bash(./gradlew.bat assembleDebug --console=plain)"
+      "Bash(./gradlew.bat assembleDebug --console=plain)",
+      "Bash(./gradlew.bat clean:*)"
     ],
     "deny": [],
     "ask": []
