@@ -4,6 +4,8 @@ import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -11,9 +13,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +54,8 @@ fun OtpVerificationSheet(
     val uiState by viewModel.uiState.collectAsState()
     val resendCooldown by viewModel.otpResendCooldown.collectAsState()
     val context = LocalContext.current
+    val focusRequesters = remember { List(6) { FocusRequester() } }
+    val focusManager = LocalFocusManager.current
 
     // Auto-register/login when verification completes
     LaunchedEffect(phoneAuthState) {
@@ -114,23 +123,73 @@ fun OtpVerificationSheet(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 repeat(6) { index ->
-                    OtpBox(
+                    OutlinedTextField(
                         value = otpValues.getOrNull(index) ?: "",
                         onValueChange = { newValue ->
+                            // Only allow single digit
                             if (newValue.length <= 1 && (newValue.isEmpty() || newValue.all { it.isDigit() })) {
                                 otpValues = otpValues.toMutableList().apply {
                                     this[index] = newValue
                                 }
 
+                                // Move focus forward when digit entered
+                                if (newValue.isNotEmpty() && index < 5) {
+                                    focusRequesters[index + 1].requestFocus()
+                                }
+
                                 // Auto-verify when all digits entered
+                                if (otpValues.all { it.isNotBlank() }) {
+                                    focusManager.clearFocus()
+                                    val otp = otpValues.joinToString("")
+                                    viewModel.verifyPhoneCode(otp)
+                                }
+                            } else if (newValue.isEmpty() && index > 0) {
+                                // Move focus backward when deleting
+                                focusRequesters[index - 1].requestFocus()
+                            }
+                        },
+                        modifier = Modifier
+                            .width(50.dp)
+                            .focusRequester(focusRequesters[index]),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.NumberPassword,
+                            imeAction = if (index == 5) ImeAction.Done else ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                if (index < 5) {
+                                    focusRequesters[index + 1].requestFocus()
+                                }
+                            },
+                            onDone = {
+                                focusManager.clearFocus()
                                 if (otpValues.all { it.isNotBlank() }) {
                                     val otp = otpValues.joinToString("")
                                     viewModel.verifyPhoneCode(otp)
                                 }
                             }
-                        }
+                        ),
+                        textStyle = LocalTextStyle.current.copy(
+                            textAlign = TextAlign.Center,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreen,
+                            unfocusedBorderColor = if (otpValues.getOrNull(index)?.isNotBlank() == true)
+                                PrimaryGreen else Color.LightGray,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
+            }
+
+            // Auto-focus first field when sheet opens
+            LaunchedEffect(Unit) {
+                focusRequesters[0].requestFocus()
             }
 
             Spacer(modifier = Modifier.height(24.dp))
