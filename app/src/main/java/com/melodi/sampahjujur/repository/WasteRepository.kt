@@ -108,6 +108,28 @@ class WasteRepository @Inject constructor(
     }
 
     /**
+     * Observes a single pickup request by ID as a Flow for real-time updates
+     *
+     * @param requestId The pickup request ID
+     * @return Flow of PickupRequest or null if not found
+     */
+    fun observeRequest(requestId: String): Flow<PickupRequest?> = callbackFlow {
+        val listener = firestore.collection(PICKUP_REQUESTS_COLLECTION)
+            .document(requestId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val request = snapshot?.toObject(PickupRequest::class.java)
+                trySend(request)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    /**
      * Gets accepted pickup requests for a specific collector as a Flow
      *
      * @param collectorId The collector user ID
