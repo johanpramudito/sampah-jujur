@@ -166,6 +166,7 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
+<<<<<<< HEAD
      * Sends phone verification code for collector authentication
      *
      * @param phoneNumber Phone number to verify
@@ -244,17 +245,38 @@ class AuthViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     successMessage = "Password reset email sent. Please check your inbox."
+=======
+     * Updates the current user's profile information
+     */
+    fun updateProfile(fullName: String, email: String, phone: String, address: String, profileImageUrl: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.updateProfile(fullName, email, phone, address, profileImageUrl)
+
+            if (result.isSuccess) {
+                val updatedUser = result.getOrNull()!!
+                _authState.value = AuthState.Authenticated(updatedUser)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Profile updated successfully"
+>>>>>>> 8113fdf4fb39e28101f8673884e61d410be67a3a
                 )
             } else {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+<<<<<<< HEAD
                     errorMessage = result.exceptionOrNull()?.message ?: "Failed to send reset email"
+=======
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to update profile"
+>>>>>>> 8113fdf4fb39e28101f8673884e61d410be67a3a
                 )
             }
         }
     }
 
     /**
+<<<<<<< HEAD
      * Resets the phone auth state
      */
     fun resetPhoneAuthState() {
@@ -264,6 +286,8 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
+=======
+>>>>>>> 8113fdf4fb39e28101f8673884e61d410be67a3a
      * Signs out the current user
      */
     fun signOut() {
@@ -287,6 +311,13 @@ class AuthViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    /**
+     * Clears success message
+     */
+    fun clearSuccess() {
+        _uiState.value = _uiState.value.copy(successMessage = null)
     }
 
     /**

@@ -206,7 +206,7 @@ fun RequestPickupScreen(
                                     contentDescription = "Get Location"
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (selectedAddress.isEmpty()) "Get Current Location" else "Update Location")
+                                Text("Get Current Location")
                             }
                         }
                     }
@@ -615,6 +615,19 @@ fun MapPreview(
                     }
                     overlays.add(marker)
                 }
+            },
+            update = { mapView ->
+                // Update map center and marker when location changes
+                val newLocation = GeoPoint(latitude, longitude)
+                mapView.controller.setCenter(newLocation)
+
+                // Update marker position
+                if (mapView.overlays.isNotEmpty()) {
+                    val marker = mapView.overlays.firstOrNull { it is Marker } as? Marker
+                    marker?.position = newLocation
+                }
+
+                mapView.invalidate()
             },
             modifier = Modifier.fillMaxSize()
         )

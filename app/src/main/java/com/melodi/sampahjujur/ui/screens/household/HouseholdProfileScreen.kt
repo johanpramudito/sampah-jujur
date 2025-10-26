@@ -1,5 +1,6 @@
 package com.melodi.sampahjujur.ui.screens.household
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,12 +13,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.ui.components.HouseholdBottomNavBar
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
@@ -88,15 +92,27 @@ fun HouseholdProfileScreen(
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
-                                .background(Color.White, CircleShape),
+                                .clip(CircleShape)
+                                .background(Color.White),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Profile",
-                                tint = PrimaryGreen,
-                                modifier = Modifier.size(48.dp)
-                            )
+                            if (user.profileImageUrl.isNotEmpty()) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(user.profileImageUrl),
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

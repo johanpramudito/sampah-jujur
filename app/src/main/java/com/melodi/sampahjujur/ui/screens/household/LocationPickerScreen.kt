@@ -30,8 +30,6 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,16 +42,24 @@ fun LocationPickerScreen(
     val scope = rememberCoroutineScope()
     val locationRepository = remember { LocationRepository(context) }
 
-    // Default location (Yogyakarta, Indonesia)
-    var currentLocation by remember { mutableStateOf(OsmGeoPoint(-7.7956, 110.3695)) }
-    var selectedAddress by remember { mutableStateOf("") }
+    // Get the current UI state from ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Initialize with previously selected location or default to Yogyakarta, Indonesia
+    val initialLocation = remember {
+        uiState.selectedLocation?.let {
+            OsmGeoPoint(it.latitude, it.longitude)
+        } ?: OsmGeoPoint(-7.7956, 110.3695)
+    }
+
+    var currentLocation by remember { mutableStateOf(initialLocation) }
+    var selectedAddress by remember { mutableStateOf(uiState.selectedAddress) }
     var isLoadingAddress by remember { mutableStateOf(false) }
     var isLoadingLocation by remember { mutableStateOf(false) }
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
 
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var centerMarker by remember { mutableStateOf<Marker?>(null) }
-    var myLocationOverlay by remember { mutableStateOf<MyLocationNewOverlay?>(null) }
 
     // Track map movement for auto-address update
     var scrollDebounceJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -151,12 +157,6 @@ fun LocationPickerScreen(
                         controller.setZoom(15.0)
                         controller.setCenter(currentLocation)
 
-                        // Add my location overlay
-                        val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
-                        locationOverlay.enableMyLocation()
-                        overlays.add(locationOverlay)
-                        myLocationOverlay = locationOverlay
-
                         // Add center marker
                         val marker = Marker(this).apply {
                             position = currentLocation
@@ -195,17 +195,6 @@ fun LocationPickerScreen(
                 update = { view ->
                     // Update when needed
                 }
-            )
-
-            // Center crosshair overlay (optional visual indicator)
-            Icon(
-                imageVector = Icons.Default.MyLocation,
-                contentDescription = "Location Pin",
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(48.dp)
-                    .offset(y = (-24).dp),
-                tint = Color.Red
             )
 
             // Address Card at the top
@@ -363,9 +352,11 @@ fun LocationPickerScreen(
         }
     }
 
-    // Initial address load
+    // Initial address load (only if no address is already selected)
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(1000) // Wait for map to load
-        updateAddressFromMapCenter()
+        if (selectedAddress.isEmpty()) {
+            kotlinx.coroutines.delay(1000) // Wait for map to load
+            updateAddressFromMapCenter()
+        }
     }
 }
