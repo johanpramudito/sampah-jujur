@@ -329,13 +329,19 @@ fun SampahJujurNavGraph(
 
         // Household Profile Screen
         composable(Screen.HouseholdProfile.route) {
-            val user = authViewModel.getCurrentUser() ?: User(
-                id = "user1",
-                fullName = "Test User",
-                email = "test@example.com",
-                phone = "+1234567890",
-                userType = "household"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    userType = "household"
+                )
+            }
 
             HouseholdProfileScreen(
                 user = user,
@@ -372,26 +378,48 @@ fun SampahJujurNavGraph(
 
         // Household Edit Profile Screen
         composable(Screen.HouseholdEditProfile.route) {
-            // TODO: Get from ViewModel
-            val user = User(
-                id = "user1",
-                fullName = "Test User",
-                email = "test@example.com",
-                phone = "+1234567890",
-                address = "",
-                userType = "household"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    address = "",
+                    userType = "household"
+                )
+            }
+            val uiState by authViewModel.uiState.collectAsState()
 
             EditProfileScreen(
                 user = user,
+                isLoading = uiState.isLoading,
+                errorMessage = uiState.errorMessage,
                 onBackClick = {
+                    authViewModel.clearMessages()
                     navController.popBackStack()
                 },
                 onSaveClick = { fullName, email, phone, address, profileImageUrl ->
-                    // TODO: Update in ViewModel
-                    navController.popBackStack()
+                    authViewModel.updateHouseholdProfile(
+                        fullName = fullName,
+                        email = email,
+                        phone = phone,
+                        address = address,
+                        profileImageUrl = profileImageUrl
+                    )
                 }
             )
+
+            // Navigate back on successful update
+            LaunchedEffect(uiState.successMessage) {
+                if (uiState.successMessage?.contains("successfully") == true) {
+                    navController.popBackStack()
+                    authViewModel.clearMessages()
+                }
+            }
         }
 
         // Collector Dashboard Screen
@@ -424,13 +452,19 @@ fun SampahJujurNavGraph(
 
         // Collector Profile Screen
         composable(Screen.CollectorProfile.route) {
-            val user = authViewModel.getCurrentUser() ?: User(
-                id = "collector1",
-                fullName = "Test Collector",
-                email = "",
-                phone = "+1234567890",
-                userType = "collector"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    userType = "collector"
+                )
+            }
 
             CollectorProfileScreen(
                 user = user,
@@ -475,28 +509,48 @@ fun SampahJujurNavGraph(
 
         // Collector Edit Profile Screen
         composable(Screen.CollectorEditProfile.route) {
-            // TODO: Get from ViewModel
-            val user = User(
-                id = "collector1",
-                fullName = "Test Collector",
-                email = "",
-                phone = "+1234567890",
-                userType = "collector"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    userType = "collector"
+                )
+            }
+            val uiState by authViewModel.uiState.collectAsState()
 
             CollectorEditProfileScreen(
                 user = user,
-                vehicleType = "",
-                vehiclePlateNumber = "",
-                operatingArea = "",
+                vehicleType = user.vehicleType,
+                vehiclePlateNumber = user.vehiclePlateNumber,
+                operatingArea = user.operatingArea,
                 onBackClick = {
+                    authViewModel.clearMessages()
                     navController.popBackStack()
                 },
                 onSaveClick = { fullName, phone, vehicleType, plateNumber, operatingArea ->
-                    // TODO: Update in ViewModel
-                    navController.popBackStack()
+                    authViewModel.updateCollectorProfile(
+                        fullName = fullName,
+                        phone = phone,
+                        vehicleType = vehicleType,
+                        vehiclePlateNumber = plateNumber,
+                        operatingArea = operatingArea
+                    )
                 }
             )
+
+            // Navigate back on successful update
+            LaunchedEffect(uiState.successMessage) {
+                if (uiState.successMessage?.contains("successfully") == true) {
+                    navController.popBackStack()
+                    authViewModel.clearMessages()
+                }
+            }
         }
 
         // Settings Screen
