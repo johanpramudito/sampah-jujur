@@ -159,6 +159,31 @@ class WasteRepository @Inject constructor(
     }
 
     /**
+     * Observes a user document for real-time updates.
+     */
+    fun observeUser(userId: String): Flow<User?> = callbackFlow {
+        if (userId.isBlank()) {
+            trySend(null)
+            close()
+            return@callbackFlow
+        }
+
+        val listener = firestore.collection(USERS_COLLECTION)
+            .document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val user = snapshot?.toObject(User::class.java)
+                trySend(user)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    /**
      * Accepts a pickup request by assigning it to a collector
      *
      * @param requestId ID of the pickup request to accept

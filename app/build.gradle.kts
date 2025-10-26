@@ -150,6 +150,9 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
+    // Maps / OpenStreetMap
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
+
     // Compose Accompanist (for Pager, etc.)
     implementation("com.google.accompanist:accompanist-pager:0.32.0")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")

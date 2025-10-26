@@ -8,6 +8,7 @@ import com.melodi.sampahjujur.model.Earnings
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.Transaction
 import com.melodi.sampahjujur.model.TransactionItem
+import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -346,6 +348,11 @@ class CollectorViewModel @Inject constructor(
      */
     fun observeRequest(requestId: String): Flow<PickupRequest?> {
         return wasteRepository.watchPickupRequest(requestId)
+    }
+
+    fun observeUser(userId: String): Flow<User?> {
+        if (userId.isBlank()) return flowOf(null)
+        return wasteRepository.observeUser(userId)
     }
 
     /**
