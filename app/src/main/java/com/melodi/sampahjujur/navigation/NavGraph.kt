@@ -31,6 +31,7 @@ sealed class Screen(val route: String) {
     // Household Auth
     object HouseholdLogin : Screen("household_login")
     object HouseholdRegistration : Screen("household_registration")
+    object ForgotPassword : Screen("forgot_password")
 
     // Collector Auth
     object CollectorLogin : Screen("collector_login")
@@ -168,10 +169,23 @@ fun SampahJujurNavGraph(
                     // TODO: Handle Google sign-in
                 },
                 onForgotPasswordClick = {
-                    // TODO: Handle forgot password
+                    navController.navigate(Screen.ForgotPassword.route)
                 },
                 onSignUpClick = {
                     navController.navigate(Screen.HouseholdRegistration.route)
+                }
+            )
+        }
+
+        // Forgot Password
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                viewModel = authViewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onEmailSent = {
+                    // User can navigate back manually
                 }
             )
         }
@@ -192,11 +206,9 @@ fun SampahJujurNavGraph(
         // Collector Login
         composable(Screen.CollectorLogin.route) {
             CollectorLoginScreen(
-                onSendOtpClick = { phone ->
-                    // TODO: Handle OTP send with Firebase
-                    navController.navigate(Screen.CollectorDashboard.route) {
-                        popUpTo(Screen.RoleSelection.route) { inclusive = true }
-                    }
+                viewModel = authViewModel,
+                onLoginSuccess = {
+                    // AuthViewModel will handle navigation via LaunchedEffect above
                 },
                 onSignUpClick = {
                     navController.navigate(Screen.CollectorRegistration.route)
@@ -207,11 +219,9 @@ fun SampahJujurNavGraph(
         // Collector Registration
         composable(Screen.CollectorRegistration.route) {
             CollectorRegistrationScreen(
-                onSendOtpClick = { fullName, phone, vehicleType, operatingArea ->
-                    // TODO: Handle registration with Firebase
-                    navController.navigate(Screen.CollectorDashboard.route) {
-                        popUpTo(Screen.RoleSelection.route) { inclusive = true }
-                    }
+                viewModel = authViewModel,
+                onRegisterSuccess = {
+                    // AuthViewModel will handle navigation via LaunchedEffect above
                 },
                 onLoginClick = {
                     navController.popBackStack()

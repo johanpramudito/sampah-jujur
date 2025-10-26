@@ -16,19 +16,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.melodi.sampahjujur.MainActivity
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
+import com.melodi.sampahjujur.viewmodel.PhoneAuthState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectorRegistrationScreen(
-    onSendOtpClick: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    viewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    onRegisterSuccess: () -> Unit = {},
     onLoginClick: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("") }
@@ -38,8 +42,35 @@ fun CollectorRegistrationScreen(
     var termsAccepted by remember { mutableStateOf(false) }
     var showVehicleDropdown by remember { mutableStateOf(false) }
     var showOtpSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val uiState by viewModel.uiState.collectAsState()
+    val authState by viewModel.authState.collectAsState()
+    val phoneAuthState by viewModel.phoneAuthState.collectAsState()
 
     val vehicleOptions = listOf("Motorcycle", "Car", "Truck", "Other")
+
+    // Handle successful registration
+    LaunchedEffect(authState) {
+        if (authState is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated) {
+            onRegisterSuccess()
+        }
+    }
+
+    // Handle phone auth state changes
+    LaunchedEffect(phoneAuthState) {
+        when (phoneAuthState) {
+            is PhoneAuthState.CodeSent -> {
+                showOtpSheet = true
+            }
+            is PhoneAuthState.VerificationCompleted -> {
+                // Auto-verification completed, register
+                val credential = (phoneAuthState as PhoneAuthState.VerificationCompleted).credential
+                viewModel.registerCollector(credential, fullName, phone, vehicleType, operatingArea)
+            }
+            else -> {}
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -222,11 +253,46 @@ fun CollectorRegistrationScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Error Message
+            if (phoneAuthState is PhoneAuthState.Error || uiState.errorMessage != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFEBEE)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            tint = Color.Red
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = when {
+                                phoneAuthState is PhoneAuthState.Error ->
+                                    (phoneAuthState as PhoneAuthState.Error).message
+                                else -> uiState.errorMessage ?: "An error occurred"
+                            },
+                            color = Color.Red,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Send Verification Code Button
             Button(
                 onClick = {
-                    showOtpSheet = true
-                    onSendOtpClick(fullName, phone, vehicleType, operatingArea)
+                    val activity = context as? MainActivity
+                    if (activity != null) {
+                        viewModel.sendPhoneVerificationCode(phone, activity)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -235,14 +301,22 @@ fun CollectorRegistrationScreen(
                     containerColor = PrimaryGreen
                 ),
                 shape = RoundedCornerShape(28.dp),
-                enabled = termsAccepted && fullName.isNotBlank() && phone.isNotBlank()
+                enabled = termsAccepted && fullName.isNotBlank() && phone.isNotBlank() &&
+                        !uiState.isLoading && phoneAuthState !is PhoneAuthState.CodeSent
             ) {
-                Text(
-                    text = "Send Verification Code",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
+                if (uiState.isLoading || phoneAuthState is PhoneAuthState.CodeSent) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "Send Verification Code",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -273,26 +347,41 @@ fun CollectorRegistrationScreen(
 
     // OTP Bottom Sheet
     if (showOtpSheet) {
-        OtpVerificationSheet(
+        CollectorRegistrationOtpSheet(
             phoneNumber = phone,
-            onVerify = { otp ->
-                // Handle OTP verification
+            fullName = fullName,
+            vehicleType = vehicleType,
+            operatingArea = operatingArea,
+            viewModel = viewModel,
+            onDismiss = {
                 showOtpSheet = false
-            },
-            onDismiss = { showOtpSheet = false }
+                viewModel.resetPhoneAuthState()
+            }
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OtpVerificationSheet(
+private fun CollectorRegistrationOtpSheet(
     phoneNumber: String,
-    onVerify: (String) -> Unit,
+    fullName: String,
+    vehicleType: String,
+    operatingArea: String,
+    viewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel,
     onDismiss: () -> Unit
 ) {
     var otpValues by remember { mutableStateOf(List(6) { "" }) }
-    var resendTimer by remember { mutableStateOf(30) }
+    val phoneAuthState by viewModel.phoneAuthState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Auto-register when verification completes
+    LaunchedEffect(phoneAuthState) {
+        if (phoneAuthState is PhoneAuthState.VerificationCompleted) {
+            val credential = (phoneAuthState as PhoneAuthState.VerificationCompleted).credential
+            viewModel.registerCollector(credential, fullName, phoneNumber, vehicleType, operatingArea)
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -343,9 +432,15 @@ fun OtpVerificationSheet(
                     OtpBox(
                         value = otpValues.getOrNull(index) ?: "",
                         onValueChange = { newValue ->
-                            if (newValue.length <= 1) {
+                            if (newValue.length <= 1 && (newValue.isEmpty() || newValue.all { it.isDigit() })) {
                                 otpValues = otpValues.toMutableList().apply {
                                     this[index] = newValue
+                                }
+
+                                // Auto-verify when all digits entered
+                                if (otpValues.all { it.isNotBlank() }) {
+                                    val otp = otpValues.joinToString("")
+                                    viewModel.verifyPhoneCode(otp)
                                 }
                             }
                         }
@@ -355,20 +450,42 @@ fun OtpVerificationSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Resend Code
-            TextButton(onClick = { /* Resend OTP */ }) {
-                Text(
-                    text = "Resend code (${resendTimer}s)",
-                    color = PrimaryGreen,
-                    fontSize = 14.sp
-                )
+            // Error Message
+            if (phoneAuthState is PhoneAuthState.Error) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFEBEE)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            tint = Color.Red,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = (phoneAuthState as PhoneAuthState.Error).message,
+                            color = Color.Red,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // Verify Button
             Button(
-                onClick = { onVerify(otpValues.joinToString("")) },
+                onClick = {
+                    val otp = otpValues.joinToString("")
+                    viewModel.verifyPhoneCode(otp)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -376,14 +493,21 @@ fun OtpVerificationSheet(
                     containerColor = PrimaryGreen
                 ),
                 shape = RoundedCornerShape(28.dp),
-                enabled = otpValues.all { it.isNotBlank() }
+                enabled = otpValues.all { it.isNotBlank() } && !uiState.isLoading
             ) {
-                Text(
-                    text = "Verify",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "Verify & Register",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

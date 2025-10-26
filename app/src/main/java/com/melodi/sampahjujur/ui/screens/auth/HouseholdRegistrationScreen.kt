@@ -312,20 +312,69 @@ fun HouseholdRegistrationScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            // Password strength indicator
+            if (password.isNotEmpty()) {
+                val strength = com.melodi.sampahjujur.utils.ValidationUtils.getPasswordStrength(password)
+                val strengthColor = when (strength) {
+                    com.melodi.sampahjujur.utils.ValidationUtils.PasswordStrength.WEAK -> Color.Red
+                    com.melodi.sampahjujur.utils.ValidationUtils.PasswordStrength.MEDIUM -> Color(0xFFFFA726)
+                    com.melodi.sampahjujur.utils.ValidationUtils.PasswordStrength.STRONG -> Color(0xFF66BB6A)
+                    com.melodi.sampahjujur.utils.ValidationUtils.PasswordStrength.VERY_STRONG -> PrimaryGreen
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Password strength: ",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = strength.name.replace("_", " ").lowercase()
+                            .replaceFirstChar { it.uppercase() },
+                        fontSize = 12.sp,
+                        color = strengthColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Create Account Button
             Button(
                 onClick = {
                     passwordError = null
 
-                    // Validate passwords match
-                    if (password != confirmPassword) {
-                        passwordError = "Passwords do not match"
+                    // Use ValidationUtils for comprehensive validation
+                    val nameValidation = com.melodi.sampahjujur.utils.ValidationUtils.validateFullName(fullName)
+                    if (!nameValidation.isValid) {
+                        passwordError = nameValidation.errorMessage
                         return@Button
                     }
 
-                    // Validate password length
-                    if (password.length < 6) {
-                        passwordError = "Password must be at least 6 characters"
+                    val emailValidation = com.melodi.sampahjujur.utils.ValidationUtils.validateEmail(email)
+                    if (!emailValidation.isValid) {
+                        passwordError = emailValidation.errorMessage
+                        return@Button
+                    }
+
+                    val phoneValidation = com.melodi.sampahjujur.utils.ValidationUtils.validatePhone(phone)
+                    if (!phoneValidation.isValid) {
+                        passwordError = phoneValidation.errorMessage
+                        return@Button
+                    }
+
+                    val passwordValidation = com.melodi.sampahjujur.utils.ValidationUtils.validatePassword(password)
+                    if (!passwordValidation.isValid) {
+                        passwordError = passwordValidation.errorMessage
+                        return@Button
+                    }
+
+                    val matchValidation = com.melodi.sampahjujur.utils.ValidationUtils.validatePasswordMatch(password, confirmPassword)
+                    if (!matchValidation.isValid) {
+                        passwordError = matchValidation.errorMessage
                         return@Button
                     }
 

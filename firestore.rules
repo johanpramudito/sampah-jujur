@@ -1,0 +1,152 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isHousehold() {
+      return isSignedIn() && getUserData().userType == 'household';
+    }
+
+    function isCollector() {
+      return isSignedIn() && getUserData().userType == 'collector';
+    }
+
+    function isValidUserType(type) {
+      return type == 'household' || type == 'collector';
+    }
+
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      // (Needed for collectors to see household info and vice versa)
+      allow read: if isSignedIn();
+
+      // Create: Only during registration with validation
+      allow create: if isSignedIn()
+                    && isOwner(userId)
+                    && isValidUserType(request.resource.data.userType)
+                    && request.resource.data.id == userId
+                    && request.resource.data.fullName is string
+                    && request.resource.data.fullName.size() >= 2
+                    && request.resource.data.phone is string
+                    && request.resource.data.phone.size() >= 10;
+
+      // Update: Users can only update their own profile
+      // Prevent changing userType after registration
+      allow update: if isSignedIn()
+                    && isOwner(userId)
+                    && request.resource.data.userType == resource.data.userType;
+
+      // Delete: Disabled for data integrity
+      allow delete: if false;
+    }
+
+    // ============================================
+    // PICKUP REQUESTS COLLECTION
+    // ============================================
+
+    match /pickup_requests/{requestId} {
+      // Read: Household owner, assigned collector, OR any collector (to see available requests)
+      allow read: if isSignedIn() && (
+        resource.data.householdId == request.auth.uid ||
+        resource.data.collectorId == request.auth.uid ||
+        (isCollector() && resource.data.status == 'pending')
+      );
+
+      // Create: Only households can create requests
+      allow create: if isSignedIn()
+                    && isHousehold()
+                    && request.resource.data.householdId == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.wasteItems is list
+                    && request.resource.data.wasteItems.size() > 0
+                    && request.resource.data.pickupLocation is map
+                    && request.resource.data.pickupLocation.address is string;
+
+      // Update: Complex rules for different scenarios
+      allow update: if isSignedIn() && (
+        // Household can update/cancel their own pending request
+        (resource.data.householdId == request.auth.uid && resource.data.status == 'pending') ||
+        // Collector can update a request they've accepted
+        (resource.data.collectorId == request.auth.uid) ||
+        // Collector can accept a pending request
+        (isCollector() && resource.data.status == 'pending' && request.resource.data.collectorId == request.auth.uid)
+      );
+
+      // Delete: Only household owner for pending requests
+      allow delete: if isSignedIn()
+                    && resource.data.householdId == request.auth.uid
+                    && resource.data.status == 'pending';
+    }
+
+    // ============================================
+    // TRANSACTIONS COLLECTION (Optional)
+    // ============================================
+
+    match /transactions/{transactionId} {
+      // Read: Users involved in the transaction
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.householdId ||
+        request.auth.uid == resource.data.collectorId
+      );
+
+      // Create: Only collectors when completing pickup
+      allow create: if isSignedIn()
+                    && isCollector()
+                    && request.auth.uid == request.resource.data.collectorId
+                    && request.resource.data.totalAmount >= 0;
+
+      // No updates or deletes for transaction integrity
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ============================================
+    // NOTIFICATIONS COLLECTION (Optional)
+    // ============================================
+
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isSignedIn() && isOwner(resource.data.userId);
+
+      // Only system (via Cloud Functions) can create notifications
+      // For now, prevent client-side creation
+      allow create: if false;
+
+      // Users can mark their notifications as read
+      allow update: if isSignedIn()
+                    && isOwner(resource.data.userId)
+                    && request.resource.data.keys().hasOnly(['read'])
+                    && request.resource.data.read is bool;
+
+      // Users can delete their own notifications
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+
+    // ============================================
+    // DEFAULT DENY
+    // ============================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

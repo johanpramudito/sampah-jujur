@@ -1,10 +1,13 @@
 package com.melodi.sampahjujur.viewmodel
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.auth.PhoneAuthProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +17,7 @@ import javax.inject.Inject
 
 /**
  * ViewModel for managing authentication state across the application.
- * Handles login, registration, logout, and auth state persistence.
+ * Handles login, registration, logout, phone auth, password reset, and auth state persistence.
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -26,6 +29,13 @@ class AuthViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private val _phoneAuthState = MutableStateFlow<PhoneAuthState>(PhoneAuthState.Idle)
+    val phoneAuthState: StateFlow<PhoneAuthState> = _phoneAuthState.asStateFlow()
+
+    // Store verification ID for phone auth
+    private var verificationId: String? = null
+    private var resendToken: PhoneAuthProvider.ForceResendingToken? = null
 
     init {
         checkAuthState()
@@ -120,23 +130,137 @@ class AuthViewModel @Inject constructor(
     /**
      * Registers a new collector user with phone authentication
      */
-    fun registerCollector(credential: PhoneAuthCredential, fullName: String, phone: String) {
+    fun registerCollector(
+        credential: PhoneAuthCredential,
+        fullName: String,
+        phone: String,
+        vehicleType: String = "",
+        operatingArea: String = ""
+    ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
-            val result = authRepository.registerCollector(credential, fullName, phone)
+            val result = authRepository.registerCollector(
+                credential,
+                fullName,
+                phone,
+                vehicleType,
+                operatingArea
+            )
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
                 _authState.value = AuthState.Authenticated(user)
                 _uiState.value = _uiState.value.copy(isLoading = false)
+                _phoneAuthState.value = PhoneAuthState.Idle
             } else {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = result.exceptionOrNull()?.message ?: "Registration failed"
                 )
+                _phoneAuthState.value = PhoneAuthState.Error(
+                    result.exceptionOrNull()?.message ?: "Registration failed"
+                )
             }
         }
+    }
+
+    /**
+     * Sends phone verification code for collector authentication
+     *
+     * @param phoneNumber Phone number to verify
+     * @param activity Activity context required for phone auth
+     */
+    fun sendPhoneVerificationCode(phoneNumber: String, activity: Activity) {
+        viewModelScope.launch {
+            try {
+                _phoneAuthState.value = PhoneAuthState.CodeSent("Sending code...")
+
+                val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                    override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+                        // Auto-verification completed
+                        _phoneAuthState.value = PhoneAuthState.VerificationCompleted(credential)
+                    }
+
+                    override fun onVerificationFailed(e: FirebaseException) {
+                        _phoneAuthState.value = PhoneAuthState.Error(
+                            e.message ?: "Verification failed. Please try again."
+                        )
+                    }
+
+                    override fun onCodeSent(
+                        verificationId: String,
+                        token: PhoneAuthProvider.ForceResendingToken
+                    ) {
+                        this@AuthViewModel.verificationId = verificationId
+                        this@AuthViewModel.resendToken = token
+                        _phoneAuthState.value = PhoneAuthState.CodeSent(
+                            "Verification code sent to $phoneNumber"
+                        )
+                    }
+                }
+
+                authRepository.sendPhoneVerificationCode(phoneNumber, activity, callbacks)
+            } catch (e: Exception) {
+                _phoneAuthState.value = PhoneAuthState.Error(
+                    e.message ?: "Failed to send verification code"
+                )
+            }
+        }
+    }
+
+    /**
+     * Verifies the OTP code entered by user
+     *
+     * @param code The 6-digit verification code
+     */
+    fun verifyPhoneCode(code: String) {
+        val currentVerificationId = verificationId
+        if (currentVerificationId == null) {
+            _phoneAuthState.value = PhoneAuthState.Error("Verification session expired. Please request a new code.")
+            return
+        }
+
+        try {
+            val credential = authRepository.createPhoneCredential(currentVerificationId, code)
+            _phoneAuthState.value = PhoneAuthState.VerificationCompleted(credential)
+        } catch (e: Exception) {
+            _phoneAuthState.value = PhoneAuthState.Error("Invalid verification code. Please try again.")
+        }
+    }
+
+    /**
+     * Sends password reset email
+     *
+     * @param email User's email address
+     */
+    fun sendPasswordResetEmail(email: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.sendPasswordResetEmail(email)
+
+            if (result.isSuccess) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Password reset email sent. Please check your inbox."
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to send reset email"
+                )
+            }
+        }
+    }
+
+    /**
+     * Resets the phone auth state
+     */
+    fun resetPhoneAuthState() {
+        _phoneAuthState.value = PhoneAuthState.Idle
+        verificationId = null
+        resendToken = null
     }
 
     /**
@@ -180,5 +304,16 @@ class AuthViewModel @Inject constructor(
  */
 data class AuthUiState(
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val successMessage: String? = null
 )
+
+/**
+ * Sealed class representing phone authentication states
+ */
+sealed class PhoneAuthState {
+    object Idle : PhoneAuthState()
+    data class CodeSent(val message: String) : PhoneAuthState()
+    data class VerificationCompleted(val credential: PhoneAuthCredential) : PhoneAuthState()
+    data class Error(val message: String) : PhoneAuthState()
+}
