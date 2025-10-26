@@ -447,42 +447,9 @@ fun SampahJujurNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-            // TODO: Get request from ViewModel by ID (master uses CollectorRequestDetailRoute)
-            val dummyRequest = PickupRequest(
-                id = requestId,
-                householdId = "user1",
-                wasteItems = listOf(WasteItem("plastic", 5.0, 10.0, "Bottles")),
-                pickupLocation = PickupRequest.Location(0.0, 0.0, "123 Main St"),
-                status = "pending"
-            )
-
-            CollectorRequestDetailScreen(
-                request = dummyRequest,
-                householdName = "Household User",
-                householdPhone = null,
-                onBackClick = {
-                    navController.popBackStack()
-                },
-                onAcceptRequest = {
-                    // TODO: Accept in ViewModel
-                    navController.popBackStack()
-                },
-                onNavigateToLocation = {
-                    // TODO: Handle navigation
-                },
-                onStartPickup = {
-                    // TODO: Start pickup in ViewModel
-                },
-                onCompletePickup = {
-                    // TODO: Show complete transaction dialog
-                },
-                onContactHousehold = {
-                    // TODO: Handle contact
-                },
-                onCancelRequest = {
-                    // TODO: Cancel in ViewModel
-                    navController.popBackStack()
-                }
+            CollectorRequestDetailRoute(
+                requestId = requestId,
+                onBackClick = { navController.popBackStack() }
             )
         }
 
@@ -581,20 +548,8 @@ fun SampahJujurNavGraph(
         // Settings Screen
         composable(Screen.Settings.route) {
             SettingsScreen(
-                notificationsEnabled = true,
-                locationEnabled = true,
-                darkModeEnabled = false,
                 onBackClick = {
                     navController.popBackStack()
-                },
-                onNotificationsToggle = { enabled ->
-                    // TODO: Handle toggle
-                },
-                onLocationToggle = { enabled ->
-                    // TODO: Handle toggle
-                },
-                onDarkModeToggle = { enabled ->
-                    // TODO: Handle toggle
                 },
                 onLanguageClick = {
                     // TODO: Handle language
@@ -606,9 +561,6 @@ fun SampahJujurNavGraph(
                 onTermsClick = {
                     // TODO: Master has TermsAndConditionsScreen implementation
                     // navController.navigate(Screen.TermsAndConditions.route)
-                },
-                onClearCacheClick = {
-                    // TODO: Handle clear cache
                 },
                 onDeleteAccountClick = {
                     // TODO: Handle delete account
