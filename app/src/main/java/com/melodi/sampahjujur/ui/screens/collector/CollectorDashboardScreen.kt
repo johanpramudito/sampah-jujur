@@ -30,6 +30,7 @@ import com.melodi.sampahjujur.ui.components.CollectorBottomNavBar
 import com.melodi.sampahjujur.ui.screens.household.StatusBadge
 import com.melodi.sampahjujur.ui.screens.household.formatDate
 import com.melodi.sampahjujur.ui.theme.*
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +44,8 @@ fun CollectorDashboardScreen(
     val pendingRequestsLive by viewModel.pendingRequests.observeAsState(emptyList())
     val myRequests by viewModel.myRequests.observeAsState(emptyList())
     val uiState by viewModel.uiState.collectAsState()
+    val mapState by viewModel.mapState.collectAsState()
+    val collectorLocation = mapState.collectorLocation
     val snackbarHostState = remember { SnackbarHostState() }
 
     val tabs = listOf("Pending Requests", "My Requests")
@@ -152,7 +155,10 @@ fun CollectorDashboardScreen(
                         viewModel.filterPendingRequests(searchQuery)
                     },
                     onAcceptRequest = { request -> viewModel.acceptPickupRequest(request) },
-                    onRequestClick = onRequestClick
+                    onRequestClick = onRequestClick,
+                    getDistance = { request ->
+                        collectorLocation?.let { viewModel.distanceToRequest(request) }
+                    }
                 )
                 1 -> MyRequestsTab(
                     requests = myRequests,
@@ -173,7 +179,8 @@ fun PendingRequestsTab(
     onSearchQueryChange: (String) -> Unit,
     onFilterSelect: (String) -> Unit,
     onAcceptRequest: (PickupRequest) -> Unit,
-    onRequestClick: (String) -> Unit
+    onRequestClick: (String) -> Unit,
+    getDistance: (PickupRequest) -> Double? = { null }
 ) {
     Column(
         modifier = Modifier
@@ -289,7 +296,9 @@ fun PendingRequestsTab(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(requests) { request ->
                     CollectorRequestCard(
@@ -297,11 +306,11 @@ fun PendingRequestsTab(
                         showAcceptButton = true,
                         onCardClick = { onRequestClick(request.id) },
                         onPrimaryAction = { onAcceptRequest(request) },
-                        primaryActionEnabled = !isActionInProgress
+                        primaryActionEnabled = !isActionInProgress,
+                        distanceKm = getDistance(request)
                     )
                 }
 
-                item { Spacer(modifier = Modifier.height(8.dp)) }
             }
         }
     }
@@ -516,8 +525,6 @@ fun MyRequestsTab(
                             onCardClick = { onRequestClick(request.id) }
                         )
                     }
-
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
                 }
             }
         }
@@ -530,7 +537,8 @@ fun CollectorRequestCard(
     showAcceptButton: Boolean,
     onCardClick: () -> Unit,
     onPrimaryAction: (() -> Unit)? = null,
-    primaryActionEnabled: Boolean = true
+    primaryActionEnabled: Boolean = true,
+    distanceKm: Double? = null
 ) {
     Card(
         modifier = Modifier
@@ -551,12 +559,22 @@ fun CollectorRequestCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Request #${request.id.take(8).uppercase()}",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Request #${request.id.take(8).uppercase()}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (distanceKm != null) {
+                        Text(
+                            text = String.format(Locale.getDefault(), "~%.1f km away", distanceKm),
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
                 if (!showAcceptButton) {
+                    Spacer(modifier = Modifier.width(12.dp))
                     StatusBadge(status = request.status)
                 }
             }
@@ -631,7 +649,7 @@ fun CollectorRequestCard(
                         color = Color.Gray
                     )
                     Text(
-                        text = "${'$'}${request.wasteItems.sumOf { it.estimatedValue }}",
+                        text = "Rp ${String.format("%,.0f", request.wasteItems.sumOf { it.estimatedValue })}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = PrimaryGreen

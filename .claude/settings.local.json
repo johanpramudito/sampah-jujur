@@ -15,7 +15,10 @@
       "Bash(del \"E:\\StudioProjects\\sampah-jujur\\app\\src\\main\\java\\com\\melodi\\sampahjujur\\ui\\screens\\SplashScreen.kt\")",
       "Bash(gradlew.bat assembleDebug:*)",
       "Bash(./gradlew.bat assembleDebug --console=plain)",
-      "Bash(./gradlew.bat clean:*)"
+      "Bash(./gradlew.bat clean:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git rm:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

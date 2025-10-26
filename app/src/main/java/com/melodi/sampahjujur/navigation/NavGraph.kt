@@ -50,18 +50,21 @@ sealed class Screen(val route: String) {
     object HouseholdLocationPicker : Screen("household_location_picker")
     object HouseholdProfile : Screen("household_profile")
     object HouseholdEditProfile : Screen("household_edit_profile")
+    object HouseholdStatistics : Screen("household_statistics")
 
     // Collector Main
     object CollectorDashboard : Screen("collector_dashboard")
     object CollectorRequestDetail : Screen("collector_request_detail/{requestId}") {
         fun createRoute(requestId: String) = "collector_request_detail/$requestId"
     }
+    object CollectorMap : Screen("collector_map")
     object CollectorProfile : Screen("collector_profile")
     object CollectorEditProfile : Screen("collector_edit_profile")
 
     // Shared
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
+    object About : Screen("about")
     object PrivacyPolicy : Screen("privacy_policy")
     object TermsAndConditions : Screen("terms_and_conditions")
 }
@@ -311,36 +314,13 @@ fun SampahJujurNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-            val viewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel =
-                androidx.hilt.navigation.compose.hiltViewModel()
-            val requests by viewModel.userRequests.observeAsState(emptyList())
 
-            // Find the request by ID
-            val request = requests.find { it.id == requestId }
-
-            if (request != null) {
-                RequestDetailScreen(
-                    request = request,
-                    collectorName = null, // TODO: Load collector info from Firestore if assigned
-                    collectorPhone = null,
-                    collectorVehicle = null,
-                    onBackClick = {
-                        navController.popBackStack()
-                    },
-                    onCancelRequest = {
-                        viewModel.cancelPickupRequest(requestId)
-                        navController.popBackStack()
-                    },
-                    onContactCollector = {
-                        // TODO: Implement phone call or messaging
-                    }
-                )
-            } else {
-                // Request not found - show error or go back
-                LaunchedEffect(Unit) {
+            HouseholdRequestDetailRoute(
+                requestId = requestId,
+                onBackClick = {
                     navController.popBackStack()
                 }
-            }
+            )
         }
 
         // Household Profile Screen
@@ -359,13 +339,27 @@ fun SampahJujurNavGraph(
                 )
             }
 
+            // Get HouseholdViewModel to fetch user requests for statistics
+            val householdViewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel =
+                androidx.hilt.navigation.compose.hiltViewModel()
+            val requests by householdViewModel.userRequests.observeAsState(emptyList())
+
+            // Calculate statistics from requests
+            val totalRequests = requests.size
+            val totalWasteCollected = requests.sumOf { it.wasteItems.sumOf { item -> item.weight } }
+            val totalEarnings = requests.filter { it.status == PickupRequest.STATUS_COMPLETED }
+                .sumOf { it.wasteItems.sumOf { item -> item.estimatedValue } }
+
             HouseholdProfileScreen(
                 user = user,
-                totalRequests = 0,
-                totalWasteCollected = 0.0,
-                totalEarnings = 0.0,
+                totalRequests = totalRequests,
+                totalWasteCollected = totalWasteCollected,
+                totalEarnings = totalEarnings,
                 onEditProfileClick = {
                     navController.navigate(Screen.HouseholdEditProfile.route)
+                },
+                onStatisticsClick = {
+                    navController.navigate(Screen.HouseholdStatistics.route)
                 },
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
@@ -374,7 +368,7 @@ fun SampahJujurNavGraph(
                     navController.navigate(Screen.HelpSupport.route)
                 },
                 onAboutClick = {
-                    // TODO: Handle about
+                    navController.navigate(Screen.About.route)
                 },
                 onLogoutClick = {
                     // Sign out from both Firebase and Google
@@ -425,6 +419,15 @@ fun SampahJujurNavGraph(
             )
         }
 
+        // Household Statistics Screen
+        composable(Screen.HouseholdStatistics.route) {
+            HouseholdStatisticsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         // Collector Dashboard Screen
         composable(Screen.CollectorDashboard.route) {
             CollectorDashboardScreen(
@@ -433,10 +436,26 @@ fun SampahJujurNavGraph(
                 },
                 onNavigate = { route ->
                     when (route) {
-                        "collector_dashboard" -> { /* Already here */ }
-                        "map_view" -> { /* TODO: Navigate to map */ }
-                        "collector_profile" -> navController.navigate(Screen.CollectorProfile.route)
+                        Screen.CollectorDashboard.route -> { /* Already here */ }
+                        Screen.CollectorMap.route -> navController.navigate(Screen.CollectorMap.route)
+                        Screen.CollectorProfile.route -> navController.navigate(Screen.CollectorProfile.route)
                     }
+                }
+            )
+        }
+
+        // Collector Map Screen
+        composable(Screen.CollectorMap.route) {
+            CollectorMapScreen(
+                onNavigate = { route ->
+                    when (route) {
+                        Screen.CollectorDashboard.route -> navController.navigate(Screen.CollectorDashboard.route)
+                        Screen.CollectorMap.route -> { /* Already here */ }
+                        Screen.CollectorProfile.route -> navController.navigate(Screen.CollectorProfile.route)
+                    }
+                },
+                onRequestSelected = { requestId ->
+                    navController.navigate(Screen.CollectorRequestDetail.createRoute(requestId))
                 }
             )
         }
@@ -492,7 +511,7 @@ fun SampahJujurNavGraph(
                     navController.navigate(Screen.HelpSupport.route)
                 },
                 onAboutClick = {
-                    // TODO: Handle about
+                    navController.navigate(Screen.About.route)
                 },
                 onLogoutClick = {
                     // Sign out from both Firebase and Google
@@ -506,9 +525,9 @@ fun SampahJujurNavGraph(
                 },
                 onNavigate = { route ->
                     when (route) {
-                        "collector_dashboard" -> navController.navigate(Screen.CollectorDashboard.route)
-                        "map_view" -> { /* TODO: Navigate to map */ }
-                        "collector_profile" -> { /* Already here */ }
+                        Screen.CollectorDashboard.route -> navController.navigate(Screen.CollectorDashboard.route)
+                        Screen.CollectorMap.route -> navController.navigate(Screen.CollectorMap.route)
+                        Screen.CollectorProfile.route -> { /* Already here */ }
                     }
                 }
             )
@@ -555,12 +574,10 @@ fun SampahJujurNavGraph(
                     // TODO: Handle language
                 },
                 onPrivacyPolicyClick = {
-                    // TODO: Master has PrivacyPolicyScreen implementation
-                    // navController.navigate(Screen.PrivacyPolicy.route)
+                    navController.navigate(Screen.PrivacyPolicy.route)
                 },
                 onTermsClick = {
-                    // TODO: Master has TermsAndConditionsScreen implementation
-                    // navController.navigate(Screen.TermsAndConditions.route)
+                    navController.navigate(Screen.TermsAndConditions.route)
                 },
                 onDeleteAccountClick = {
                     // TODO: Handle delete account
@@ -576,30 +593,35 @@ fun SampahJujurNavGraph(
                 },
                 onLiveChatClick = {
                     // TODO: Handle live chat
-                },
-                onSubmitFeedback = { name, email, message ->
-                    // TODO: Handle feedback submission
                 }
             )
         }
 
-        // TODO: Master branch has these screens - implement when needed:
+        // About Screen
+        composable(Screen.About.route) {
+            AboutScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         // Privacy Policy Screen
-        // composable(Screen.PrivacyPolicy.route) {
-        //     PrivacyPolicyScreen(
-        //         onBackClick = {
-        //             navController.popBackStack()
-        //         }
-        //     )
-        // }
+        composable(Screen.PrivacyPolicy.route) {
+            PrivacyPolicyScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
 
         // Terms & Conditions Screen
-        // composable(Screen.TermsAndConditions.route) {
-        //     TermsAndConditionsScreen(
-        //         onBackClick = {
-        //             navController.popBackStack()
-        //         }
-        //     )
-        // }
+        composable(Screen.TermsAndConditions.route) {
+            TermsAndConditionsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
