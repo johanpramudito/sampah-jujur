@@ -62,6 +62,8 @@ sealed class Screen(val route: String) {
     // Shared
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
+    object PrivacyPolicy : Screen("privacy_policy")
+    object TermsAndConditions : Screen("terms_and_conditions")
 }
 
 @Composable
@@ -343,13 +345,19 @@ fun SampahJujurNavGraph(
 
         // Household Profile Screen
         composable(Screen.HouseholdProfile.route) {
-            val user = authViewModel.getCurrentUser() ?: User(
-                id = "user1",
-                fullName = "Test User",
-                email = "test@example.com",
-                phone = "+1234567890",
-                userType = "household"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    userType = "household"
+                )
+            }
 
             HouseholdProfileScreen(
                 user = user,
@@ -390,15 +398,20 @@ fun SampahJujurNavGraph(
 
         // Household Edit Profile Screen
         composable(Screen.HouseholdEditProfile.route) {
-            // TODO: Get from ViewModel
-            val user = User(
-                id = "user1",
-                fullName = "Test User",
-                email = "test@example.com",
-                phone = "+1234567890",
-                address = "",
-                userType = "household"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    address = "",
+                    userType = "household"
+                )
+            }
 
             EditProfileScreen(
                 user = user,
@@ -406,7 +419,7 @@ fun SampahJujurNavGraph(
                     navController.popBackStack()
                 },
                 onSaveClick = { fullName, email, phone, address, profileImageUrl ->
-                    // TODO: Update in ViewModel
+                    // TODO: Update in ViewModel (master has updateHouseholdProfile method)
                     navController.popBackStack()
                 }
             )
@@ -434,7 +447,7 @@ fun SampahJujurNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-            // TODO: Get request from ViewModel by ID
+            // TODO: Get request from ViewModel by ID (master uses CollectorRequestDetailRoute)
             val dummyRequest = PickupRequest(
                 id = requestId,
                 householdId = "user1",
@@ -475,13 +488,19 @@ fun SampahJujurNavGraph(
 
         // Collector Profile Screen
         composable(Screen.CollectorProfile.route) {
-            val user = authViewModel.getCurrentUser() ?: User(
-                id = "collector1",
-                fullName = "Test Collector",
-                email = "",
-                phone = "+1234567890",
-                userType = "collector"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    userType = "collector"
+                )
+            }
 
             CollectorProfileScreen(
                 user = user,
@@ -530,14 +549,19 @@ fun SampahJujurNavGraph(
 
         // Collector Edit Profile Screen
         composable(Screen.CollectorEditProfile.route) {
-            // TODO: Get from ViewModel
-            val user = User(
-                id = "collector1",
-                fullName = "Test Collector",
-                email = "",
-                phone = "+1234567890",
-                userType = "collector"
-            )
+            val authState by authViewModel.authState.collectAsState()
+            val user = when (authState) {
+                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
+                }
+                else -> User(
+                    id = "",
+                    fullName = "",
+                    email = "",
+                    phone = "",
+                    userType = "collector"
+                )
+            }
 
             CollectorEditProfileScreen(
                 user = user,
@@ -548,7 +572,7 @@ fun SampahJujurNavGraph(
                     navController.popBackStack()
                 },
                 onSaveClick = { fullName, phone, vehicleType, plateNumber, operatingArea ->
-                    // TODO: Update in ViewModel
+                    // TODO: Update in ViewModel (master has updateCollectorProfile method and User fields)
                     navController.popBackStack()
                 }
             )
@@ -576,10 +600,12 @@ fun SampahJujurNavGraph(
                     // TODO: Handle language
                 },
                 onPrivacyPolicyClick = {
-                    // TODO: Handle privacy policy
+                    // TODO: Master has PrivacyPolicyScreen implementation
+                    // navController.navigate(Screen.PrivacyPolicy.route)
                 },
                 onTermsClick = {
-                    // TODO: Handle terms
+                    // TODO: Master has TermsAndConditionsScreen implementation
+                    // navController.navigate(Screen.TermsAndConditions.route)
                 },
                 onClearCacheClick = {
                     // TODO: Handle clear cache
@@ -604,5 +630,24 @@ fun SampahJujurNavGraph(
                 }
             )
         }
+
+        // TODO: Master branch has these screens - implement when needed:
+        // Privacy Policy Screen
+        // composable(Screen.PrivacyPolicy.route) {
+        //     PrivacyPolicyScreen(
+        //         onBackClick = {
+        //             navController.popBackStack()
+        //         }
+        //     )
+        // }
+
+        // Terms & Conditions Screen
+        // composable(Screen.TermsAndConditions.route) {
+        //     TermsAndConditionsScreen(
+        //         onBackClick = {
+        //             navController.popBackStack()
+        //         }
+        //     )
+        // }
     }
 }
