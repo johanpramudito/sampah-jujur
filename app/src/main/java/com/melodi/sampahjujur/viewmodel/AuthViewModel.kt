@@ -181,6 +181,7 @@ class AuthViewModel @Inject constructor(
         fullName: String,
         phone: String,
         vehicleType: String = "",
+        vehiclePlateNumber: String = "",
         operatingArea: String = ""
     ) {
         viewModelScope.launch {
@@ -191,6 +192,7 @@ class AuthViewModel @Inject constructor(
                 fullName,
                 phone,
                 vehicleType,
+                vehiclePlateNumber,
                 operatingArea
             )
 
@@ -384,6 +386,92 @@ class AuthViewModel @Inject constructor(
      */
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
+    }
+
+    /**
+     * Updates household user profile
+     *
+     * @param fullName User's full name
+     * @param email User's email
+     * @param phone User's phone number
+     * @param address User's address
+     * @param profileImageUrl URL to profile image
+     */
+    fun updateHouseholdProfile(
+        fullName: String,
+        email: String,
+        phone: String,
+        address: String,
+        profileImageUrl: String
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.updateProfile(
+                fullName = fullName,
+                email = email,
+                phone = phone,
+                address = address,
+                profileImageUrl = profileImageUrl
+            )
+
+            if (result.isSuccess) {
+                val updatedUser = result.getOrNull()!!
+                _authState.value = AuthState.Authenticated(updatedUser)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Profile updated successfully"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to update profile"
+                )
+            }
+        }
+    }
+
+    /**
+     * Updates collector user profile
+     *
+     * @param fullName Collector's full name
+     * @param phone Collector's phone number
+     * @param vehicleType Vehicle type
+     * @param vehiclePlateNumber Vehicle plate number
+     * @param operatingArea Operating area
+     */
+    fun updateCollectorProfile(
+        fullName: String,
+        phone: String,
+        vehicleType: String,
+        vehiclePlateNumber: String,
+        operatingArea: String
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.updateCollectorProfile(
+                fullName = fullName,
+                phone = phone,
+                vehicleType = vehicleType,
+                vehiclePlateNumber = vehiclePlateNumber,
+                operatingArea = operatingArea
+            )
+
+            if (result.isSuccess) {
+                val updatedUser = result.getOrNull()!!
+                _authState.value = AuthState.Authenticated(updatedUser)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Profile updated successfully"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to update profile"
+                )
+            }
+        }
     }
 
     /**

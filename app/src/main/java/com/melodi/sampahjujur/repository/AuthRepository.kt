@@ -106,6 +106,7 @@ class AuthRepository @Inject constructor(
      * @param name Collector's display name
      * @param phone Collector's phone number
      * @param vehicleType Optional vehicle type
+     * @param vehiclePlateNumber Optional vehicle plate number
      * @param operatingArea Optional operating area
      * @return Result containing the User object or error
      */
@@ -114,6 +115,7 @@ class AuthRepository @Inject constructor(
         name: String,
         phone: String,
         vehicleType: String = "",
+        vehiclePlateNumber: String = "",
         operatingArea: String = ""
     ): Result<User> {
         return try {
@@ -156,6 +158,9 @@ class AuthRepository @Inject constructor(
             // Add optional fields if provided
             if (vehicleType.isNotBlank()) {
                 userData["vehicleType"] = vehicleType.trim()
+            }
+            if (vehiclePlateNumber.isNotBlank()) {
+                userData["vehiclePlateNumber"] = vehiclePlateNumber.trim()
             }
             if (operatingArea.isNotBlank()) {
                 userData["operatingArea"] = operatingArea.trim()
@@ -519,6 +524,57 @@ class AuthRepository @Inject constructor(
                 phone = phone,
                 address = address,
                 profileImageUrl = profileImageUrl
+            )
+
+            // Update in Firestore
+            firestore.collection("users")
+                .document(uid)
+                .set(updatedUser)
+                .await()
+
+            Result.success(updatedUser)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Updates collector profile with vehicle and operating area information
+     *
+     * @param fullName Updated full name
+     * @param phone Updated phone number
+     * @param vehicleType Updated vehicle type
+     * @param vehiclePlateNumber Updated vehicle plate number
+     * @param operatingArea Updated operating area
+     * @return Result indicating success or failure
+     */
+    suspend fun updateCollectorProfile(
+        fullName: String,
+        phone: String,
+        vehicleType: String,
+        vehiclePlateNumber: String,
+        operatingArea: String
+    ): Result<User> {
+        return try {
+            val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
+            val uid = currentUser.uid
+
+            // Get current user data to preserve other fields
+            val userDoc = firestore.collection("users")
+                .document(uid)
+                .get()
+                .await()
+
+            val existingUser = userDoc.toObject(User::class.java)
+                ?: throw Exception("User data not found")
+
+            // Create updated user object
+            val updatedUser = existingUser.copy(
+                fullName = fullName,
+                phone = phone,
+                vehicleType = vehicleType,
+                vehiclePlateNumber = vehiclePlateNumber,
+                operatingArea = operatingArea
             )
 
             // Update in Firestore
