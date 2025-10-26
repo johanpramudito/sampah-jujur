@@ -43,6 +43,19 @@ data class User(
     @set:PropertyName("userType")
     var userType: String = "", // "household" or "collector"
 
+    // Collector-specific fields
+    @get:PropertyName("vehicleType")
+    @set:PropertyName("vehicleType")
+    var vehicleType: String = "",
+
+    @get:PropertyName("vehiclePlateNumber")
+    @set:PropertyName("vehiclePlateNumber")
+    var vehiclePlateNumber: String = "",
+
+    @get:PropertyName("operatingArea")
+    @set:PropertyName("operatingArea")
+    var operatingArea: String = "",
+
     @get:PropertyName("draftWasteItems")
     @set:PropertyName("draftWasteItems")
     var draftWasteItems: List<WasteItem> = emptyList()

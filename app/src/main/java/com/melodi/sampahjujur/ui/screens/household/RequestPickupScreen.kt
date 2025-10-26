@@ -131,8 +131,8 @@ fun RequestPickupScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Selected Address Display with Map Preview
-                        if (selectedAddress.isNotEmpty() && uiState.selectedLocation != null) {
+                        // Selected Address Display with Map Preview (only show if location services enabled)
+                        if (uiState.isLocationEnabled && selectedAddress.isNotEmpty() && uiState.selectedLocation != null) {
                             // Small Map Preview
                             MapPreview(
                                 latitude = uiState.selectedLocation!!.latitude,
@@ -160,8 +160,13 @@ fun RequestPickupScreen(
                                 )
                             }
                         } else {
+                            // Show different message based on location services status
                             Text(
-                                text = "No location selected. Tap 'Select Location' to set your pickup address.",
+                                text = if (uiState.isLocationEnabled) {
+                                    "No location selected. Tap 'Get Current Location' to set your pickup address."
+                                } else {
+                                    "Location services are disabled. Enable them in Settings to add pickup location."
+                                },
                                 fontSize = 14.sp,
                                 color = Color.Gray,
                                 textAlign = TextAlign.Center,
@@ -171,42 +176,44 @@ fun RequestPickupScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Get Current Location Button
-                        Button(
-                            onClick = {
-                                if (viewModel.hasLocationPermission()) {
-                                    viewModel.getCurrentLocation()
-                                } else {
-                                    permissionLauncher.launch(
-                                        arrayOf(
-                                            Manifest.permission.ACCESS_FINE_LOCATION,
-                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        // Get Current Location Button (only show if location services enabled)
+                        if (uiState.isLocationEnabled) {
+                            Button(
+                                onClick = {
+                                    if (viewModel.hasLocationPermission()) {
+                                        viewModel.getCurrentLocation()
+                                    } else {
+                                        permissionLauncher.launch(
+                                            arrayOf(
+                                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                                Manifest.permission.ACCESS_COARSE_LOCATION
+                                            )
                                         )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PrimaryGreen
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                enabled = !isLoadingLocation
+                            ) {
+                                if (isLoadingLocation) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Getting location...")
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.MyLocation,
+                                        contentDescription = "Get Location"
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Get Current Location")
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PrimaryGreen
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = !isLoadingLocation
-                        ) {
-                            if (isLoadingLocation) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Getting location...")
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.MyLocation,
-                                    contentDescription = "Get Location"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Get Current Location")
                             }
                         }
                     }

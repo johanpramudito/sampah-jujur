@@ -14,9 +14,11 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,15 +39,41 @@ fun CollectorDashboardScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("All") }
 
-    val pendingRequests by viewModel.pendingRequests.observeAsState(emptyList())
+    val pendingRequestsLive by viewModel.pendingRequests.observeAsState(emptyList())
     val myRequests by viewModel.myRequests.observeAsState(emptyList())
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val tabs = listOf("Pending Requests", "My Requests")
     val filterOptions = listOf("All", "Nearest", "Highest Value", "Most Items")
+
+    val pendingRequests = if (uiState.filteredRequests.isNotEmpty() || pendingRequestsLive.isEmpty()) {
+        uiState.filteredRequests
+    } else {
+        pendingRequestsLive
+    }
+    val searchQuery = uiState.searchQuery
+    val selectedFilter = when (uiState.sortBy) {
+        "value" -> "Highest Value"
+        "weight" -> "Most Items"
+        "distance" -> "Nearest"
+        else -> "All"
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearSuccessMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -67,6 +95,7 @@ fun CollectorDashboardScreen(
                 onNavigate = onNavigate
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
         Column(
@@ -79,22 +108,24 @@ fun CollectorDashboardScreen(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.White,
                 contentColor = PrimaryGreen,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = PrimaryGreen,
-                        height = 3.dp
-                    )
-                }
+                indicator = {}
             ) {
                 tabs.forEachIndexed { index, title ->
+                    val isSelected = selectedTab == index
                     Tab(
-                        selected = selectedTab == index,
+                        selected = isSelected,
                         onClick = { selectedTab = index },
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp, vertical = 12.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(if (isSelected) PrimaryGreen else Color.Transparent),
+                        selectedContentColor = Color.White,
+                        unselectedContentColor = PrimaryGreen,
                         text = {
                             Text(
                                 text = title,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                                color = if (isSelected) Color.White else PrimaryGreen,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                             )
                         }
                     )
@@ -108,8 +139,19 @@ fun CollectorDashboardScreen(
                     searchQuery = searchQuery,
                     selectedFilter = selectedFilter,
                     filterOptions = filterOptions,
-                    onSearchQueryChange = { searchQuery = it },
-                    onFilterSelect = { selectedFilter = it },
+                    isActionInProgress = uiState.isLoading,
+                    onSearchQueryChange = { query -> viewModel.filterPendingRequests(query) },
+                    onFilterSelect = { filterLabel ->
+                        val sortKey = when (filterLabel) {
+                            "Highest Value" -> "value"
+                            "Most Items" -> "weight"
+                            "Nearest" -> "distance"
+                            else -> "time"
+                        }
+                        viewModel.sortPendingRequests(sortKey)
+                        viewModel.filterPendingRequests(searchQuery)
+                    },
+                    onAcceptRequest = { request -> viewModel.acceptPickupRequest(request) },
                     onRequestClick = onRequestClick
                 )
                 1 -> MyRequestsTab(
@@ -127,8 +169,10 @@ fun PendingRequestsTab(
     searchQuery: String,
     selectedFilter: String,
     filterOptions: List<String>,
+    isActionInProgress: Boolean,
     onSearchQueryChange: (String) -> Unit,
     onFilterSelect: (String) -> Unit,
+    onAcceptRequest: (PickupRequest) -> Unit,
     onRequestClick: (String) -> Unit
 ) {
     Column(
@@ -245,24 +289,15 @@ fun PendingRequestsTab(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
-                item {
-                    Text(
-                        text = "${requests.size} available request${if (requests.size != 1) "s" else ""}",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
                 items(requests) { request ->
                     CollectorRequestCard(
                         request = request,
                         showAcceptButton = true,
-                        onClick = { onRequestClick(request.id) }
+                        onCardClick = { onRequestClick(request.id) },
+                        onPrimaryAction = { onAcceptRequest(request) },
+                        primaryActionEnabled = !isActionInProgress
                     )
                 }
 
@@ -272,11 +307,49 @@ fun PendingRequestsTab(
     }
 }
 
+
+
 @Composable
 fun MyRequestsTab(
     requests: List<PickupRequest>,
     onRequestClick: (String) -> Unit
 ) {
+    val statusFilters = listOf(
+        "All" to null,
+        "Accepted" to PickupRequest.STATUS_ACCEPTED,
+        "In Progress" to PickupRequest.STATUS_IN_PROGRESS,
+        "Completed" to PickupRequest.STATUS_COMPLETED,
+        "Cancelled" to PickupRequest.STATUS_CANCELLED
+    )
+
+    var selectedFilter by rememberSaveable { mutableStateOf(statusFilters.first().first) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val statusFilteredRequests = remember(requests, selectedFilter) {
+        val targetStatus = statusFilters.firstOrNull { it.first == selectedFilter }?.second
+        if (targetStatus == null) {
+            requests
+        } else {
+            requests.filter { it.status == targetStatus }
+        }
+    }
+    val filteredRequests = remember(statusFilteredRequests, searchQuery) {
+        val trimmedQuery = searchQuery.trim()
+        if (trimmedQuery.isBlank()) {
+            statusFilteredRequests
+        } else {
+            statusFilteredRequests.filter { request ->
+                request.id.contains(trimmedQuery, ignoreCase = true) ||
+                request.pickupLocation.address.contains(trimmedQuery, ignoreCase = true) ||
+                request.notes.contains(trimmedQuery, ignoreCase = true) ||
+                request.wasteItems.any { item ->
+                    item.type.contains(trimmedQuery, ignoreCase = true) ||
+                    item.description.contains(trimmedQuery, ignoreCase = true)
+                }
+            }
+        }
+    }
+
     if (requests.isEmpty()) {
         Box(
             modifier = Modifier
@@ -313,31 +386,140 @@ fun MyRequestsTab(
             }
         }
     } else {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5)),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+                .background(Color(0xFFF5F5F5))
         ) {
-            item {
-                Text(
-                    text = "${requests.size} active request${if (requests.size != 1) "s" else ""}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                placeholder = { Text("Search by request ID, address, or notes...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.Gray
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear search",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = PrimaryGreen,
+                    unfocusedIndicatorColor = Color.LightGray
+                ),
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(statusFilters) { (label, _) ->
+                    val isSelected = selectedFilter == label
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedFilter = label },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryGreen,
+                            selectedLabelColor = Color.White,
+                            containerColor = Color.White
+                        ),
+                        border = if (isSelected) {
+                            FilterChipDefaults.filterChipBorder(
+                                borderColor = PrimaryGreen,
+                                enabled = true,
+                                selected = true
+                            )
+                        } else {
+                            FilterChipDefaults.filterChipBorder(
+                                borderColor = Color.LightGray,
+                                enabled = true,
+                                selected = false
+                            )
+                        }
+                    )
+                }
             }
 
-            items(requests) { request ->
-                CollectorRequestCard(
-                    request = request,
-                    showAcceptButton = false,
-                    onClick = { onRequestClick(request.id) }
-                )
-            }
+            Spacer(modifier = Modifier.height(12.dp))
 
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            if (filteredRequests.isEmpty()) {
+                val emptyMessage = when {
+                    searchQuery.isNotBlank() -> "No requests match \"$searchQuery\""
+                    selectedFilter == "All" -> "No requests yet"
+                    else -> "No ${selectedFilter.lowercase()} requests yet"
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "No requests for filter",
+                            tint = Color.Gray.copy(alpha = 0.5f),
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = emptyMessage,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "${filteredRequests.size} request${if (filteredRequests.size != 1) "s" else ""}",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    items(filteredRequests) { request ->
+                        CollectorRequestCard(
+                            request = request,
+                            showAcceptButton = false,
+                            onCardClick = { onRequestClick(request.id) }
+                        )
+                    }
+
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                }
+            }
         }
     }
 }
@@ -346,12 +528,14 @@ fun MyRequestsTab(
 fun CollectorRequestCard(
     request: PickupRequest,
     showAcceptButton: Boolean,
-    onClick: () -> Unit
+    onCardClick: () -> Unit,
+    onPrimaryAction: (() -> Unit)? = null,
+    primaryActionEnabled: Boolean = true
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onCardClick),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp),
         shape = RoundedCornerShape(12.dp)
@@ -422,7 +606,7 @@ fun CollectorRequestCard(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "${request.wasteItems.size} items • ${request.wasteItems.sumOf { it.weight }} kg",
+                    text = "${request.wasteItems.size} items - ${request.wasteItems.sumOf { it.weight }} kg",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -447,7 +631,7 @@ fun CollectorRequestCard(
                         color = Color.Gray
                     )
                     Text(
-                        text = "$${request.wasteItems.sumOf { it.estimatedValue }}",
+                        text = "${'$'}${request.wasteItems.sumOf { it.estimatedValue }}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = PrimaryGreen
@@ -456,7 +640,14 @@ fun CollectorRequestCard(
 
                 if (showAcceptButton) {
                     Button(
-                        onClick = onClick,
+                        onClick = {
+                            if (onPrimaryAction != null) {
+                                onPrimaryAction()
+                            } else {
+                                onCardClick()
+                            }
+                        },
+                        enabled = primaryActionEnabled,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PrimaryGreen
                         ),
@@ -470,9 +661,9 @@ fun CollectorRequestCard(
                     }
                 } else {
                     when (request.status) {
-                        "accepted" -> {
+                        PickupRequest.STATUS_ACCEPTED -> {
                             OutlinedButton(
-                                onClick = onClick,
+                                onClick = onCardClick,
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = PrimaryGreen
                                 ),
@@ -487,9 +678,9 @@ fun CollectorRequestCard(
                                 Text("Navigate", fontWeight = FontWeight.Medium)
                             }
                         }
-                        "in_progress" -> {
+                        PickupRequest.STATUS_IN_PROGRESS -> {
                             Button(
-                                onClick = onClick,
+                                onClick = onCardClick,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = StatusInProgress
                                 ),
@@ -504,8 +695,13 @@ fun CollectorRequestCard(
                                 Text("Complete", fontWeight = FontWeight.SemiBold)
                             }
                         }
+                        PickupRequest.STATUS_CANCELLED -> {
+                            TextButton(onClick = onCardClick) {
+                                Text("View Details", color = Color.Gray)
+                            }
+                        }
                         else -> {
-                            TextButton(onClick = onClick) {
+                            TextButton(onClick = onCardClick) {
                                 Text("View Details", color = Color.Gray)
                             }
                         }
@@ -515,6 +711,8 @@ fun CollectorRequestCard(
         }
     }
 }
+
+
 
 // Preview removed - requires ViewModel
 // Use Android Studio's interactive preview or run the app to see the UI
