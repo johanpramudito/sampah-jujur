@@ -46,6 +46,17 @@ captures/
 .idea/caches
 .idea/modules.xml
 .idea/navEditor.xml
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+.idea/compiler.xml
+.idea/misc.xml
+.idea/migrations.xml
+.idea/runConfigurations.xml
+.idea/appInsightsSettings.xml
+.idea/copilot*.xml
+.idea/shelf/
+.idea/usage.statistics.xml
+.idea/androidTestResultsUserPreferences.xml
 
 # Keystore files (IMPORTANT: Don't commit these!)
 *.jks
