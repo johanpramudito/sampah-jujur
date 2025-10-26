@@ -64,6 +64,7 @@ sealed class Screen(val route: String) {
     // Shared
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
+    object About : Screen("about")
     object PrivacyPolicy : Screen("privacy_policy")
     object TermsAndConditions : Screen("terms_and_conditions")
 }
@@ -367,7 +368,7 @@ fun SampahJujurNavGraph(
                     navController.navigate(Screen.HelpSupport.route)
                 },
                 onAboutClick = {
-                    // TODO: Handle about
+                    navController.navigate(Screen.About.route)
                 },
                 onLogoutClick = {
                     // Sign out from both Firebase and Google
@@ -510,7 +511,7 @@ fun SampahJujurNavGraph(
                     navController.navigate(Screen.HelpSupport.route)
                 },
                 onAboutClick = {
-                    // TODO: Handle about
+                    navController.navigate(Screen.About.route)
                 },
                 onLogoutClick = {
                     // Sign out from both Firebase and Google
@@ -592,9 +593,15 @@ fun SampahJujurNavGraph(
                 },
                 onLiveChatClick = {
                     // TODO: Handle live chat
-                },
-                onSubmitFeedback = { name, email, message ->
-                    // TODO: Handle feedback submission
+                }
+            )
+        }
+
+        // About Screen
+        composable(Screen.About.route) {
+            AboutScreen(
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }
