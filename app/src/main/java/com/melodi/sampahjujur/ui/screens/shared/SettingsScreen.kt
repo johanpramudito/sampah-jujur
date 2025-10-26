@@ -164,7 +164,7 @@ fun SettingsScreen(
                         )
                         Divider(color = Color.LightGray.copy(alpha = 0.2f))
                         SettingsNavigationItem(
-                            icon = Icons.Default.Lock,
+                            icon = Icons.Default.Security,
                             title = "Privacy Policy",
                             subtitle = "View our privacy policy",
                             onClick = onPrivacyPolicyClick
@@ -194,12 +194,12 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        SettingsSwitchItem(
+                        ThemeSelectorItem(
                             icon = Icons.Default.DarkMode,
-                            title = "Dark Mode",
-                            subtitle = "Use dark theme",
-                            checked = uiState.darkModeEnabled,
-                            onCheckedChange = { viewModel.setDarkModeEnabled(it) }
+                            title = "Theme",
+                            subtitle = "",
+                            selectedTheme = uiState.themeMode,
+                            onThemeSelected = { viewModel.setThemeMode(it) }
                         )
                         Divider(color = Color.LightGray.copy(alpha = 0.2f))
                         SettingsNavigationItem(
@@ -352,6 +352,145 @@ fun SettingsScreen(
                     Text("Cancel", color = Color.Gray)
                 }
             }
+        )
+    }
+}
+
+@Composable
+fun ThemeSelectorItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    selectedTheme: String,
+    onThemeSelected: (String) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    val themeOptions = mapOf(
+        com.melodi.sampahjujur.repository.PreferencesRepository.THEME_LIGHT to "Light",
+        com.melodi.sampahjujur.repository.PreferencesRepository.THEME_DARK to "Dark",
+        com.melodi.sampahjujur.repository.PreferencesRepository.THEME_SYSTEM to "System Default"
+    )
+
+    val selectedThemeLabel = themeOptions[selectedTheme] ?: "System Default"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showDialog = true }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    PrimaryGreen.copy(alpha = 0.1f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = PrimaryGreen,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = selectedThemeLabel,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = "Navigate",
+            tint = Color.Gray,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+
+    // Theme selection dialog
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.DarkMode,
+                    contentDescription = "Theme",
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Choose Theme",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    themeOptions.forEach { (mode, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onThemeSelected(mode)
+                                    showDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = mode == selectedTheme,
+                                onClick = {
+                                    onThemeSelected(mode)
+                                    showDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = PrimaryGreen,
+                                    unselectedColor = Color.Gray
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = label,
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showDialog = false }
+                ) {
+                    Text(
+                        "Cancel",
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color.White
         )
     }
 }
