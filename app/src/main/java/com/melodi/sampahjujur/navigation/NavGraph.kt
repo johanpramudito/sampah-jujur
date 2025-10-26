@@ -6,11 +6,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.melodi.sampahjujur.di.GoogleSignInModule
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.model.WasteItem
@@ -66,6 +70,16 @@ fun SampahJujurNavGraph(
     authViewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsState()
+    val context = LocalContext.current
+
+    // Create GoogleSignInClient for sign-out functionality
+    val googleSignInClient = remember {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(GoogleSignInModule.getWebClientId())
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
 
     // Handle auth state changes during runtime (e.g., after login/logout)
     LaunchedEffect(authState) {
@@ -355,6 +369,10 @@ fun SampahJujurNavGraph(
                     // TODO: Handle about
                 },
                 onLogoutClick = {
+                    // Sign out from both Firebase and Google
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        android.util.Log.d("NavGraph", "Google sign-out completed")
+                    }
                     authViewModel.signOut()
                     navController.navigate(Screen.RoleSelection.route) {
                         popUpTo(0) { inclusive = true }
@@ -491,6 +509,10 @@ fun SampahJujurNavGraph(
                     // TODO: Handle about
                 },
                 onLogoutClick = {
+                    // Sign out from both Firebase and Google
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        android.util.Log.d("NavGraph", "Google sign-out completed")
+                    }
                     authViewModel.signOut()
                     navController.navigate(Screen.RoleSelection.route) {
                         popUpTo(0) { inclusive = true }

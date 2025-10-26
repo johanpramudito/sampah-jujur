@@ -315,8 +315,13 @@ fun HouseholdLoginScreen(
             // Google Sign In Button
             OutlinedButton(
                 onClick = {
-                    val signInIntent = googleSignInClient.signInIntent
-                    googleSignInLauncher.launch(signInIntent)
+                    // Sign out from Google to force account selection
+                    // This follows Android best practice for Google Sign-In
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        android.util.Log.d("HouseholdLogin", "Google sign-out completed, launching account picker")
+                        val signInIntent = googleSignInClient.signInIntent
+                        googleSignInLauncher.launch(signInIntent)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
