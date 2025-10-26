@@ -14,6 +14,7 @@ import com.melodi.sampahjujur.utils.CloudinaryUploadService
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.StateFlow
@@ -229,6 +230,26 @@ class HouseholdViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Observes a single pickup request by ID
+     *
+     * @param requestId ID of the request to observe
+     * @return Flow of PickupRequest or null if not found
+     */
+    fun observeRequest(requestId: String): Flow<PickupRequest?> {
+        return wasteRepository.observeRequest(requestId)
+    }
+
+    /**
+     * Gets collector information by their user ID
+     *
+     * @param collectorId The collector's user ID
+     * @return User object of the collector or null if not found
+     */
+    suspend fun getCollectorInfo(collectorId: String): com.melodi.sampahjujur.model.User? {
+        return authRepository.getUserById(collectorId)
     }
 
     /**

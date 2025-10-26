@@ -312,36 +312,13 @@ fun SampahJujurNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-            val viewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel =
-                androidx.hilt.navigation.compose.hiltViewModel()
-            val requests by viewModel.userRequests.observeAsState(emptyList())
 
-            // Find the request by ID
-            val request = requests.find { it.id == requestId }
-
-            if (request != null) {
-                RequestDetailScreen(
-                    request = request,
-                    collectorName = null, // TODO: Load collector info from Firestore if assigned
-                    collectorPhone = null,
-                    collectorVehicle = null,
-                    onBackClick = {
-                        navController.popBackStack()
-                    },
-                    onCancelRequest = {
-                        viewModel.cancelPickupRequest(requestId)
-                        navController.popBackStack()
-                    },
-                    onContactCollector = {
-                        // TODO: Implement phone call or messaging
-                    }
-                )
-            } else {
-                // Request not found - show error or go back
-                LaunchedEffect(Unit) {
+            HouseholdRequestDetailRoute(
+                requestId = requestId,
+                onBackClick = {
                     navController.popBackStack()
                 }
-            }
+            )
         }
 
         // Household Profile Screen

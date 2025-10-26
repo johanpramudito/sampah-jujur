@@ -488,6 +488,26 @@ class AuthRepository @Inject constructor(
     fun isSignedIn(): Boolean = auth.currentUser != null
 
     /**
+     * Gets a user by their ID from Firestore
+     *
+     * @param userId The user ID to fetch
+     * @return User object or null if not found
+     */
+    suspend fun getUserById(userId: String): User? {
+        return try {
+            val userDoc = firestore.collection("users")
+                .document(userId)
+                .get()
+                .await()
+
+            userDoc.toObject(User::class.java)
+        } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "Error fetching user by ID: $userId", e)
+            null
+        }
+    }
+
+    /**
      * Updates the current user's profile information in Firestore
      *
      * @param fullName Updated full name

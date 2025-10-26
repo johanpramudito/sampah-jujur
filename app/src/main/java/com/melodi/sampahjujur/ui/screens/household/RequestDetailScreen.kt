@@ -1,6 +1,8 @@
 package com.melodi.sampahjujur.ui.screens.household
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -12,16 +14,92 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import android.content.Context
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.theme.*
+import com.melodi.sampahjujur.viewmodel.HouseholdViewModel
+import kotlinx.coroutines.launch
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import java.text.SimpleDateFormat
 import java.util.*
+
+/**
+ * Route composable for Household Request Detail Screen
+ * Handles data fetching and state management
+ */
+@Composable
+fun HouseholdRequestDetailRoute(
+    requestId: String,
+    onBackClick: () -> Unit,
+    viewModel: HouseholdViewModel = hiltViewModel()
+) {
+    val request by viewModel.observeRequest(requestId).collectAsState(initial = null)
+    var collectorInfo by remember { mutableStateOf<com.melodi.sampahjujur.model.User?>(null) }
+    val scope = rememberCoroutineScope()
+
+    // Fetch collector information when request has a collector assigned
+    LaunchedEffect(request) {
+        val currentRequest = request
+        if (currentRequest != null) {
+            val collectorId = currentRequest.collectorId
+            if (!collectorId.isNullOrBlank()) {
+                scope.launch {
+                    collectorInfo = viewModel.getCollectorInfo(collectorId)
+                }
+            } else {
+                collectorInfo = null
+            }
+        }
+    }
+
+    if (request == null) {
+        // Show loading state
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = PrimaryGreen)
+        }
+    } else {
+        RequestDetailScreen(
+            request = request!!,
+            collectorName = collectorInfo?.fullName,
+            collectorPhone = collectorInfo?.phone,
+            collectorVehicle = if (collectorInfo?.vehicleType?.isNotBlank() == true) {
+                "${collectorInfo?.vehicleType} - ${collectorInfo?.vehiclePlateNumber}"
+            } else null,
+            onBackClick = onBackClick,
+            onCancelRequest = {
+                viewModel.cancelPickupRequest(requestId)
+                onBackClick()
+            },
+            onContactCollector = {
+                // TODO: Implement phone call functionality
+                android.util.Log.d("RequestDetail", "Contact collector: ${collectorInfo?.phone}")
+            }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +113,7 @@ fun RequestDetailScreen(
     onContactCollector: () -> Unit = {}
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -106,7 +185,7 @@ fun RequestDetailScreen(
                 }
             }
 
-            // Location Card
+            // Location Card with Map
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -119,32 +198,30 @@ fun RequestDetailScreen(
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Text(
-                            text = "Pickup Location",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Location",
+                                tint = PrimaryGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Pickup Location",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Map Placeholder
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .background(
-                                    Color.LightGray.copy(alpha = 0.3f),
-                                    RoundedCornerShape(8.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Map,
-                                contentDescription = "Map",
-                                tint = Color.Gray,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
+                        // OpenStreetMap Preview
+                        StaticMapPreview(
+                            latitude = request.pickupLocation.latitude,
+                            longitude = request.pickupLocation.longitude
+                        )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -152,9 +229,9 @@ fun RequestDetailScreen(
                             verticalAlignment = Alignment.Top
                         ) {
                             Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Location",
-                                tint = PrimaryGreen,
+                                imageVector = Icons.Default.Home,
+                                contentDescription = "Address",
+                                tint = Color.Gray,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -182,18 +259,34 @@ fun RequestDetailScreen(
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Text(
-                            text = "Waste Items",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Waste",
+                                tint = PrimaryGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Waste Items (${request.wasteItems.size})",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         request.wasteItems.forEachIndexed { index, item ->
-                            WasteItemDetailCard(item = item)
+                            WasteItemDetailCard(
+                                item = item,
+                                onImageClick = { imageUrl ->
+                                    selectedImageUrl = imageUrl
+                                }
+                            )
                             if (index < request.wasteItems.size - 1) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
                             }
                         }
 
@@ -203,32 +296,56 @@ fun RequestDetailScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Totals
+                        // Totals Summary
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            // Total Weight
                             Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Scale,
+                                        contentDescription = "Weight",
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Total Weight",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Total Weight",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "${request.wasteItems.sumOf { it.weight }} kg",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = "${String.format("%.1f", request.wasteItems.sumOf { it.weight })} kg",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
                                 )
                             }
+
+                            // Total Value
                             Column(horizontalAlignment = Alignment.End) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.AttachMoney,
+                                        contentDescription = "Value",
+                                        tint = PrimaryGreen,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Estimated Value",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Estimated Value",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "$${request.wasteItems.sumOf { it.estimatedValue }}",
-                                    fontSize = 18.sp,
+                                    text = "Rp ${String.format("%,.0f", request.wasteItems.sumOf { it.estimatedValue })}",
+                                    fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = PrimaryGreen
                                 )
@@ -252,17 +369,36 @@ fun RequestDetailScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
-                            Text(
-                                text = "Additional Notes",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = request.notes,
-                                fontSize = 14.sp,
-                                color = Color.DarkGray
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notes,
+                                    contentDescription = "Notes",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Additional Notes",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF9F9F9)
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = request.notes,
+                                    fontSize = 14.sp,
+                                    color = Color.DarkGray,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -282,20 +418,32 @@ fun RequestDetailScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
-                            Text(
-                                text = "Collector Information",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Collector",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Collector Information",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(48.dp)
+                                        .size(56.dp)
                                         .background(
                                             PrimaryGreen.copy(alpha = 0.1f),
                                             CircleShape
@@ -305,43 +453,54 @@ fun RequestDetailScreen(
                                     Icon(
                                         imageVector = Icons.Default.Person,
                                         contentDescription = "Collector",
-                                        tint = PrimaryGreen
+                                        tint = PrimaryGreen,
+                                        modifier = Modifier.size(32.dp)
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = collectorName,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
+                                    if (collectorPhone != null) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Phone,
+                                                contentDescription = "Phone",
+                                                tint = Color.Gray,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = collectorPhone,
+                                                fontSize = 14.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    }
                                     if (collectorVehicle != null) {
-                                        Text(
-                                            text = collectorVehicle,
-                                            fontSize = 14.sp,
-                                            color = Color.Gray
-                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.DirectionsCar,
+                                                contentDescription = "Vehicle",
+                                                tint = Color.Gray,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = collectorVehicle,
+                                                fontSize = 14.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
                                     }
                                 }
-
-                                IconButton(onClick = onContactCollector) {
-                                    Icon(
-                                        imageVector = Icons.Default.Phone,
-                                        contentDescription = "Call",
-                                        tint = PrimaryGreen
-                                    )
-                                }
-                            }
-
-                            if (collectorPhone != null) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = collectorPhone,
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
                             }
                         }
                     }
@@ -447,79 +606,222 @@ fun RequestDetailScreen(
             }
         )
     }
+
+    // Full-Screen Image Viewer
+    if (selectedImageUrl != null) {
+        Dialog(
+            onDismissRequest = { selectedImageUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { selectedImageUrl = null }
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(selectedImageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Waste Item Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+
+                IconButton(
+                    onClick = { selectedImageUrl = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
-fun WasteItemDetailCard(item: WasteItem) {
+fun WasteItemDetailCard(
+    item: WasteItem,
+    onImageClick: (String) -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp)
         ) {
-            // Icon based on waste type
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        PrimaryGreen.copy(alpha = 0.1f),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = item.type,
-                    tint = PrimaryGreen,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+                // Icon based on waste type
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            PrimaryGreen.copy(alpha = 0.1f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getWasteTypeIcon(item.type),
+                        contentDescription = item.type,
+                        tint = PrimaryGreen,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
-            Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.type.replaceFirstChar { it.uppercase() },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                if (item.description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = item.description,
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = item.type.replaceFirstChar { it.uppercase() },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    if (item.description.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = item.description,
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${String.format("%.1f", item.weight)} kg",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp
+                    )
+                    Text(
+                        text = "Rp ${String.format("%,.0f", item.estimatedValue)}",
+                        fontSize = 13.sp,
+                        color = PrimaryGreen,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            // Show image if available
+            if (item.imageUrl.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${item.weight} kg",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "$${item.estimatedValue}",
-                    fontSize = 12.sp,
-                    color = PrimaryGreen,
-                    fontWeight = FontWeight.Medium
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(item.imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Waste item image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .clickable { onImageClick(item.imageUrl) },
+                    contentScale = ContentScale.Crop
                 )
             }
         }
     }
 }
 
+fun getWasteTypeIcon(type: String) = when (type.lowercase()) {
+    "plastic" -> Icons.Default.Recycling
+    "paper" -> Icons.Default.Description
+    "metal" -> Icons.Default.Hardware
+    "glass" -> Icons.Default.LocalDrink
+    "electronics" -> Icons.Default.PhoneAndroid
+    "cardboard" -> Icons.Default.Inventory
+    else -> Icons.Default.Delete
+}
+
 fun formatDateTime(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+@Composable
+fun StaticMapPreview(
+    latitude: Double,
+    longitude: Double
+) {
+    val context = LocalContext.current
+
+    // Initialize OSMDroid configuration
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().load(
+            context,
+            context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+        )
+        Configuration.getInstance().userAgentValue = context.packageName
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(12.dp))
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                MapView(ctx).apply {
+                    setTileSource(TileSourceFactory.MAPNIK)
+
+                    // Make completely non-interactive
+                    setMultiTouchControls(false)
+                    isClickable = false
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    setOnTouchListener { _, _ -> true } // Consume all touch events
+
+                    val location = GeoPoint(latitude, longitude)
+                    controller.setZoom(16.0)
+                    controller.setCenter(location)
+
+                    // Add marker at the location
+                    val marker = Marker(this).apply {
+                        position = location
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        title = "Pickup Location"
+                    }
+                    overlays.add(marker)
+                }
+            },
+            update = { mapView ->
+                // Update map center and marker when location changes
+                val newLocation = GeoPoint(latitude, longitude)
+                mapView.controller.setCenter(newLocation)
+
+                // Update marker position
+                if (mapView.overlays.isNotEmpty()) {
+                    val marker = mapView.overlays.firstOrNull { it is Marker } as? Marker
+                    marker?.position = newLocation
+                }
+
+                mapView.invalidate()
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
 
 @Preview(showBackground = true)
@@ -531,23 +833,40 @@ fun RequestDetailScreenPreview() {
                 id = "req123456789",
                 householdId = "user1",
                 wasteItems = listOf(
-                    WasteItem("plastic", 5.0, 10.0, "Clean plastic bottles"),
-                    WasteItem("paper", 3.0, 6.0, "Newspapers and magazines"),
-                    WasteItem("metal", 2.0, 8.0, "Aluminum cans")
+                    WasteItem(
+                        type = "plastic",
+                        weight = 5.0,
+                        estimatedValue = 25000.0,
+                        description = "Clean plastic bottles and containers",
+                        imageUrl = "https://via.placeholder.com/300"
+                    ),
+                    WasteItem(
+                        type = "paper",
+                        weight = 3.0,
+                        estimatedValue = 15000.0,
+                        description = "Newspapers and magazines"
+                    ),
+                    WasteItem(
+                        type = "metal",
+                        weight = 2.0,
+                        estimatedValue = 18000.0,
+                        description = "Aluminum cans",
+                        imageUrl = "https://via.placeholder.com/300"
+                    )
                 ),
                 pickupLocation = PickupRequest.Location(
-                    latitude = 0.0,
-                    longitude = 0.0,
-                    address = "123 Main Street, Springfield, IL 62701"
+                    latitude = -6.200000,
+                    longitude = 106.816666,
+                    address = "Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta 10110"
                 ),
                 status = "accepted",
-                notes = "Please ring the doorbell twice. Items are in the garage.",
+                notes = "Please ring the doorbell twice. Items are neatly arranged in the garage on the left side.",
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
             ),
             collectorName = "John Doe",
-            collectorPhone = "+1 (555) 123-4567",
-            collectorVehicle = "Blue Truck - ABC 123"
+            collectorPhone = "+62 812-3456-7890",
+            collectorVehicle = "Blue Truck - B 1234 XYZ"
         )
     }
 }
