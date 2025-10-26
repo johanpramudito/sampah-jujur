@@ -119,7 +119,8 @@ class WasteRepository @Inject constructor(
             .whereIn("status", listOf(
                 PickupRequest.STATUS_ACCEPTED,
                 PickupRequest.STATUS_IN_PROGRESS,
-                PickupRequest.STATUS_COMPLETED
+                PickupRequest.STATUS_COMPLETED,
+                PickupRequest.STATUS_CANCELLED
             ))
             .orderBy("updatedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
@@ -240,6 +241,52 @@ class WasteRepository @Inject constructor(
                 }
 
                 Unit
+            }.await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Cancels a pickup request that has been accepted by the current collector.
+     *
+     * @param requestId ID of the pickup request to cancel
+     * @param collectorId ID of the collector performing the cancellation
+     */
+    suspend fun cancelCollectorRequest(requestId: String, collectorId: String): Result<Unit> {
+        return try {
+            firestore.runTransaction { transaction ->
+                val requestRef = firestore.collection(PICKUP_REQUESTS_COLLECTION).document(requestId)
+                val snapshot = transaction.get(requestRef)
+
+                if (!snapshot.exists()) {
+                    throw IllegalStateException("Request no longer exists")
+                }
+
+                val request = snapshot.toObject(PickupRequest::class.java)
+                    ?: throw IllegalStateException("Unable to read request data")
+
+                if (request.collectorId.isNullOrBlank() || request.collectorId != collectorId) {
+                    throw IllegalStateException("Request is assigned to a different collector")
+                }
+
+                if (request.status !in listOf(
+                        PickupRequest.STATUS_ACCEPTED,
+                        PickupRequest.STATUS_IN_PROGRESS
+                    )
+                ) {
+                    throw IllegalStateException("Request cannot be cancelled from its current status")
+                }
+
+                transaction.update(
+                    requestRef,
+                    mapOf(
+                        "status" to PickupRequest.STATUS_CANCELLED,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                )
             }.await()
 
             Result.success(Unit)
