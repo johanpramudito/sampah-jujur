@@ -30,8 +30,6 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +60,6 @@ fun LocationPickerScreen(
 
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var centerMarker by remember { mutableStateOf<Marker?>(null) }
-    var myLocationOverlay by remember { mutableStateOf<MyLocationNewOverlay?>(null) }
 
     // Track map movement for auto-address update
     var scrollDebounceJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -160,12 +157,6 @@ fun LocationPickerScreen(
                         controller.setZoom(15.0)
                         controller.setCenter(currentLocation)
 
-                        // Add my location overlay
-                        val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
-                        locationOverlay.enableMyLocation()
-                        overlays.add(locationOverlay)
-                        myLocationOverlay = locationOverlay
-
                         // Add center marker
                         val marker = Marker(this).apply {
                             position = currentLocation
@@ -204,17 +195,6 @@ fun LocationPickerScreen(
                 update = { view ->
                     // Update when needed
                 }
-            )
-
-            // Center crosshair overlay (optional visual indicator)
-            Icon(
-                imageVector = Icons.Default.MyLocation,
-                contentDescription = "Location Pin",
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(48.dp)
-                    .offset(y = (-24).dp),
-                tint = Color.Red
             )
 
             // Address Card at the top
