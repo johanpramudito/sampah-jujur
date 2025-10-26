@@ -50,6 +50,7 @@ sealed class Screen(val route: String) {
     object HouseholdLocationPicker : Screen("household_location_picker")
     object HouseholdProfile : Screen("household_profile")
     object HouseholdEditProfile : Screen("household_edit_profile")
+    object HouseholdStatistics : Screen("household_statistics")
 
     // Collector Main
     object CollectorDashboard : Screen("collector_dashboard")
@@ -337,13 +338,27 @@ fun SampahJujurNavGraph(
                 )
             }
 
+            // Get HouseholdViewModel to fetch user requests for statistics
+            val householdViewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel =
+                androidx.hilt.navigation.compose.hiltViewModel()
+            val requests by householdViewModel.userRequests.observeAsState(emptyList())
+
+            // Calculate statistics from requests
+            val totalRequests = requests.size
+            val totalWasteCollected = requests.sumOf { it.wasteItems.sumOf { item -> item.weight } }
+            val totalEarnings = requests.filter { it.status == PickupRequest.STATUS_COMPLETED }
+                .sumOf { it.wasteItems.sumOf { item -> item.estimatedValue } }
+
             HouseholdProfileScreen(
                 user = user,
-                totalRequests = 0,
-                totalWasteCollected = 0.0,
-                totalEarnings = 0.0,
+                totalRequests = totalRequests,
+                totalWasteCollected = totalWasteCollected,
+                totalEarnings = totalEarnings,
                 onEditProfileClick = {
                     navController.navigate(Screen.HouseholdEditProfile.route)
+                },
+                onStatisticsClick = {
+                    navController.navigate(Screen.HouseholdStatistics.route)
                 },
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
@@ -398,6 +413,15 @@ fun SampahJujurNavGraph(
                 },
                 onSaveClick = { fullName, email, phone, address, profileImageUrl ->
                     // TODO: Update in ViewModel (master has updateHouseholdProfile method)
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Household Statistics Screen
+        composable(Screen.HouseholdStatistics.route) {
+            HouseholdStatisticsScreen(
+                onBackClick = {
                     navController.popBackStack()
                 }
             )
@@ -549,12 +573,10 @@ fun SampahJujurNavGraph(
                     // TODO: Handle language
                 },
                 onPrivacyPolicyClick = {
-                    // TODO: Master has PrivacyPolicyScreen implementation
-                    // navController.navigate(Screen.PrivacyPolicy.route)
+                    navController.navigate(Screen.PrivacyPolicy.route)
                 },
                 onTermsClick = {
-                    // TODO: Master has TermsAndConditionsScreen implementation
-                    // navController.navigate(Screen.TermsAndConditions.route)
+                    navController.navigate(Screen.TermsAndConditions.route)
                 },
                 onDeleteAccountClick = {
                     // TODO: Handle delete account
@@ -577,23 +599,22 @@ fun SampahJujurNavGraph(
             )
         }
 
-        // TODO: Master branch has these screens - implement when needed:
         // Privacy Policy Screen
-        // composable(Screen.PrivacyPolicy.route) {
-        //     PrivacyPolicyScreen(
-        //         onBackClick = {
-        //             navController.popBackStack()
-        //         }
-        //     )
-        // }
+        composable(Screen.PrivacyPolicy.route) {
+            PrivacyPolicyScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
 
         // Terms & Conditions Screen
-        // composable(Screen.TermsAndConditions.route) {
-        //     TermsAndConditionsScreen(
-        //         onBackClick = {
-        //             navController.popBackStack()
-        //         }
-        //     )
-        // }
+        composable(Screen.TermsAndConditions.route) {
+            TermsAndConditionsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }

@@ -35,6 +35,7 @@ fun HouseholdProfileScreen(
     totalWasteCollected: Double = 0.0,
     totalEarnings: Double = 0.0,
     onEditProfileClick: () -> Unit = {},
+    onStatisticsClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onHelpSupportClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
@@ -172,7 +173,9 @@ fun HouseholdProfileScreen(
             // Statistics Card
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onStatisticsClick() },
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     elevation = CardDefaults.cardElevation(2.dp),
                     shape = RoundedCornerShape(12.dp)
@@ -182,11 +185,22 @@ fun HouseholdProfileScreen(
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Text(
-                            text = "My Statistics",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "My Statistics",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = "View details",
+                                tint = Color.Gray
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
