@@ -50,6 +50,7 @@ sealed class Screen(val route: String) {
     object CollectorRequestDetail : Screen("collector_request_detail/{requestId}") {
         fun createRoute(requestId: String) = "collector_request_detail/$requestId"
     }
+    object CollectorMap : Screen("collector_map")
     object CollectorProfile : Screen("collector_profile")
     object CollectorEditProfile : Screen("collector_edit_profile")
 
@@ -400,10 +401,26 @@ fun SampahJujurNavGraph(
                 },
                 onNavigate = { route ->
                     when (route) {
-                        "collector_dashboard" -> { /* Already here */ }
-                        "map_view" -> { /* TODO: Navigate to map */ }
-                        "collector_profile" -> navController.navigate(Screen.CollectorProfile.route)
+                        Screen.CollectorDashboard.route -> { /* Already here */ }
+                        Screen.CollectorMap.route -> navController.navigate(Screen.CollectorMap.route)
+                        Screen.CollectorProfile.route -> navController.navigate(Screen.CollectorProfile.route)
                     }
+                }
+            )
+        }
+
+        // Collector Map Screen
+        composable(Screen.CollectorMap.route) {
+            CollectorMapScreen(
+                onNavigate = { route ->
+                    when (route) {
+                        Screen.CollectorDashboard.route -> navController.navigate(Screen.CollectorDashboard.route)
+                        Screen.CollectorMap.route -> { /* Already here */ }
+                        Screen.CollectorProfile.route -> navController.navigate(Screen.CollectorProfile.route)
+                    }
+                },
+                onRequestSelected = { requestId ->
+                    navController.navigate(Screen.CollectorRequestDetail.createRoute(requestId))
                 }
             )
         }
@@ -463,9 +480,9 @@ fun SampahJujurNavGraph(
                 },
                 onNavigate = { route ->
                     when (route) {
-                        "collector_dashboard" -> navController.navigate(Screen.CollectorDashboard.route)
-                        "map_view" -> { /* TODO: Navigate to map */ }
-                        "collector_profile" -> { /* Already here */ }
+                        Screen.CollectorDashboard.route -> navController.navigate(Screen.CollectorDashboard.route)
+                        Screen.CollectorMap.route -> navController.navigate(Screen.CollectorMap.route)
+                        Screen.CollectorProfile.route -> { /* Already here */ }
                     }
                 }
             )

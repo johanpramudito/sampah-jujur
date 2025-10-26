@@ -1,7 +1,9 @@
 package com.melodi.sampahjujur
 
 import android.app.Application
+import androidx.preference.PreferenceManager
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
+import org.osmdroid.config.Configuration
 import dagger.hilt.android.HiltAndroidApp
 
 /**
@@ -12,6 +14,11 @@ import dagger.hilt.android.HiltAndroidApp
 class SampahJujurApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        // Configure OpenStreetMap user agent and preferences cache
+        Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this))
+        Configuration.getInstance().userAgentValue = BuildConfig.APPLICATION_ID
+
         // Initialize Cloudinary for image uploads
         try {
             CloudinaryUploadService.initialize(this)
