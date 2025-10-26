@@ -6,12 +6,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.melodi.sampahjujur.di.GoogleSignInModule
+import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.User
+import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.screens.*
 import com.melodi.sampahjujur.ui.screens.auth.*
 import com.melodi.sampahjujur.ui.screens.collector.*
@@ -66,6 +72,16 @@ fun SampahJujurNavGraph(
     authViewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsState()
+    val context = LocalContext.current
+
+    // Create GoogleSignInClient for sign-out functionality
+    val googleSignInClient = remember {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(GoogleSignInModule.getWebClientId())
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
 
     // Handle auth state changes during runtime (e.g., after login/logout)
     LaunchedEffect(authState) {
@@ -361,6 +377,10 @@ fun SampahJujurNavGraph(
                     // TODO: Handle about
                 },
                 onLogoutClick = {
+                    // Sign out from both Firebase and Google
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        android.util.Log.d("NavGraph", "Google sign-out completed")
+                    }
                     authViewModel.signOut()
                     navController.navigate(Screen.RoleSelection.route) {
                         popUpTo(0) { inclusive = true }
@@ -392,34 +412,17 @@ fun SampahJujurNavGraph(
                     userType = "household"
                 )
             }
-            val uiState by authViewModel.uiState.collectAsState()
 
             EditProfileScreen(
                 user = user,
-                isLoading = uiState.isLoading,
-                errorMessage = uiState.errorMessage,
                 onBackClick = {
-                    authViewModel.clearMessages()
                     navController.popBackStack()
                 },
                 onSaveClick = { fullName, email, phone, address, profileImageUrl ->
-                    authViewModel.updateHouseholdProfile(
-                        fullName = fullName,
-                        email = email,
-                        phone = phone,
-                        address = address,
-                        profileImageUrl = profileImageUrl
-                    )
+                    // TODO: Update in ViewModel (master has updateHouseholdProfile method)
+                    navController.popBackStack()
                 }
             )
-
-            // Navigate back on successful update
-            LaunchedEffect(uiState.successMessage) {
-                if (uiState.successMessage?.contains("successfully") == true) {
-                    navController.popBackStack()
-                    authViewModel.clearMessages()
-                }
-            }
         }
 
         // Collector Dashboard Screen
@@ -444,9 +447,42 @@ fun SampahJujurNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-            CollectorRequestDetailRoute(
-                requestId = requestId,
-                onBackClick = { navController.popBackStack() }
+            // TODO: Get request from ViewModel by ID (master uses CollectorRequestDetailRoute)
+            val dummyRequest = PickupRequest(
+                id = requestId,
+                householdId = "user1",
+                wasteItems = listOf(WasteItem("plastic", 5.0, 10.0, "Bottles")),
+                pickupLocation = PickupRequest.Location(0.0, 0.0, "123 Main St"),
+                status = "pending"
+            )
+
+            CollectorRequestDetailScreen(
+                request = dummyRequest,
+                householdName = "Household User",
+                householdPhone = null,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onAcceptRequest = {
+                    // TODO: Accept in ViewModel
+                    navController.popBackStack()
+                },
+                onNavigateToLocation = {
+                    // TODO: Handle navigation
+                },
+                onStartPickup = {
+                    // TODO: Start pickup in ViewModel
+                },
+                onCompletePickup = {
+                    // TODO: Show complete transaction dialog
+                },
+                onContactHousehold = {
+                    // TODO: Handle contact
+                },
+                onCancelRequest = {
+                    // TODO: Cancel in ViewModel
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -492,6 +528,10 @@ fun SampahJujurNavGraph(
                     // TODO: Handle about
                 },
                 onLogoutClick = {
+                    // Sign out from both Firebase and Google
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        android.util.Log.d("NavGraph", "Google sign-out completed")
+                    }
                     authViewModel.signOut()
                     navController.navigate(Screen.RoleSelection.route) {
                         popUpTo(0) { inclusive = true }
@@ -522,51 +562,53 @@ fun SampahJujurNavGraph(
                     userType = "collector"
                 )
             }
-            val uiState by authViewModel.uiState.collectAsState()
 
             CollectorEditProfileScreen(
                 user = user,
-                vehicleType = user.vehicleType,
-                vehiclePlateNumber = user.vehiclePlateNumber,
-                operatingArea = user.operatingArea,
+                vehicleType = "",
+                vehiclePlateNumber = "",
+                operatingArea = "",
                 onBackClick = {
-                    authViewModel.clearMessages()
                     navController.popBackStack()
                 },
                 onSaveClick = { fullName, phone, vehicleType, plateNumber, operatingArea ->
-                    authViewModel.updateCollectorProfile(
-                        fullName = fullName,
-                        phone = phone,
-                        vehicleType = vehicleType,
-                        vehiclePlateNumber = plateNumber,
-                        operatingArea = operatingArea
-                    )
+                    // TODO: Update in ViewModel (master has updateCollectorProfile method and User fields)
+                    navController.popBackStack()
                 }
             )
-
-            // Navigate back on successful update
-            LaunchedEffect(uiState.successMessage) {
-                if (uiState.successMessage?.contains("successfully") == true) {
-                    navController.popBackStack()
-                    authViewModel.clearMessages()
-                }
-            }
         }
 
         // Settings Screen
         composable(Screen.Settings.route) {
             SettingsScreen(
+                notificationsEnabled = true,
+                locationEnabled = true,
+                darkModeEnabled = false,
                 onBackClick = {
                     navController.popBackStack()
                 },
+                onNotificationsToggle = { enabled ->
+                    // TODO: Handle toggle
+                },
+                onLocationToggle = { enabled ->
+                    // TODO: Handle toggle
+                },
+                onDarkModeToggle = { enabled ->
+                    // TODO: Handle toggle
+                },
                 onLanguageClick = {
-                    // TODO: Handle language selection
+                    // TODO: Handle language
                 },
                 onPrivacyPolicyClick = {
-                    navController.navigate(Screen.PrivacyPolicy.route)
+                    // TODO: Master has PrivacyPolicyScreen implementation
+                    // navController.navigate(Screen.PrivacyPolicy.route)
                 },
                 onTermsClick = {
-                    navController.navigate(Screen.TermsAndConditions.route)
+                    // TODO: Master has TermsAndConditionsScreen implementation
+                    // navController.navigate(Screen.TermsAndConditions.route)
+                },
+                onClearCacheClick = {
+                    // TODO: Handle clear cache
                 },
                 onDeleteAccountClick = {
                     // TODO: Handle delete account
@@ -589,22 +631,23 @@ fun SampahJujurNavGraph(
             )
         }
 
+        // TODO: Master branch has these screens - implement when needed:
         // Privacy Policy Screen
-        composable(Screen.PrivacyPolicy.route) {
-            PrivacyPolicyScreen(
-                onBackClick = {
-                    navController.popBackStack()
-                }
-            )
-        }
+        // composable(Screen.PrivacyPolicy.route) {
+        //     PrivacyPolicyScreen(
+        //         onBackClick = {
+        //             navController.popBackStack()
+        //         }
+        //     )
+        // }
 
         // Terms & Conditions Screen
-        composable(Screen.TermsAndConditions.route) {
-            TermsAndConditionsScreen(
-                onBackClick = {
-                    navController.popBackStack()
-                }
-            )
-        }
+        // composable(Screen.TermsAndConditions.route) {
+        //     TermsAndConditionsScreen(
+        //         onBackClick = {
+        //             navController.popBackStack()
+        //         }
+        //     )
+        // }
     }
 }
