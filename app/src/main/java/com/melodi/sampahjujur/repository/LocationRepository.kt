@@ -13,6 +13,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
@@ -24,10 +25,12 @@ import kotlin.coroutines.resumeWithException
 /**
  * Repository class for handling location operations.
  * Provides methods to get current location and convert coordinates to addresses.
+ * Respects user's location settings preference.
  */
 @Singleton
 class LocationRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val preferencesRepository: PreferencesRepository
 ) {
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
@@ -49,12 +52,26 @@ class LocationRepository @Inject constructor(
     }
 
     /**
+     * Checks if location access is enabled in app settings
+     *
+     * @return true if location access is enabled in settings
+     */
+    suspend fun isLocationEnabled(): Boolean {
+        return preferencesRepository.isLocationEnabled.first()
+    }
+
+    /**
      * Gets the current location of the device
      *
      * @return Result containing GeoPoint with current location or error
-     * @throws SecurityException if location permissions are not granted
+     * @throws SecurityException if location permissions are not granted or location is disabled in settings
      */
     suspend fun getCurrentLocation(): Result<GeoPoint> {
+        // Check if location access is enabled in app settings
+        if (!isLocationEnabled()) {
+            return Result.failure(SecurityException("Location access is disabled in settings. Please enable it in Settings > Privacy & Permissions."))
+        }
+
         if (!hasLocationPermission()) {
             return Result.failure(SecurityException("Location permission not granted"))
         }
@@ -82,9 +99,14 @@ class LocationRepository @Inject constructor(
      * Gets the last known location of the device (faster but may be outdated)
      *
      * @return Result containing GeoPoint with last known location or error
-     * @throws SecurityException if location permissions are not granted
+     * @throws SecurityException if location permissions are not granted or location is disabled in settings
      */
     suspend fun getLastKnownLocation(): Result<GeoPoint> {
+        // Check if location access is enabled in app settings
+        if (!isLocationEnabled()) {
+            return Result.failure(SecurityException("Location access is disabled in settings. Please enable it in Settings > Privacy & Permissions."))
+        }
+
         if (!hasLocationPermission()) {
             return Result.failure(SecurityException("Location permission not granted"))
         }

@@ -535,20 +535,8 @@ fun SampahJujurNavGraph(
         // Settings Screen
         composable(Screen.Settings.route) {
             SettingsScreen(
-                notificationsEnabled = true,
-                locationEnabled = true,
-                darkModeEnabled = false,
                 onBackClick = {
                     navController.popBackStack()
-                },
-                onNotificationsToggle = { enabled ->
-                    // TODO: Handle toggle
-                },
-                onLocationToggle = { enabled ->
-                    // TODO: Handle toggle
-                },
-                onDarkModeToggle = { enabled ->
-                    // TODO: Handle toggle
                 },
                 onLanguageClick = {
                     // TODO: Handle language
@@ -558,9 +546,6 @@ fun SampahJujurNavGraph(
                 },
                 onTermsClick = {
                     // TODO: Handle terms
-                },
-                onClearCacheClick = {
-                    // TODO: Handle clear cache
                 },
                 onDeleteAccountClick = {
                     // TODO: Handle delete account

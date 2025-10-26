@@ -18,29 +18,56 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
+import com.melodi.sampahjujur.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    notificationsEnabled: Boolean = true,
-    locationEnabled: Boolean = true,
-    darkModeEnabled: Boolean = false,
+    viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit = {},
-    onNotificationsToggle: (Boolean) -> Unit = {},
-    onLocationToggle: (Boolean) -> Unit = {},
-    onDarkModeToggle: (Boolean) -> Unit = {},
     onLanguageClick: () -> Unit = {},
     onPrivacyPolicyClick: () -> Unit = {},
     onTermsClick: () -> Unit = {},
-    onClearCacheClick: () -> Unit = {},
     onDeleteAccountClick: () -> Unit = {}
 ) {
-    var notificationsChecked by remember { mutableStateOf(notificationsEnabled) }
-    var locationChecked by remember { mutableStateOf(locationEnabled) }
-    var darkModeChecked by remember { mutableStateOf(darkModeEnabled) }
+    val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Show snackbar for location disabled message
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.showLocationDisabledMessage) {
+        if (uiState.showLocationDisabledMessage) {
+            snackbarHostState.showSnackbar(
+                message = "Location services disabled. Location features won't be available.",
+                duration = SnackbarDuration.Short
+            )
+            viewModel.dismissLocationDisabledMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearSuccessMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearErrorMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -64,6 +91,7 @@ fun SettingsScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
         LazyColumn(
@@ -99,11 +127,8 @@ fun SettingsScreen(
                             icon = Icons.Default.Notifications,
                             title = "Push Notifications",
                             subtitle = "Receive updates about your requests",
-                            checked = notificationsChecked,
-                            onCheckedChange = {
-                                notificationsChecked = it
-                                onNotificationsToggle(it)
-                            }
+                            checked = uiState.notificationsEnabled,
+                            onCheckedChange = { viewModel.setNotificationsEnabled(it) }
                         )
                     }
                 }
@@ -134,11 +159,8 @@ fun SettingsScreen(
                             icon = Icons.Default.LocationOn,
                             title = "Location Services",
                             subtitle = "Allow access to your location",
-                            checked = locationChecked,
-                            onCheckedChange = {
-                                locationChecked = it
-                                onLocationToggle(it)
-                            }
+                            checked = uiState.locationEnabled,
+                            onCheckedChange = { viewModel.setLocationEnabled(it) }
                         )
                         Divider(color = Color.LightGray.copy(alpha = 0.2f))
                         SettingsNavigationItem(
@@ -176,17 +198,14 @@ fun SettingsScreen(
                             icon = Icons.Default.DarkMode,
                             title = "Dark Mode",
                             subtitle = "Use dark theme",
-                            checked = darkModeChecked,
-                            onCheckedChange = {
-                                darkModeChecked = it
-                                onDarkModeToggle(it)
-                            }
+                            checked = uiState.darkModeEnabled,
+                            onCheckedChange = { viewModel.setDarkModeEnabled(it) }
                         )
                         Divider(color = Color.LightGray.copy(alpha = 0.2f))
                         SettingsNavigationItem(
                             icon = Icons.Default.Language,
                             title = "Language",
-                            subtitle = "English (US)",
+                            subtitle = uiState.language,
                             onClick = onLanguageClick
                         )
                     }
@@ -248,7 +267,7 @@ fun SettingsScreen(
                         icon = Icons.Default.CleaningServices,
                         title = "Clear Cache",
                         subtitle = "Free up storage space",
-                        onClick = onClearCacheClick
+                        onClick = { viewModel.clearCache() }
                     )
                 }
             }

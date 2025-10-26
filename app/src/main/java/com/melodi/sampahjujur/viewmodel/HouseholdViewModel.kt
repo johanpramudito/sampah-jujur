@@ -29,7 +29,8 @@ import javax.inject.Inject
 class HouseholdViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val preferencesRepository: com.melodi.sampahjujur.repository.PreferencesRepository
 ) : ViewModel() {
 
     companion object {
@@ -51,6 +52,34 @@ class HouseholdViewModel @Inject constructor(
 
     init {
         initializeHouseholdData()
+        observeLocationSettings()
+    }
+
+    /**
+     * Observes location settings and clears location data when disabled
+     */
+    private fun observeLocationSettings() {
+        viewModelScope.launch {
+            preferencesRepository.isLocationEnabled.collect { isEnabled ->
+                // Update location enabled state
+                _uiState.value = _uiState.value.copy(isLocationEnabled = isEnabled)
+
+                if (!isEnabled) {
+                    // Clear location from UI state
+                    _uiState.value = _uiState.value.copy(
+                        selectedLocation = null,
+                        selectedAddress = ""
+                    )
+
+                    // Clear draft location from database
+                    householdId?.let { id ->
+                        wasteRepository.clearDraftPickupLocation(id)
+                    }
+
+                    Log.d(TAG, "Location services disabled - cleared location data")
+                }
+            }
+        }
     }
 
     private fun initializeHouseholdData() {
@@ -385,6 +414,14 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
+     * Gets address from geographic coordinates
+     * Used by LocationPickerScreen for reverse geocoding
+     */
+    suspend fun getAddressFromLocation(geoPoint: GeoPoint): Result<String> {
+        return locationRepository.getAddressFromLocation(geoPoint)
+    }
+
+    /**
      * Loads the saved draft pickup location from database
      */
     private fun loadDraftPickupLocation(householdUid: String) {
@@ -464,6 +501,7 @@ data class HouseholdUiState(
     val errorMessage: String? = null,
     val currentWasteItems: List<WasteItem> = emptyList(),
     val selectedLocation: GeoPoint? = null,
-    val selectedAddress: String = ""
+    val selectedAddress: String = "",
+    val isLocationEnabled: Boolean = true
 )
 
