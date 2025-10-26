@@ -38,6 +38,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -178,7 +179,13 @@ fun CollectorMapScreen(
                         val marker = Marker(view).apply {
                             position = GeoPoint(markerInfo.latitude, markerInfo.longitude)
                             title = markerInfo.address.ifBlank { "Request #${markerInfo.requestId.take(6)}" }
-                            snippet = "Status: ${markerInfo.status}"
+                            val details = buildList {
+                                add("Status: ${markerInfo.status}")
+                                markerInfo.distanceKm?.let {
+                                    add(String.format(Locale.getDefault(), "Distance: %.1f km", it))
+                                }
+                            }
+                            snippet = details.joinToString("\n")
                             icon = requestMarkerIcon
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                             setOnMarkerClickListener { m, _ ->
@@ -220,9 +227,11 @@ fun CollectorMapScreen(
                     ) {
                         items(pendingRequests) { request ->
                             val isSelected = selectedRequestId == request.id
+                            val distanceKm = mapState.pendingMarkers.firstOrNull { it.requestId == request.id }?.distanceKm
                             MapRequestCard(
                                 request = request,
                                 isSelected = isSelected,
+                                distanceKm = distanceKm,
                                 onClick = {
                                     selectedRequestId = request.id
                                 },
@@ -240,6 +249,7 @@ fun CollectorMapScreen(
 private fun MapRequestCard(
     request: PickupRequest,
     isSelected: Boolean,
+    distanceKm: Double? = null,
     onClick: () -> Unit,
     onViewDetails: () -> Unit
 ) {
@@ -264,6 +274,13 @@ private fun MapRequestCard(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2
             )
+            distanceKm?.let {
+                Text(
+                    text = String.format(Locale.getDefault(), "~%.1f km away", it),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PrimaryGreen
+                )
+            }
             Text(
                 text = formatDate(request.createdAt),
                 style = MaterialTheme.typography.bodySmall,

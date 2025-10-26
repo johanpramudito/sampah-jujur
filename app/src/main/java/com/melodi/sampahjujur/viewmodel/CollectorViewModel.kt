@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 import javax.inject.Inject
 
 /**
@@ -425,10 +430,61 @@ class CollectorViewModel @Inject constructor(
     ): List<PickupRequest> {
         return when (sortBy) {
             "value" -> requests.sortedByDescending { it.totalValue }
-            "weight" -> requests.sortedByDescending { it.getTotalWeight() }
-            "distance" -> requests // TODO: Implement distance-based sorting
+            "weight" -> requests.sortedByDescending { it.wasteItems.size }
+            "distance" -> sortRequestsByDistance(requests)
             else -> requests.sortedByDescending { it.createdAt }
         }
+    }
+
+    private fun sortRequestsByDistance(requests: List<PickupRequest>): List<PickupRequest> {
+        val collectorLocation = _mapState.value.collectorLocation
+        if (collectorLocation == null) {
+            return requests.sortedByDescending { it.createdAt }
+        }
+
+        return requests.sortedBy { request ->
+            haversineDistanceKm(
+                collectorLocation.latitude,
+                collectorLocation.longitude,
+                request.pickupLocation.latitude,
+                request.pickupLocation.longitude
+            )
+        }
+    }
+
+    private fun haversineDistanceKm(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double
+    ): Double {
+        val earthRadiusKm = 6371.0
+
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val originLat = Math.toRadians(lat1)
+        val destinationLat = Math.toRadians(lat2)
+
+        val a = sin(dLat / 2).pow(2.0) +
+            sin(dLon / 2).pow(2.0) * cos(originLat) * cos(destinationLat)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return earthRadiusKm * c
+    }
+
+    fun distanceToRequest(request: PickupRequest): Double? {
+        val collectorLocation = _mapState.value.collectorLocation ?: return null
+        if (request.pickupLocation.latitude == 0.0 && request.pickupLocation.longitude == 0.0) {
+            return null
+        }
+
+        return haversineDistanceKm(
+            collectorLocation.latitude,
+            collectorLocation.longitude,
+            request.pickupLocation.latitude,
+            request.pickupLocation.longitude
+        )
     }
 
     /**
@@ -458,21 +514,41 @@ class CollectorViewModel @Inject constructor(
                     errorMessage = result.exceptionOrNull()?.message ?: "Unable to fetch current location"
                 )
             }
+
+            if (_uiState.value.sortBy == "distance") {
+                val currentRequests = _pendingRequests.value ?: emptyList()
+                val resorted = sortRequests(currentRequests, "distance")
+                _uiState.value = _uiState.value.copy(filteredRequests = resorted)
+            }
+
+            // Refresh marker distances
+            _pendingRequests.value?.let { updateMapMarkers(it) }
         }
     }
 
     private fun updateMapMarkers(requests: List<PickupRequest>) {
+        val collectorLocation = _mapState.value.collectorLocation
         val markers = requests
             .filter { request ->
                 request.pickupLocation.latitude != 0.0 || request.pickupLocation.longitude != 0.0
             }
             .map { request ->
+                val distanceKm = collectorLocation?.let {
+                    haversineDistanceKm(
+                        it.latitude,
+                        it.longitude,
+                        request.pickupLocation.latitude,
+                        request.pickupLocation.longitude
+                    )
+                }
+
                 MapMarker(
                     requestId = request.id,
                     latitude = request.pickupLocation.latitude,
                     longitude = request.pickupLocation.longitude,
                     status = request.status,
-                    address = request.pickupLocation.address
+                    address = request.pickupLocation.address,
+                    distanceKm = distanceKm
                 )
             }
 
@@ -566,5 +642,6 @@ data class MapMarker(
     val latitude: Double,
     val longitude: Double,
     val status: String,
-    val address: String
+    val address: String,
+    val distanceKm: Double? = null
 )
