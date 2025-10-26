@@ -18,6 +18,7 @@ data class User(
     val email: String = "",
     val phone: String = "",
     val address: String = "",
+    val profileImageUrl: String = "",
     val userType: String = "", // "household" or "collector"
     val draftWasteItems: List<WasteItem> = emptyList()
 ) {

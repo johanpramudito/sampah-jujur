@@ -20,27 +20,110 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.Manifest
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import com.melodi.sampahjujur.model.User
+import com.melodi.sampahjujur.ui.components.ProfileImagePicker
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
+import com.melodi.sampahjujur.utils.CloudinaryUploadService
+import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     user: User,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
     onBackClick: () -> Unit = {},
-    onSaveClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
+    onSaveClick: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> }
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     var fullName by remember { mutableStateOf(user.fullName) }
     var email by remember { mutableStateOf(user.email) }
     var phone by remember { mutableStateOf(user.phone) }
     var address by remember { mutableStateOf(user.address) }
+    var profileImageUrl by remember { mutableStateOf(user.profileImageUrl) }
+    var newImageUri by remember { mutableStateOf<Uri?>(null) }
+    var isUploadingImage by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempCameraUri != null) {
+            newImageUri = tempCameraUri
+        }
+    }
+
+    // Gallery launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { newImageUri = it }
+    }
+
+    // Permission launcher for camera
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val photoFile = File.createTempFile(
+                "profile_image_${System.currentTimeMillis()}",
+                ".jpg",
+                context.cacheDir
+            )
+            tempCameraUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                photoFile
+            )
+            cameraLauncher.launch(tempCameraUri!!)
+        }
+    }
+
+    // Permission launcher for gallery
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            galleryLauncher.launch("image/*")
+        }
+    }
+
+    // Initialize Cloudinary
+    LaunchedEffect(Unit) {
+        try {
+            CloudinaryUploadService.initialize(context)
+        } catch (e: Exception) {
+            // Initialization error will be caught during upload
+        }
+    }
 
     val hasChanges = fullName != user.fullName ||
                      email != user.email ||
                      phone != user.phone ||
-                     address != user.address
+                     address != user.address ||
+                     newImageUri != null
+
+    // Show error message in Snackbar
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -66,17 +149,64 @@ fun EditProfileScreen(
                     }
                 },
                 actions = {
-                    TextButton(
-                        onClick = { onSaveClick(fullName, email, phone, address) },
-                        enabled = fullName.isNotBlank() && email.isNotBlank() && hasChanges
-                    ) {
-                        Text(
-                            text = "Save",
-                            color = if (fullName.isNotBlank() && email.isNotBlank() && hasChanges)
-                                PrimaryGreen else Color.Gray,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(horizontal = 16.dp),
+                            color = PrimaryGreen,
+                            strokeWidth = 2.dp
                         )
+                    } else {
+                        TextButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isUploadingImage = true
+                                    var finalProfileImageUrl = profileImageUrl
+
+                                    try {
+                                        // Upload new image if selected
+                                        if (newImageUri != null) {
+                                            // Delete old profile picture if exists
+                                            if (profileImageUrl.isNotEmpty()) {
+                                                CloudinaryUploadService.deleteImage(profileImageUrl)
+                                            }
+
+                                            // Upload new image to sampah-jujur/profile folder
+                                            finalProfileImageUrl = CloudinaryUploadService.uploadImage(
+                                                context = context,
+                                                imageUri = newImageUri!!,
+                                                folder = "sampah-jujur/profile"
+                                            )
+                                        }
+
+                                        // Call onSaveClick with all profile data including image URL
+                                        onSaveClick(fullName, email, phone, address, finalProfileImageUrl)
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar("Failed to upload profile picture: ${e.message}")
+                                    } finally {
+                                        isUploadingImage = false
+                                    }
+                                }
+                            },
+                            enabled = fullName.isNotBlank() && email.isNotBlank() && hasChanges && !isLoading && !isUploadingImage
+                        ) {
+                            if (isUploadingImage) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = PrimaryGreen,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    text = "Save",
+                                    color = if (fullName.isNotBlank() && email.isNotBlank() && hasChanges)
+                                        PrimaryGreen else Color.Gray,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -84,6 +214,7 @@ fun EditProfileScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
         Column(
@@ -96,44 +227,24 @@ fun EditProfileScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Profile Picture Section
-            Box(
-                modifier = Modifier.size(120.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .background(
-                            PrimaryGreen.copy(alpha = 0.1f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Profile",
-                        tint = PrimaryGreen,
-                        modifier = Modifier.size(60.dp)
-                    )
-                }
+            // Profile Picture Section with Upload
+            ProfileImagePicker(
+                currentImageUrl = profileImageUrl,
+                previewUri = newImageUri,
+                onImageSelected = { uri ->
+                    newImageUri = uri
+                },
+                modifier = Modifier.size(120.dp)
+            )
 
-                // Camera button overlay
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(36.dp)
-                        .background(PrimaryGreen, CircleShape)
-                        .clickable { /* Handle photo upload */ },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Change photo",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            if (newImageUri != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "New photo selected",
+                    fontSize = 12.sp,
+                    color = PrimaryGreen,
+                    fontWeight = FontWeight.Medium
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -143,7 +254,7 @@ fun EditProfileScreen(
                 fontSize = 14.sp,
                 color = PrimaryGreen,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable { /* Handle photo upload */ }
+                modifier = Modifier.clickable { showImageSourceDialog = true }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -349,6 +460,105 @@ fun EditProfileScreen(
             dismissButton = {
                 TextButton(onClick = { showDiscardDialog = false }) {
                     Text("Keep Editing", color = PrimaryGreen)
+                }
+            }
+        )
+    }
+
+    // Image Source Selection Dialog
+    if (showImageSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text("Change Profile Picture") },
+            text = {
+                Column {
+                    Text("Choose how to update your profile picture:")
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Camera option
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showImageSourceDialog = false
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AddAPhoto,
+                                contentDescription = "Camera",
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = "Take Photo",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Use camera to capture photo",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Gallery option
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showImageSourceDialog = false
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    galleryPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+                                } else {
+                                    galleryLauncher.launch("image/*")
+                                }
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoLibrary,
+                                contentDescription = "Gallery",
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = "Choose from Gallery",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Select existing photo",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showImageSourceDialog = false }) {
+                    Text("Cancel")
                 }
             }
         )

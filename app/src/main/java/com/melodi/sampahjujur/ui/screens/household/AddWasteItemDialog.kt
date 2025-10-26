@@ -302,7 +302,8 @@ fun AddWasteItemDialog(
                                 try {
                                     val uploadedUrl = CloudinaryUploadService.uploadImage(
                                         context = context,
-                                        imageUri = imageUri!!
+                                        imageUri = imageUri!!,
+                                        folder = "sampah-jujur/waste-items"
                                     )
                                     val weightValue = weight.toDoubleOrNull() ?: 0.0
                                     onAddItem(selectedType, weightValue, calculatedValue, description, uploadedUrl)

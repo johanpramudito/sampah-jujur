@@ -183,4 +183,55 @@ class AuthRepository @Inject constructor(
      * Checks if a user is currently signed in
      */
     fun isSignedIn(): Boolean = auth.currentUser != null
+
+    /**
+     * Updates the current user's profile information in Firestore
+     *
+     * @param fullName Updated full name
+     * @param email Updated email address
+     * @param phone Updated phone number
+     * @param address Updated address
+     * @param profileImageUrl Updated profile image URL (from Cloudinary)
+     * @return Result indicating success or failure
+     */
+    suspend fun updateProfile(
+        fullName: String,
+        email: String,
+        phone: String,
+        address: String,
+        profileImageUrl: String
+    ): Result<User> {
+        return try {
+            val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
+            val uid = currentUser.uid
+
+            // Get current user data to preserve other fields
+            val userDoc = firestore.collection("users")
+                .document(uid)
+                .get()
+                .await()
+
+            val existingUser = userDoc.toObject(User::class.java)
+                ?: throw Exception("User data not found")
+
+            // Create updated user object
+            val updatedUser = existingUser.copy(
+                fullName = fullName,
+                email = email,
+                phone = phone,
+                address = address,
+                profileImageUrl = profileImageUrl
+            )
+
+            // Update in Firestore
+            firestore.collection("users")
+                .document(uid)
+                .set(updatedUser)
+                .await()
+
+            Result.success(updatedUser)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

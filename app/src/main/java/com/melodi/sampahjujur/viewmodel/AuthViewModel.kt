@@ -140,6 +140,31 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
+     * Updates the current user's profile information
+     */
+    fun updateProfile(fullName: String, email: String, phone: String, address: String, profileImageUrl: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.updateProfile(fullName, email, phone, address, profileImageUrl)
+
+            if (result.isSuccess) {
+                val updatedUser = result.getOrNull()!!
+                _authState.value = AuthState.Authenticated(updatedUser)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Profile updated successfully"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.message ?: "Failed to update profile"
+                )
+            }
+        }
+    }
+
+    /**
      * Signs out the current user
      */
     fun signOut() {
@@ -166,6 +191,13 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
+     * Clears success message
+     */
+    fun clearSuccess() {
+        _uiState.value = _uiState.value.copy(successMessage = null)
+    }
+
+    /**
      * Sealed class representing authentication states
      */
     sealed class AuthState {
@@ -180,5 +212,6 @@ class AuthViewModel @Inject constructor(
  */
 data class AuthUiState(
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val successMessage: String? = null
 )
