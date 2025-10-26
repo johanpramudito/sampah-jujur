@@ -18,11 +18,102 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.melodi.sampahjujur.model.PickupRequest
+import com.melodi.sampahjujur.model.TransactionItem
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.screens.household.StatusBadge
 import com.melodi.sampahjujur.ui.screens.household.WasteItemDetailCard
 import com.melodi.sampahjujur.ui.screens.household.formatDateTime
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
+import com.melodi.sampahjujur.viewmodel.CollectorViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CollectorRequestDetailRoute(
+    requestId: String,
+    onBackClick: () -> Unit,
+    viewModel: CollectorViewModel = hiltViewModel()
+) {
+    val request by viewModel.observeRequest(requestId).collectAsState(initial = null)
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showCompleteDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearSuccessMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.showTransactionSuccess) {
+        if (uiState.showTransactionSuccess) {
+            snackbarHostState.showSnackbar("Transaction completed")
+            viewModel.clearTransactionSuccess()
+            onBackClick()
+        }
+    }
+
+    val currentRequest = request
+
+    if (currentRequest == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
+        CollectorRequestDetailScreen(
+            request = currentRequest,
+            householdName = currentRequest.householdId,
+            householdPhone = null,
+            isLoading = uiState.isLoading,
+            snackbarHostState = snackbarHostState,
+            onBackClick = onBackClick,
+            onAcceptRequest = { viewModel.acceptPickupRequest(currentRequest) },
+            onNavigateToLocation = { viewModel.getRouteToPickup(currentRequest) },
+            onStartPickup = { viewModel.markRequestInProgress(currentRequest.id) },
+            onCompletePickup = { showCompleteDialog = true },
+            onContactHousehold = { /* TODO: Integrate contact action */ },
+            onCancelRequest = onBackClick
+        )
+    }
+
+    if (showCompleteDialog && currentRequest != null) {
+        CompleteTransactionDialog(
+            wasteItems = currentRequest.wasteItems,
+            onDismiss = { showCompleteDialog = false },
+            onComplete = { actualItems, paymentMethod ->
+                val transactionItems = actualItems.map { item ->
+                    TransactionItem(
+                        type = item.type,
+                        estimatedWeight = item.estimatedWeight,
+                        estimatedValue = item.estimatedValue,
+                        actualWeight = item.actualWeight.toDoubleOrNull() ?: item.estimatedWeight,
+                        actualValue = item.actualValue.toDoubleOrNull() ?: item.estimatedValue
+                    )
+                }
+                val finalAmount = transactionItems.sumOf { it.actualValue }
+                viewModel.completePickupRequest(
+                    requestId = currentRequest.id,
+                    finalAmount = finalAmount,
+                    actualWasteItems = transactionItems,
+                    paymentMethod = paymentMethod,
+                    notes = ""
+                )
+                showCompleteDialog = false
+            }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +121,8 @@ fun CollectorRequestDetailScreen(
     request: PickupRequest,
     householdName: String = "Unknown User",
     householdPhone: String? = null,
+    isLoading: Boolean = false,
+    snackbarHostState: SnackbarHostState,
     onBackClick: () -> Unit = {},
     onAcceptRequest: () -> Unit = {},
     onNavigateToLocation: () -> Unit = {},
@@ -62,9 +155,17 @@ fun CollectorRequestDetailScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
+            if (isLoading) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                )
+            }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -387,6 +488,7 @@ fun CollectorRequestDetailScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp),
+                                enabled = !isLoading,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = PrimaryGreen
                                 ),
@@ -411,6 +513,7 @@ fun CollectorRequestDetailScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp),
+                                enabled = !isLoading,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = PrimaryGreen
                                 ),
@@ -434,6 +537,7 @@ fun CollectorRequestDetailScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
+                                enabled = !isLoading,
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = Color.Red
                                 ),
@@ -448,6 +552,7 @@ fun CollectorRequestDetailScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp),
+                                enabled = !isLoading,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = PrimaryGreen
                                 ),
@@ -499,6 +604,7 @@ fun CollectorRequestDetailScreen(
                         showCancelDialog = false
                         onCancelRequest()
                     },
+                    enabled = !isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Red
                     )
@@ -519,6 +625,7 @@ fun CollectorRequestDetailScreen(
 @Composable
 fun CollectorRequestDetailScreenPreview() {
     MaterialTheme {
+        val snackbarHostState = remember { SnackbarHostState() }
         CollectorRequestDetailScreen(
             request = PickupRequest(
                 id = "req123456789",
@@ -539,7 +646,8 @@ fun CollectorRequestDetailScreenPreview() {
                 updatedAt = System.currentTimeMillis()
             ),
             householdName = "Jane Smith",
-            householdPhone = "+1 (555) 987-6543"
+            householdPhone = "+1 (555) 987-6543",
+            snackbarHostState = snackbarHostState
         )
     }
 }

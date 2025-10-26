@@ -1,6 +1,9 @@
 package com.melodi.sampahjujur.repository
 
+import com.melodi.sampahjujur.model.Earnings
 import com.melodi.sampahjujur.model.PickupRequest
+import com.melodi.sampahjujur.model.Transaction
+import com.melodi.sampahjujur.model.TransactionItem
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.model.WasteItem
 import com.google.firebase.firestore.FirebaseFirestore
@@ -10,6 +13,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,6 +30,7 @@ class WasteRepository @Inject constructor(
     companion object {
         private const val PICKUP_REQUESTS_COLLECTION = "pickup_requests"
         private const val USERS_COLLECTION = "users"
+        private const val TRANSACTIONS_COLLECTION = "transactions"
         private const val FIELD_DRAFT_WASTE_ITEMS = "draftWasteItems"
         private const val FIELD_DRAFT_LOCATION = "draftPickupLocation"
     }
@@ -59,7 +64,7 @@ class WasteRepository @Inject constructor(
     fun getPendingRequests(): Flow<List<PickupRequest>> = callbackFlow {
         val listener = firestore.collection(PICKUP_REQUESTS_COLLECTION)
             .whereEqualTo("status", PickupRequest.STATUS_PENDING)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -85,7 +90,7 @@ class WasteRepository @Inject constructor(
     fun getHouseholdRequests(householdId: String): Flow<List<PickupRequest>> = callbackFlow {
         val listener = firestore.collection(PICKUP_REQUESTS_COLLECTION)
             .whereEqualTo("householdId", householdId)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -116,7 +121,7 @@ class WasteRepository @Inject constructor(
                 PickupRequest.STATUS_IN_PROGRESS,
                 PickupRequest.STATUS_COMPLETED
             ))
-            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .orderBy("updatedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -134,6 +139,25 @@ class WasteRepository @Inject constructor(
     }
 
     /**
+     * Observes a single pickup request document for real-time changes.
+     */
+    fun watchPickupRequest(requestId: String): Flow<PickupRequest?> = callbackFlow {
+        val listener = firestore.collection(PICKUP_REQUESTS_COLLECTION)
+            .document(requestId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val request = snapshot?.toObject(PickupRequest::class.java)
+                trySend(request)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    /**
      * Accepts a pickup request by assigning it to a collector
      *
      * @param requestId ID of the pickup request to accept
@@ -142,15 +166,81 @@ class WasteRepository @Inject constructor(
      */
     suspend fun acceptPickupRequest(requestId: String, collectorId: String): Result<Unit> {
         return try {
-            val updates = mapOf(
-                "collectorId" to collectorId,
-                "status" to PickupRequest.STATUS_ACCEPTED
-            )
+            firestore.runTransaction { transaction ->
+                val requestRef = firestore.collection(PICKUP_REQUESTS_COLLECTION).document(requestId)
+                val snapshot = transaction.get(requestRef)
 
-            firestore.collection(PICKUP_REQUESTS_COLLECTION)
-                .document(requestId)
-                .update(updates)
-                .await()
+                if (!snapshot.exists()) {
+                    throw IllegalStateException("Request no longer exists")
+                }
+
+                val status = snapshot.getString("status")
+                val assignedCollector = snapshot.getString("collectorId")
+
+                if (status != PickupRequest.STATUS_PENDING || !assignedCollector.isNullOrBlank()) {
+                    throw IllegalStateException("Request is no longer available")
+                }
+
+                transaction.update(
+                    requestRef,
+                    mapOf(
+                        "collectorId" to collectorId,
+                        "status" to PickupRequest.STATUS_ACCEPTED,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                )
+            }.await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Marks an accepted pickup request as in progress, ensuring only the assigned collector can start it.
+     *
+     * @param requestId ID of the pickup request to update
+     * @param collectorId ID of the collector attempting to start the pickup
+     * @return Result indicating success or failure
+     */
+    suspend fun markRequestInProgress(requestId: String, collectorId: String): Result<Unit> {
+        return try {
+            firestore.runTransaction { transaction ->
+                val requestRef = firestore.collection(PICKUP_REQUESTS_COLLECTION).document(requestId)
+                val snapshot = transaction.get(requestRef)
+
+                if (!snapshot.exists()) {
+                    throw IllegalStateException("Request no longer exists")
+                }
+
+                val request = snapshot.toObject(PickupRequest::class.java)
+                    ?: throw IllegalStateException("Unable to read request data")
+
+                if (request.collectorId.isNullOrBlank() || request.collectorId != collectorId) {
+                    throw IllegalStateException("Request is assigned to a different collector")
+                }
+
+                when (request.status) {
+                    PickupRequest.STATUS_ACCEPTED -> {
+                        transaction.update(
+                            requestRef,
+                            mapOf(
+                                "status" to PickupRequest.STATUS_IN_PROGRESS,
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                    }
+                    PickupRequest.STATUS_IN_PROGRESS -> {
+                        // Already in progress - nothing to change
+                    }
+                    else -> {
+                        throw IllegalStateException("Request cannot be started from its current status")
+                    }
+                }
+
+                Unit
+            }.await()
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -169,7 +259,12 @@ class WasteRepository @Inject constructor(
         return try {
             firestore.collection(PICKUP_REQUESTS_COLLECTION)
                 .document(requestId)
-                .update("status", newStatus)
+                .update(
+                    mapOf(
+                        "status" to newStatus,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                )
                 .await()
 
             Result.success(Unit)
@@ -187,35 +282,122 @@ class WasteRepository @Inject constructor(
      * @param finalAmount Final amount paid to the household
      * @return Result indicating success or failure
      */
-    suspend fun completeTransaction(requestId: String, finalAmount: Double): Result<Unit> {
+    suspend fun completeTransaction(
+        requestId: String,
+        collectorId: String,
+        finalAmount: Double,
+        actualWasteItems: List<TransactionItem> = emptyList(),
+        paymentMethod: String = Transaction.PAYMENT_CASH,
+        notes: String = ""
+    ): Result<Transaction> {
         return try {
-            // TODO: In production, this should call a Firebase Cloud Function
-            // The Cloud Function would:
-            // 1. Validate the request and amount
-            // 2. Process the payment through a secure payment gateway
-            // 3. Update the request status to completed
-            // 4. Create a transaction record
-            // 5. Send notifications to both parties
+            val completedAt = System.currentTimeMillis()
+            val transactionId = firestore.collection(TRANSACTIONS_COLLECTION).document().id
 
-            // For now, we'll just update the status and amount
-            val updates = mapOf(
-                "status" to PickupRequest.STATUS_COMPLETED,
-                "totalValue" to finalAmount
-            )
+            val transactionRecord = firestore.runTransaction { transaction ->
+                val requestRef = firestore.collection(PICKUP_REQUESTS_COLLECTION).document(requestId)
+                val snapshot = transaction.get(requestRef)
 
-            firestore.collection(PICKUP_REQUESTS_COLLECTION)
-                .document(requestId)
-                .update(updates)
-                .await()
+                if (!snapshot.exists()) {
+                    throw IllegalStateException("Pickup request not found")
+                }
 
-            // TODO: Create transaction record in separate collection
-            // TODO: Send push notifications to household and collector
-            // TODO: Update user statistics/ratings
+                val request = snapshot.toObject(PickupRequest::class.java)
+                    ?: throw IllegalStateException("Unable to read request data")
 
-            Result.success(Unit)
+                if (request.collectorId.isNullOrBlank() || request.collectorId != collectorId) {
+                    throw IllegalStateException("Request is assigned to a different collector")
+                }
+
+                if (request.status != PickupRequest.STATUS_IN_PROGRESS &&
+                    request.status != PickupRequest.STATUS_ACCEPTED
+                ) {
+                    throw IllegalStateException("Request cannot be completed from its current status")
+                }
+
+                val transactionData = Transaction(
+                    id = transactionId,
+                    requestId = requestId,
+                    householdId = request.householdId,
+                    collectorId = collectorId,
+                    estimatedWasteItems = request.wasteItems,
+                    actualWasteItems = actualWasteItems,
+                    estimatedValue = request.totalValue,
+                    finalAmount = finalAmount,
+                    paymentMethod = paymentMethod,
+                    paymentStatus = Transaction.STATUS_COMPLETED,
+                    location = request.pickupLocation,
+                    completedAt = completedAt,
+                    notes = notes
+                )
+
+                transaction.update(
+                    requestRef,
+                    mapOf(
+                        "status" to PickupRequest.STATUS_COMPLETED,
+                        "totalValue" to finalAmount,
+                        "updatedAt" to completedAt
+                    )
+                )
+
+                val transactionRef = firestore.collection(TRANSACTIONS_COLLECTION).document(transactionId)
+                transaction.set(transactionRef, transactionData)
+
+                transactionData
+            }.await()
+
+            Result.success(transactionRecord)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    /**
+     * Observes collector earnings in real-time based on completed transactions.
+     */
+    fun getCollectorEarnings(collectorId: String): Flow<Earnings> = callbackFlow {
+        if (collectorId.isBlank()) {
+            trySend(Earnings(collectorId = collectorId))
+            close()
+            return@callbackFlow
+        }
+
+        val listener = firestore.collection(TRANSACTIONS_COLLECTION)
+            .whereEqualTo("collectorId", collectorId)
+            .whereEqualTo("paymentStatus", Transaction.STATUS_COMPLETED)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val transactions = snapshot?.documents
+                    ?.mapNotNull { it.toObject(Transaction::class.java) }
+                    ?.sortedByDescending { it.completedAt }
+                    ?: emptyList()
+
+                val currentTime = System.currentTimeMillis()
+                val earnings = Earnings(
+                    collectorId = collectorId,
+                    totalEarnings = transactions.sumOf { it.finalAmount },
+                    totalTransactions = transactions.size,
+                    totalWasteCollected = transactions.sumOf { it.getTotalWeight() },
+                    earningsToday = transactions
+                        .filter { it.completedAt >= startOfDayMillis(currentTime) }
+                        .sumOf { it.finalAmount },
+                    earningsThisWeek = transactions
+                        .filter { it.completedAt >= startOfWeekMillis(currentTime) }
+                        .sumOf { it.finalAmount },
+                    earningsThisMonth = transactions
+                        .filter { it.completedAt >= startOfMonthMillis(currentTime) }
+                        .sumOf { it.finalAmount },
+                    transactionHistory = transactions
+                )
+
+                trySend(earnings)
+            }
+
+        awaitClose { listener.remove() }
     }
 
     /**
@@ -441,5 +623,30 @@ class WasteRepository @Inject constructor(
         }
     }
 
-}
+    private fun startOfDayMillis(reference: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = reference
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
 
+    private fun startOfWeekMillis(reference: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = reference
+        set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    private fun startOfMonthMillis(reference: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = reference
+        set(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+}
