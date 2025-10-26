@@ -5,6 +5,7 @@ import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.utils.FirebaseErrorHandler
 import com.melodi.sampahjujur.utils.ValidationUtils
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
@@ -199,6 +200,16 @@ class AuthRepository @Inject constructor(
             ).await()
             val uid = authResult.user?.uid ?: throw Exception("Failed to get user ID")
 
+            // Check email verification
+            val currentUser = auth.currentUser
+            if (currentUser != null && !currentUser.isEmailVerified) {
+                // Send verification email again
+                currentUser.sendEmailVerification().await()
+
+                auth.signOut()
+                throw Exception("Please verify your email address. A new verification email has been sent to ${email.trim().lowercase()}. Check your inbox and spam folder.")
+            }
+
             // Fetch user data from Firestore
             val userDoc = firestore.collection("users")
                 .document(uid)
@@ -251,6 +262,89 @@ class AuthRepository @Inject constructor(
             if (!user.isCollector()) {
                 auth.signOut() // Sign out user with wrong role
                 throw Exception("This account is registered as a household. Please use household login.")
+            }
+
+            Result.success(user)
+        } catch (e: Exception) {
+            val errorMessage = FirebaseErrorHandler.getErrorMessage(e)
+            Result.failure(Exception(errorMessage))
+        }
+    }
+
+    /**
+     * Signs in a household user with Google authentication
+     *
+     * Handles both new user registration and existing user login.
+     * For household users only - collectors must use phone authentication.
+     *
+     * @param idToken Google ID token from Google Sign-In flow
+     * @return Result containing the User object or error
+     */
+    suspend fun signInWithGoogle(idToken: String): Result<User> {
+        return try {
+            // Create Firebase credential from Google ID token
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val authResult = auth.signInWithCredential(credential).await()
+            val uid = authResult.user?.uid ?: throw Exception("Failed to get user ID")
+
+            // Check if user exists in Firestore
+            val userDoc = firestore.collection("users")
+                .document(uid)
+                .get()
+                .await()
+
+            val user = if (userDoc.exists()) {
+                // Existing user - verify is household
+                val existingUser = userDoc.toObject(User::class.java)
+                    ?: throw Exception("User data not found in database")
+
+                // Verify user role
+                if (!existingUser.isHousehold()) {
+                    auth.signOut() // Sign out user with wrong role
+                    throw Exception("This account is registered as a collector. Please use collector login with your phone number.")
+                }
+
+                // Update profile image if changed
+                val photoUrl = authResult.user?.photoUrl?.toString() ?: ""
+                if (photoUrl != existingUser.profileImageUrl && photoUrl.isNotEmpty()) {
+                    val updatedUser = existingUser.copy(profileImageUrl = photoUrl)
+                    firestore.collection("users")
+                        .document(uid)
+                        .set(updatedUser, SetOptions.merge())
+                        .await()
+                    updatedUser
+                } else {
+                    existingUser
+                }
+            } else {
+                // New user - create household account
+                val email = authResult.user?.email
+                    ?: throw Exception("Email not available from Google account")
+                val name = authResult.user?.displayName ?: email.substringBefore("@")
+                val photoUrl = authResult.user?.photoUrl?.toString() ?: ""
+
+                // Validate email
+                val emailValidation = ValidationUtils.validateEmail(email)
+                if (!emailValidation.isValid) {
+                    auth.signOut()
+                    throw Exception(emailValidation.errorMessage)
+                }
+
+                val newUser = User(
+                    id = uid,
+                    fullName = name,
+                    email = email.trim().lowercase(),
+                    userType = User.ROLE_HOUSEHOLD,
+                    profileImageUrl = photoUrl
+                )
+
+                // Save user data to Firestore
+                firestore.collection("users")
+                    .document(uid)
+                    .set(newUser, SetOptions.merge())
+                    .await()
+
+                newUser
             }
 
             Result.success(user)

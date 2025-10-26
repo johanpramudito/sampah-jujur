@@ -5,10 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
+import com.melodi.sampahjujur.utils.RateLimiter
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +23,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val rateLimiter: RateLimiter
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -32,6 +35,12 @@ class AuthViewModel @Inject constructor(
 
     private val _phoneAuthState = MutableStateFlow<PhoneAuthState>(PhoneAuthState.Idle)
     val phoneAuthState: StateFlow<PhoneAuthState> = _phoneAuthState.asStateFlow()
+
+    private val _otpResendCooldown = MutableStateFlow(0)
+    val otpResendCooldown: StateFlow<Int> = _otpResendCooldown.asStateFlow()
+
+    private val _rateLimitState = MutableStateFlow<RateLimiter.LimitStatus?>(null)
+    val rateLimitState: StateFlow<RateLimiter.LimitStatus?> = _rateLimitState.asStateFlow()
 
     // Store verification ID for phone auth
     private var verificationId: String? = null
@@ -63,12 +72,62 @@ class AuthViewModel @Inject constructor(
 
     /**
      * Signs in a household user with email and password
+     * Includes rate limiting to prevent brute force attacks
      */
     fun signInHousehold(email: String, password: String) {
         viewModelScope.launch {
+            // Check rate limit first
+            val limitStatus = rateLimiter.checkLimit(email)
+            if (limitStatus.isLocked) {
+                _rateLimitState.value = limitStatus
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = limitStatus.getMessage()
+                )
+                return@launch
+            }
+
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             val result = authRepository.signInHousehold(email, password)
+
+            if (result.isSuccess) {
+                // Clear rate limit on successful login
+                rateLimiter.recordSuccessfulAttempt(email)
+                _rateLimitState.value = null
+
+                val user = result.getOrNull()!!
+                _authState.value = AuthState.Authenticated(user)
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            } else {
+                // Record failed attempt
+                rateLimiter.recordFailedAttempt(email)
+                val newStatus = rateLimiter.checkLimit(email)
+                _rateLimitState.value = newStatus
+
+                val errorMsg = buildString {
+                    append(result.exceptionOrNull()?.message ?: "Login failed")
+                    if (newStatus.remainingAttempts > 0 && newStatus.remainingAttempts <= 3) {
+                        append(" ${newStatus.getMessage()}")
+                    }
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = errorMsg
+                )
+            }
+        }
+    }
+
+    /**
+     * Signs in a household user with Google
+     * No rate limiting needed as Google handles authentication
+     */
+    fun signInWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            val result = authRepository.signInWithGoogle(idToken)
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
@@ -77,7 +136,7 @@ class AuthViewModel @Inject constructor(
             } else {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = result.exceptionOrNull()?.message ?: "Login failed"
+                    errorMessage = result.exceptionOrNull()?.message ?: "Google sign-in failed"
                 )
             }
         }
@@ -176,6 +235,9 @@ class AuthViewModel @Inject constructor(
             try {
                 _phoneAuthState.value = PhoneAuthState.CodeSent("Sending code...")
 
+                // Start resend cooldown timer
+                startResendCooldown()
+
                 val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                     override fun onVerificationCompleted(credential: PhoneAuthCredential) {
                         // Auto-verification completed
@@ -186,6 +248,8 @@ class AuthViewModel @Inject constructor(
                         _phoneAuthState.value = PhoneAuthState.Error(
                             e.message ?: "Verification failed. Please try again."
                         )
+                        // Reset cooldown on failure
+                        _otpResendCooldown.value = 0
                     }
 
                     override fun onCodeSent(
@@ -205,6 +269,38 @@ class AuthViewModel @Inject constructor(
                 _phoneAuthState.value = PhoneAuthState.Error(
                     e.message ?: "Failed to send verification code"
                 )
+                // Reset cooldown on failure
+                _otpResendCooldown.value = 0
+            }
+        }
+    }
+
+    /**
+     * Resends OTP verification code
+     *
+     * @param phoneNumber Phone number to send code to
+     * @param activity Activity context
+     */
+    fun resendOtp(phoneNumber: String, activity: Activity) {
+        if (_otpResendCooldown.value > 0) {
+            _phoneAuthState.value = PhoneAuthState.Error(
+                "Please wait ${_otpResendCooldown.value} seconds before resending"
+            )
+            return
+        }
+        sendPhoneVerificationCode(phoneNumber, activity)
+    }
+
+    /**
+     * Starts the OTP resend cooldown timer
+     *
+     * @param seconds Cooldown duration in seconds (default: 60)
+     */
+    private fun startResendCooldown(seconds: Int = 60) {
+        viewModelScope.launch {
+            for (i in seconds downTo 0) {
+                _otpResendCooldown.value = i
+                delay(1000)
             }
         }
     }
@@ -287,6 +383,20 @@ class AuthViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    /**
+     * Clears success messages (useful for password reset flow)
+     */
+    fun clearSuccessMessage() {
+        _uiState.value = _uiState.value.copy(successMessage = null)
+    }
+
+    /**
+     * Clears all UI messages (errors and success)
+     */
+    fun clearMessages() {
+        _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
     }
 
     /**
