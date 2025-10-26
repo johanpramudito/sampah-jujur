@@ -44,9 +44,18 @@ fun LocationPickerScreen(
     val scope = rememberCoroutineScope()
     val locationRepository = remember { LocationRepository(context) }
 
-    // Default location (Yogyakarta, Indonesia)
-    var currentLocation by remember { mutableStateOf(OsmGeoPoint(-7.7956, 110.3695)) }
-    var selectedAddress by remember { mutableStateOf("") }
+    // Get the current UI state from ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Initialize with previously selected location or default to Yogyakarta, Indonesia
+    val initialLocation = remember {
+        uiState.selectedLocation?.let {
+            OsmGeoPoint(it.latitude, it.longitude)
+        } ?: OsmGeoPoint(-7.7956, 110.3695)
+    }
+
+    var currentLocation by remember { mutableStateOf(initialLocation) }
+    var selectedAddress by remember { mutableStateOf(uiState.selectedAddress) }
     var isLoadingAddress by remember { mutableStateOf(false) }
     var isLoadingLocation by remember { mutableStateOf(false) }
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
@@ -363,9 +372,11 @@ fun LocationPickerScreen(
         }
     }
 
-    // Initial address load
+    // Initial address load (only if no address is already selected)
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(1000) // Wait for map to load
-        updateAddressFromMapCenter()
+        if (selectedAddress.isEmpty()) {
+            kotlinx.coroutines.delay(1000) // Wait for map to load
+            updateAddressFromMapCenter()
+        }
     }
 }
