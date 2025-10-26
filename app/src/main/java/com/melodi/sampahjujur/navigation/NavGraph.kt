@@ -58,6 +58,8 @@ sealed class Screen(val route: String) {
     // Shared
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
+    object PrivacyPolicy : Screen("privacy_policy")
+    object TermsAndConditions : Screen("terms_and_conditions")
 }
 
 @Composable
@@ -539,13 +541,13 @@ fun SampahJujurNavGraph(
                     navController.popBackStack()
                 },
                 onLanguageClick = {
-                    // TODO: Handle language
+                    // TODO: Handle language selection
                 },
                 onPrivacyPolicyClick = {
-                    // TODO: Handle privacy policy
+                    navController.navigate(Screen.PrivacyPolicy.route)
                 },
                 onTermsClick = {
-                    // TODO: Handle terms
+                    navController.navigate(Screen.TermsAndConditions.route)
                 },
                 onDeleteAccountClick = {
                     // TODO: Handle delete account
@@ -564,6 +566,24 @@ fun SampahJujurNavGraph(
                 },
                 onSubmitFeedback = { name, email, message ->
                     // TODO: Handle feedback submission
+                }
+            )
+        }
+
+        // Privacy Policy Screen
+        composable(Screen.PrivacyPolicy.route) {
+            PrivacyPolicyScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Terms & Conditions Screen
+        composable(Screen.TermsAndConditions.route) {
+            TermsAndConditionsScreen(
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }
