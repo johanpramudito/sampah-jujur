@@ -229,7 +229,7 @@ fun RequestCard(
                         color = Color.Gray
                     )
                     Text(
-                        text = "$${request.wasteItems.sumOf { it.estimatedValue }}",
+                        text = "Rp ${String.format("%,.0f", request.wasteItems.sumOf { it.estimatedValue })}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = PrimaryGreen

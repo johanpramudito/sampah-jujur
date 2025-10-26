@@ -58,7 +58,7 @@ fun TermsAndConditionsScreen(
             // Last Updated
             item {
                 Text(
-                    text = "Last Updated: January 26, 2025",
+                    text = "Last Updated: October 26, 2025",
                     fontSize = 12.sp,
                     color = Color.Gray,
                     modifier = Modifier.fillMaxWidth(),
