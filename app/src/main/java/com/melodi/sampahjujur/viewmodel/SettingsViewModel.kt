@@ -45,9 +45,16 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Collect dark mode state
+            // Collect dark mode state (legacy)
             preferencesRepository.isDarkModeEnabled.collect { enabled ->
                 _uiState.value = _uiState.value.copy(darkModeEnabled = enabled)
+            }
+        }
+
+        viewModelScope.launch {
+            // Collect theme mode
+            preferencesRepository.themeMode.collect { mode ->
+                _uiState.value = _uiState.value.copy(themeMode = mode)
             }
         }
 
@@ -83,12 +90,22 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Toggle dark mode on/off
+     * Toggle dark mode on/off (legacy support)
      */
     fun setDarkModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.setDarkModeEnabled(enabled)
             _uiState.value = _uiState.value.copy(darkModeEnabled = enabled)
+        }
+    }
+
+    /**
+     * Set theme mode (light, dark, or system)
+     */
+    fun setThemeMode(mode: String) {
+        viewModelScope.launch {
+            preferencesRepository.setThemeMode(mode)
+            _uiState.value = _uiState.value.copy(themeMode = mode)
         }
     }
 
@@ -158,6 +175,7 @@ data class SettingsUiState(
     val locationEnabled: Boolean = true,
     val notificationsEnabled: Boolean = true,
     val darkModeEnabled: Boolean = false,
+    val themeMode: String = com.melodi.sampahjujur.repository.PreferencesRepository.THEME_SYSTEM,
     val language: String = "English",
     val isLoading: Boolean = false,
     val successMessage: String? = null,

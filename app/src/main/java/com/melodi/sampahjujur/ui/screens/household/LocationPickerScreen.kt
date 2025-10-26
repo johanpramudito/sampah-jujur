@@ -9,7 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -240,6 +242,46 @@ fun LocationPickerScreen(
                             lineHeight = 20.sp
                         )
                     }
+                }
+            }
+
+            // Zoom Controls on the right side
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Zoom In Button
+                FloatingActionButton(
+                    onClick = {
+                        mapView?.controller?.zoomIn()
+                    },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Zoom In",
+                        tint = PrimaryGreen
+                    )
+                }
+
+                // Zoom Out Button
+                FloatingActionButton(
+                    onClick = {
+                        mapView?.controller?.zoomOut()
+                    },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = "Zoom Out",
+                        tint = PrimaryGreen
+                    )
                 }
             }
 
