@@ -372,7 +372,8 @@ fun SampahJujurNavGraph(
 
         // Household Edit Profile Screen
         composable(Screen.HouseholdEditProfile.route) {
-            val user = authViewModel.getCurrentUser() ?: User(
+            // TODO: Get from ViewModel
+            val user = User(
                 id = "user1",
                 fullName = "Test User",
                 email = "test@example.com",
@@ -381,35 +382,16 @@ fun SampahJujurNavGraph(
                 userType = "household"
             )
 
-            val uiState by authViewModel.uiState.collectAsState()
-
             EditProfileScreen(
                 user = user,
-                isLoading = uiState.isLoading,
-                errorMessage = uiState.errorMessage,
                 onBackClick = {
                     navController.popBackStack()
                 },
                 onSaveClick = { fullName, email, phone, address, profileImageUrl ->
-                    authViewModel.updateProfile(fullName, email, phone, address, profileImageUrl)
-                }
-            )
-
-            // Show success and navigate back
-            LaunchedEffect(uiState.successMessage) {
-                if (uiState.successMessage != null) {
-                    authViewModel.clearSuccess()
+                    // TODO: Update in ViewModel
                     navController.popBackStack()
                 }
-            }
-
-            // Show error snackbar if needed
-            uiState.errorMessage?.let { error ->
-                LaunchedEffect(error) {
-                    // Error will be displayed in the EditProfileScreen
-                    authViewModel.clearError()
-                }
-            }
+            )
         }
 
         // Collector Dashboard Screen
