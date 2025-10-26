@@ -214,7 +214,7 @@ fun HouseholdProfileScreen(
                             )
                             StatItem(
                                 icon = Icons.Default.AttachMoney,
-                                value = "$$totalEarnings",
+                                value = "Rp ${String.format("%,.0f", totalEarnings)}",
                                 label = "Total Earned"
                             )
                         }

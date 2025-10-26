@@ -233,13 +233,13 @@ fun AddWasteItemDialog(
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "Based on ${"%.2f".format(WastePriceCalculator.getPricePerKg(selectedType))}/kg",
+                                text = "Based on Rp ${String.format("%,.0f", WastePriceCalculator.getPricePerKg(selectedType))}/kg",
                                 fontSize = 10.sp,
                                 color = Color.Gray
                             )
                         }
                         Text(
-                            text = "${"$%.2f".format(calculatedValue)}",
+                            text = "Rp ${String.format("%,.0f", calculatedValue)}",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryGreen
