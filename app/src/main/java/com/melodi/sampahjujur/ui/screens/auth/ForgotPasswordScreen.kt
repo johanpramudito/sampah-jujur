@@ -33,6 +33,13 @@ fun ForgotPasswordScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
+    // Clear messages when screen is first shown
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearMessages()
+        }
+    }
+
     // Handle success
     LaunchedEffect(uiState.successMessage) {
         if (uiState.successMessage != null && !emailSent) {

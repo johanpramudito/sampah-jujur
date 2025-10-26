@@ -1,5 +1,8 @@
 package com.melodi.sampahjujur.ui.screens.auth
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -19,6 +23,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.melodi.sampahjujur.di.GoogleSignInModule
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 
@@ -37,6 +45,36 @@ fun HouseholdLoginScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val authState by viewModel.authState.collectAsState()
+    val rateLimitState by viewModel.rateLimitState.collectAsState()
+    val context = LocalContext.current
+
+    // Google Sign-In launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            if (idToken != null) {
+                viewModel.signInWithGoogle(idToken)
+            }
+        } catch (e: ApiException) {
+            // Silently handle cancellation (user backed out)
+            if (e.statusCode != 12501) { // 12501 = user cancelled
+                viewModel.clearError()
+            }
+        }
+    }
+
+    // Get GoogleSignInClient
+    val googleSignInClient = remember {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(GoogleSignInModule.getWebClientId())
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
 
     // Handle successful login
     LaunchedEffect(authState) {
@@ -179,6 +217,38 @@ fun HouseholdLoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Rate Limit Warning
+            rateLimitState?.let { status ->
+                if (status.isLocked) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF3E0) // Orange
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Locked",
+                                tint = Color(0xFFE65100),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = status.getMessage(),
+                                color = Color(0xFFE65100),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
             // Error Message
             uiState.errorMessage?.let { error ->
                 Card(
@@ -262,7 +332,10 @@ fun HouseholdLoginScreen(
 
             // Google Sign In Button
             OutlinedButton(
-                onClick = onGoogleSignInClick,
+                onClick = {
+                    val signInIntent = googleSignInClient.signInIntent
+                    googleSignInLauncher.launch(signInIntent)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -270,7 +343,8 @@ fun HouseholdLoginScreen(
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.White,
                     contentColor = Color.Black
-                )
+                ),
+                enabled = !uiState.isLoading
             ) {
                 // Google Icon placeholder (you can add actual Google icon)
                 Icon(
