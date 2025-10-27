@@ -1,5 +1,6 @@
 package com.melodi.sampahjujur.ui.screens.collector
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -129,10 +130,39 @@ fun CollectorRequestDetailRoute(
                 return
             }
 
-            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
-            if (dialIntent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(dialIntent)
-            } else {
+            val phoneUri = Uri.fromParts("tel", phone, null)
+            val intents = listOf(
+                Intent(Intent.ACTION_DIAL, phoneUri),
+                Intent(Intent.ACTION_VIEW, phoneUri)
+            )
+
+            var launched = false
+            intents.forEach { intent ->
+                if (launched) return@forEach
+                try {
+                    context.startActivity(intent)
+                    launched = true
+                } catch (_: ActivityNotFoundException) {
+                    // try next intent
+                } catch (_: Exception) {
+                    // ignore and try next
+                }
+            }
+
+            if (!launched) {
+                val chooser = Intent.createChooser(
+                    Intent(Intent.ACTION_DIAL, phoneUri),
+                    "Call household"
+                )
+                try {
+                    context.startActivity(chooser)
+                    launched = true
+                } catch (_: Exception) {
+                    // Fall through to toast
+                }
+            }
+
+            if (!launched) {
                 Toast.makeText(context, "No dialer application found", Toast.LENGTH_SHORT).show()
             }
         }
