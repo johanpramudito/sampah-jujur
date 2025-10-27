@@ -1,5 +1,9 @@
 package com.melodi.sampahjujur.ui.screens.collector
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,21 +16,32 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.viewinterop.AndroidView
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.TransactionItem
+import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.screens.household.StatusBadge
 import com.melodi.sampahjujur.ui.screens.household.WasteItemDetailCard
 import com.melodi.sampahjujur.ui.screens.household.formatDateTime
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
+import com.melodi.sampahjujur.ui.theme.StatusInProgress
 import com.melodi.sampahjujur.viewmodel.CollectorViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.flow.flowOf
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.CustomZoomButtonsController
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +50,7 @@ fun CollectorRequestDetailRoute(
     onBackClick: () -> Unit,
     viewModel: CollectorViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val request by viewModel.observeRequest(requestId).collectAsState(initial = null)
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -63,6 +79,15 @@ fun CollectorRequestDetailRoute(
     }
 
     val currentRequest = request
+    val householdFlow = remember(currentRequest?.householdId) {
+        val id = currentRequest?.householdId
+        if (id.isNullOrBlank()) {
+            flowOf<User?>(null)
+        } else {
+            viewModel.observeUser(id)
+        }
+    }
+    val household by householdFlow.collectAsState(initial = null)
 
     if (currentRequest == null) {
         Box(
@@ -72,18 +97,88 @@ fun CollectorRequestDetailRoute(
             CircularProgressIndicator()
         }
     } else {
+        fun openExternalMaps(location: PickupRequest.Location) {
+            val lat = location.latitude
+            val lng = location.longitude
+            if (lat == 0.0 && lng == 0.0) {
+                Toast.makeText(context, "Location coordinates unavailable", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val encodedLabel = Uri.encode(location.address.ifBlank { "$lat,$lng" })
+            val intents = listOf(
+                Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lng")),
+                Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$encodedLabel")),
+                Intent(Intent.ACTION_VIEW, Uri.parse("waze://?ll=$lat,$lng&navigate=yes")),
+                Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng"))
+            )
+
+            val launchIntent = intents.firstOrNull { intent ->
+                intent.resolveActivity(context.packageManager) != null
+            }
+
+            if (launchIntent != null) {
+                context.startActivity(launchIntent)
+            } else {
+                Toast.makeText(context, "No maps application found", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        fun contactHousehold(user: User?) {
+            val phone = user?.phone?.takeIf { it.isNotBlank() }
+            if (phone == null) {
+                Toast.makeText(context, "Household phone number unavailable", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val phoneUri = Uri.fromParts("tel", phone, null)
+            val intents = listOf(
+                Intent(Intent.ACTION_DIAL, phoneUri),
+                Intent(Intent.ACTION_VIEW, phoneUri)
+            )
+
+            var launched = false
+            intents.forEach { intent ->
+                if (launched) return@forEach
+                try {
+                    context.startActivity(intent)
+                    launched = true
+                } catch (_: ActivityNotFoundException) {
+                    // try next intent
+                } catch (_: Exception) {
+                    // ignore and try next
+                }
+            }
+
+            if (!launched) {
+                val chooser = Intent.createChooser(
+                    Intent(Intent.ACTION_DIAL, phoneUri),
+                    "Call household"
+                )
+                try {
+                    context.startActivity(chooser)
+                    launched = true
+                } catch (_: Exception) {
+                    // Fall through to toast
+                }
+            }
+
+            if (!launched) {
+                Toast.makeText(context, "No dialer application found", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         CollectorRequestDetailScreen(
             request = currentRequest,
-            householdName = currentRequest.householdId,
-            householdPhone = null,
+            household = household,
             isLoading = uiState.isLoading,
             snackbarHostState = snackbarHostState,
             onBackClick = onBackClick,
             onAcceptRequest = { viewModel.acceptPickupRequest(currentRequest) },
-            onNavigateToLocation = { viewModel.getRouteToPickup(currentRequest) },
+            onNavigateToLocation = { openExternalMaps(it) },
             onStartPickup = { viewModel.markRequestInProgress(currentRequest.id) },
             onCompletePickup = { showCompleteDialog = true },
-            onContactHousehold = { /* TODO: Integrate contact action */ },
+            onContactHousehold = { contactHousehold(it) },
             onCancelRequest = { viewModel.cancelCollectorRequest(currentRequest.id) }
         )
     }
@@ -120,19 +215,23 @@ fun CollectorRequestDetailRoute(
 @Composable
 fun CollectorRequestDetailScreen(
     request: PickupRequest,
-    householdName: String = "Unknown User",
-    householdPhone: String? = null,
+    household: User? = null,
     isLoading: Boolean = false,
     snackbarHostState: SnackbarHostState,
     onBackClick: () -> Unit = {},
     onAcceptRequest: () -> Unit = {},
-    onNavigateToLocation: () -> Unit = {},
+    onNavigateToLocation: (PickupRequest.Location) -> Unit = {},
     onStartPickup: () -> Unit = {},
     onCompletePickup: () -> Unit = {},
-    onContactHousehold: () -> Unit = {},
+    onContactHousehold: (User?) -> Unit = {},
     onCancelRequest: () -> Unit = {}
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
+    val displayName = household?.fullName?.takeIf { it.isNotBlank() } ?: "Unknown Household"
+    val phoneNumber = household?.phone?.takeIf { it.isNotBlank() }
+    val emailAddress = household?.email?.takeIf { it.isNotBlank() }
+    val hasValidLocation = request.pickupLocation.latitude != 0.0 ||
+        request.pickupLocation.longitude != 0.0
 
     Scaffold(
         topBar = {
@@ -172,7 +271,7 @@ fun CollectorRequestDetailScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 88.dp), // Space for bottom action buttons
+                    .padding(bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -258,24 +357,40 @@ fun CollectorRequestDetailScreen(
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = householdName,
+                                        text = displayName,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.SemiBold
                                     )
-                                    if (householdPhone != null) {
+                                    if (phoneNumber != null) {
                                         Text(
-                                            text = householdPhone,
+                                            text = phoneNumber,
                                             fontSize = 14.sp,
+                                            color = Color.Gray
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Phone not provided",
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                    if (emailAddress != null) {
+                                        Text(
+                                            text = emailAddress,
+                                            fontSize = 12.sp,
                                             color = Color.Gray
                                         )
                                     }
                                 }
 
-                                IconButton(onClick = onContactHousehold) {
+                                IconButton(
+                                    onClick = { onContactHousehold(household) },
+                                    enabled = phoneNumber != null
+                                ) {
                                     Icon(
                                         imageVector = Icons.Default.Phone,
                                         contentDescription = "Call",
-                                        tint = PrimaryGreen
+                                        tint = if (phoneNumber != null) PrimaryGreen else Color.Gray
                                     )
                                 }
                             }
@@ -304,23 +419,29 @@ fun CollectorRequestDetailScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Map Placeholder
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                                    .background(
-                                        Color.LightGray.copy(alpha = 0.3f),
-                                        RoundedCornerShape(8.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Map,
-                                    contentDescription = "Map",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(48.dp)
+                            if (hasValidLocation) {
+                                PickupLocationMap(
+                                    location = request.pickupLocation,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                        .background(
+                                            Color.LightGray.copy(alpha = 0.3f),
+                                            RoundedCornerShape(8.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Location map unavailable",
+                                        color = Color.Gray
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -336,37 +457,42 @@ fun CollectorRequestDetailScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = request.pickupLocation.address,
+                                    text = request.pickupLocation.address.ifBlank { "Address not provided" },
                                     fontSize = 14.sp,
                                     color = Color.DarkGray,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
 
-                            if (request.status == "accepted" || request.status == "in_progress") {
+                            if (hasValidLocation) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                OutlinedButton(
-                                    onClick = onNavigateToLocation,
+                                Button(
+                                    onClick = { onNavigateToLocation(request.pickupLocation) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = PrimaryGreen
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = PrimaryGreen
                                     ),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Navigation,
-                                        contentDescription = "Navigate"
+                                        contentDescription = "Open in Maps",
+                                        tint = Color.White
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Get Directions")
+                                    Text(
+                                        text = "Open In Maps",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }
                     }
                 }
 
-                // Waste Items Card
+                // Waste Items Section
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -435,7 +561,7 @@ fun CollectorRequestDetailScreen(
                     }
                 }
 
-                // Notes Card (if notes exist)
+                // Notes Card
                 if (request.notes.isNotBlank()) {
                     item {
                         Card(
@@ -450,7 +576,7 @@ fun CollectorRequestDetailScreen(
                                     .padding(16.dp)
                             ) {
                                 Text(
-                                    text = "Special Instructions",
+                                    text = "Household Notes",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
@@ -465,122 +591,138 @@ fun CollectorRequestDetailScreen(
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-            }
+                // Action Buttons
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        when (request.status) {
+                            PickupRequest.STATUS_PENDING -> {
+                                Button(
+                                    onClick = onAcceptRequest,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                                    shape = RoundedCornerShape(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Accept request",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Accept Request",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                            PickupRequest.STATUS_ACCEPTED -> {
+                                Button(
+                                    onClick = onStartPickup,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                                    shape = RoundedCornerShape(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Start pickup",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Mark As In Progress",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
 
-            // Bottom Action Buttons
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    when (request.status) {
-                        PickupRequest.STATUS_PENDING -> {
-                            Button(
-                                onClick = onAcceptRequest,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                enabled = !isLoading,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = PrimaryGreen
-                                ),
-                                shape = RoundedCornerShape(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Accept"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Accept Request",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
+                                OutlinedButton(
+                                    onClick = { showCancelDialog = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    shape = RoundedCornerShape(28.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color.Red
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel request",
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Cancel Request")
+                                }
                             }
-                        }
-                        PickupRequest.STATUS_ACCEPTED -> {
-                            Button(
-                                onClick = onStartPickup,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                enabled = !isLoading,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = PrimaryGreen
-                                ),
-                                shape = RoundedCornerShape(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Start"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Start Pickup",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
+                            PickupRequest.STATUS_IN_PROGRESS -> {
+                                Button(
+                                    onClick = onCompletePickup,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = StatusInProgress),
+                                    shape = RoundedCornerShape(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Complete pickup",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Complete Transaction",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             }
-
-                            OutlinedButton(
-                                onClick = { showCancelDialog = true },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp),
-                                enabled = !isLoading,
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color.Red
-                                ),
-                                shape = RoundedCornerShape(24.dp)
-                            ) {
-                                Text("Cancel Request")
+                            PickupRequest.STATUS_COMPLETED -> {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = PrimaryGreen.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text(
+                                        text = "This pickup has been completed.",
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        color = PrimaryGreen,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
-                        }
-                        PickupRequest.STATUS_IN_PROGRESS -> {
-                            Button(
-                                onClick = onCompletePickup,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                enabled = !isLoading,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = PrimaryGreen
-                                ),
-                                shape = RoundedCornerShape(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Complete"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Complete Pickup",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
+                            PickupRequest.STATUS_CANCELLED -> {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color.Red.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text(
+                                        text = "This pickup was cancelled.",
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        color = Color.Red,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
-                        }
-                        PickupRequest.STATUS_CANCELLED -> {
-                            Text(
-                                text = "This pickup was cancelled.",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                color = Color.Gray,
-                                textAlign = TextAlign.Center
-                            )
                         }
                     }
                 }
@@ -632,6 +774,60 @@ fun CollectorRequestDetailScreen(
     }
 }
 
+@Composable
+private fun PickupLocationMap(
+    location: PickupRequest.Location,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val mapView = remember(location.latitude, location.longitude) {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(false)
+            zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
+            setBuiltInZoomControls(false)
+            isClickable = false
+            isFocusable = false
+            isFocusableInTouchMode = false
+            setOnTouchListener { _, _ -> true }
+        }
+    }
+
+    DisposableEffect(mapView) {
+        mapView.onResume()
+        onDispose { mapView.onPause() }
+    }
+
+    val geoPoint = remember(location.latitude, location.longitude) {
+        GeoPoint(location.latitude, location.longitude)
+    }
+
+    LaunchedEffect(geoPoint) {
+        mapView.overlays.clear()
+        val marker = Marker(mapView).apply {
+            position = geoPoint
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            title = location.address
+        }
+        mapView.overlays.add(marker)
+        mapView.controller.setZoom(16.0)
+        mapView.controller.setCenter(geoPoint)
+        mapView.invalidate()
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+    ) {
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun CollectorRequestDetailScreenPreview() {
@@ -647,18 +843,25 @@ fun CollectorRequestDetailScreenPreview() {
                     WasteItem("metal", 2.0, 8.0, "Aluminum cans")
                 ),
                 pickupLocation = PickupRequest.Location(
-                    latitude = 0.0,
-                    longitude = 0.0,
+                    latitude = -6.200000,
+                    longitude = 106.816666,
                     address = "123 Main Street, Springfield, IL 62701"
                 ),
-                status = "accepted",
+                status = PickupRequest.STATUS_ACCEPTED,
                 notes = "Please ring the doorbell twice. Items are in the garage.",
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
             ),
-            householdName = "Jane Smith",
-            householdPhone = "+1 (555) 987-6543",
-            snackbarHostState = snackbarHostState
+            household = User(
+                id = "user1",
+                fullName = "Jane Smith",
+                email = "jane.smith@example.com",
+                phone = "+1 (555) 987-6543",
+                userType = User.ROLE_HOUSEHOLD
+            ),
+            snackbarHostState = snackbarHostState,
+            onNavigateToLocation = {},
+            onContactHousehold = {}
         )
     }
 }

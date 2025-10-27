@@ -39,6 +39,11 @@ import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.util.Locale
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -218,6 +223,13 @@ fun CollectorMapScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                     shape = RoundedCornerShape(24.dp)
                 ) {
+                    val sortedRequests = remember(pendingRequests, mapState.collectorLocation) {
+                        sortRequestsByDistance(
+                            requests = pendingRequests,
+                            collectorLocation = mapState.collectorLocation
+                        )
+                    }
+
                     LazyRow(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -225,9 +237,8 @@ fun CollectorMapScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(pendingRequests) { request ->
+                        items(sortedRequests) { (request, distanceKm) ->
                             val isSelected = selectedRequestId == request.id
-                            val distanceKm = mapState.pendingMarkers.firstOrNull { it.requestId == request.id }?.distanceKm
                             MapRequestCard(
                                 request = request,
                                 isSelected = isSelected,
@@ -243,6 +254,46 @@ fun CollectorMapScreen(
             }
         }
     }
+}
+
+private fun sortRequestsByDistance(
+    requests: List<PickupRequest>,
+    collectorLocation: PickupRequest.Location?
+): List<Pair<PickupRequest, Double?>> {
+    val enriched = requests.map { request ->
+        val distance = collectorLocation?.let {
+            haversineDistanceKm(
+                it.latitude,
+                it.longitude,
+                request.pickupLocation.latitude,
+                request.pickupLocation.longitude
+            )
+        }
+        request to distance
+    }
+
+    return enriched.sortedBy { it.second ?: Double.MAX_VALUE }
+}
+
+private fun haversineDistanceKm(
+    lat1: Double,
+    lon1: Double,
+    lat2: Double,
+    lon2: Double
+): Double {
+    val earthRadiusKm = 6371.0
+
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+
+    val originLat = Math.toRadians(lat1)
+    val destinationLat = Math.toRadians(lat2)
+
+    val a = sin(dLat / 2).pow(2.0) +
+        sin(dLon / 2).pow(2.0) * cos(originLat) * cos(destinationLat)
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return earthRadiusKm * c
 }
 
 @Composable

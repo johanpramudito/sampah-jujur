@@ -29,7 +29,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.theme.*
@@ -53,9 +57,54 @@ fun HouseholdRequestDetailRoute(
     onBackClick: () -> Unit,
     viewModel: HouseholdViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val request by viewModel.observeRequest(requestId).collectAsState(initial = null)
     var collectorInfo by remember { mutableStateOf<com.melodi.sampahjujur.model.User?>(null) }
     val scope = rememberCoroutineScope()
+
+    fun launchDialer(phone: String?) {
+        val target = phone?.takeIf { it.isNotBlank() }
+        if (target == null) {
+            Toast.makeText(context, "Collector phone number unavailable", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val phoneUri = Uri.fromParts("tel", target, null)
+        val intents = listOf(
+            Intent(Intent.ACTION_DIAL, phoneUri),
+            Intent(Intent.ACTION_VIEW, phoneUri)
+        )
+
+        var launched = false
+        intents.forEach { intent ->
+            if (launched) return@forEach
+            try {
+                context.startActivity(intent)
+                launched = true
+            } catch (_: ActivityNotFoundException) {
+                // try next
+            } catch (_: Exception) {
+                // ignore and try next intent
+            }
+        }
+
+        if (!launched) {
+            val chooser = Intent.createChooser(
+                Intent(Intent.ACTION_DIAL, phoneUri),
+                "Call collector with"
+            )
+            try {
+                context.startActivity(chooser)
+                launched = true
+            } catch (_: Exception) {
+                // unable to launch chooser
+            }
+        }
+
+        if (!launched) {
+            Toast.makeText(context, "No dialer application found", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Fetch collector information when request has a collector assigned
     LaunchedEffect(request) {
@@ -93,10 +142,7 @@ fun HouseholdRequestDetailRoute(
                 viewModel.cancelPickupRequest(requestId)
                 onBackClick()
             },
-            onContactCollector = {
-                // TODO: Implement phone call functionality
-                android.util.Log.d("RequestDetail", "Contact collector: ${collectorInfo?.phone}")
-            }
+            onContactCollector = { launchDialer(collectorInfo?.phone) }
         )
     }
 }
@@ -468,14 +514,17 @@ fun RequestDetailScreen(
                                     )
                                     if (collectorPhone != null) {
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.clickable(onClick = onContactCollector)
+                                        ) {
                                             Icon(
                                                 imageVector = Icons.Default.Phone,
-                                                contentDescription = "Phone",
-                                                tint = Color.Gray,
-                                                modifier = Modifier.size(16.dp)
+                                                contentDescription = "Call collector",
+                                                tint = PrimaryGreen,
+                                                modifier = Modifier.size(18.dp)
                                             )
-                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
                                             Text(
                                                 text = collectorPhone,
                                                 fontSize = 14.sp,
