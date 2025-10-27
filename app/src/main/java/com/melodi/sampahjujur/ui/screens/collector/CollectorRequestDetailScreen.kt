@@ -270,12 +270,10 @@ fun CollectorRequestDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 88.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp)
             ) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-
                 // Status Card
                 item {
                     Card(

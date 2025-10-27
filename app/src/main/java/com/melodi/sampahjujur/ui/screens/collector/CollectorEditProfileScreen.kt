@@ -1,33 +1,214 @@
 package com.melodi.sampahjujur.ui.screens.collector
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.melodi.sampahjujur.BuildConfig
 import com.melodi.sampahjujur.model.User
+import com.melodi.sampahjujur.ui.components.ProfileImagePicker
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
+import com.melodi.sampahjujur.utils.CloudinaryUploadService
+import com.melodi.sampahjujur.viewmodel.AuthViewModel
+import com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
+/**
+ * Route composable that wires the edit profile screen to [AuthViewModel] and Cloudinary uploads.
+ */
+@Composable
+fun CollectorEditProfileRoute(
+    onBackClick: () -> Unit,
+    authViewModel: AuthViewModel = hiltViewModel()
+) {
+    val authState by authViewModel.authState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val authenticatedUser = when (authState) {
+        is AuthState.Authenticated -> (authState as AuthState.Authenticated).user
+        AuthState.Loading -> null
+        AuthState.Unauthenticated -> null
+    }
+
+    if (authenticatedUser == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var isUploading by remember { mutableStateOf(false) }
+    var pendingUploadedUrl by remember { mutableStateOf<String?>(null) }
+    var previousImageUrl by remember { mutableStateOf<String?>(null) }
+
+    val isSaving = uiState.isLoading || isUploading
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            authViewModel.clearError()
+            pendingUploadedUrl?.let { url ->
+                CloudinaryUploadService.deleteImage(url)
+                pendingUploadedUrl = null
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let {
+            val newUrl = pendingUploadedUrl
+            val oldUrl = previousImageUrl
+            pendingUploadedUrl = null
+            previousImageUrl = null
+            selectedImageUri = null
+
+            if (!oldUrl.isNullOrBlank() && !newUrl.isNullOrBlank() && oldUrl != newUrl) {
+                launch {
+                    CloudinaryUploadService.deleteImage(oldUrl)
+                }
+            }
+
+            authViewModel.clearSuccessMessage()
+            onBackClick()
+        }
+    }
+
+    CollectorEditProfileScreen(
+        user = authenticatedUser,
+        currentImageUrl = authenticatedUser.profileImageUrl,
+        previewImageUri = selectedImageUri,
+        profileImageChanged = selectedImageUri != null,
+        isSaving = isSaving,
+        snackbarHostState = snackbarHostState,
+        onImageSelected = { selectedImageUri = it },
+        vehicleType = authenticatedUser.vehicleType,
+        vehiclePlateNumber = authenticatedUser.vehiclePlateNumber,
+        operatingArea = authenticatedUser.operatingArea,
+        onBackClick = { if (!isSaving) onBackClick() },
+        onSaveClick = { fullName, phone, vehicleType, plateNumber, operatingArea ->
+            if (isSaving) return@CollectorEditProfileScreen
+            scope.launch {
+                var uploadedUrl: String? = null
+                try {
+                    if (selectedImageUri != null) {
+                        isUploading = true
+                        uploadedUrl = CloudinaryUploadService.uploadImage(
+                            context = context,
+                            imageUri = selectedImageUri!!,
+                            folder = "${BuildConfig.CLOUDINARY_UPLOAD_FOLDER}/profiles"
+                        )
+                    }
+                    pendingUploadedUrl = uploadedUrl
+                    previousImageUrl = authenticatedUser.profileImageUrl
+
+                    authViewModel.updateCollectorProfile(
+                        fullName = fullName,
+                        phone = phone,
+                        vehicleType = vehicleType,
+                        vehiclePlateNumber = plateNumber,
+                        operatingArea = operatingArea,
+                        profileImageUrl = uploadedUrl
+                    )
+                } catch (e: Exception) {
+                    uploadedUrl?.let { url ->
+                        CloudinaryUploadService.deleteImage(url)
+                    }
+                    snackbarHostState.showSnackbar(
+                        e.message ?: "Failed to update profile photo"
+                    )
+                } finally {
+                    isUploading = false
+                }
+            }
+        }
+    )
+}
+
+/**
+ * UI for the collector edit profile screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectorEditProfileScreen(
     user: User,
+    currentImageUrl: String,
+    previewImageUri: Uri?,
+    profileImageChanged: Boolean,
+    isSaving: Boolean,
+    snackbarHostState: SnackbarHostState,
+    onImageSelected: (Uri) -> Unit,
     vehicleType: String = "",
     vehiclePlateNumber: String = "",
     operatingArea: String = "",
@@ -44,29 +225,28 @@ fun CollectorEditProfileScreen(
 
     val vehicleOptions = listOf("Motorcycle", "Car", "Truck", "Van", "Other")
 
-    val hasChanges = fullName != user.fullName ||
-                     phone != user.phone ||
-                     vehicleTypeField != vehicleType ||
-                     plateNumber != vehiclePlateNumber ||
-                     operatingAreaField != operatingArea
+    val hasChanges = profileImageChanged ||
+        fullName != user.fullName ||
+        phone != user.phone ||
+        vehicleTypeField != vehicleType ||
+        plateNumber != vehiclePlateNumber ||
+        operatingAreaField != operatingArea
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Edit Profile",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("Edit Profile", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (hasChanges) {
-                            showDiscardDialog = true
-                        } else {
-                            onBackClick()
+                    IconButton(
+                        onClick = {
+                            if (isSaving) return@IconButton
+                            if (hasChanges) {
+                                showDiscardDialog = true
+                            } else {
+                                onBackClick()
+                            }
                         }
-                    }) {
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back"
@@ -74,388 +254,309 @@ fun CollectorEditProfileScreen(
                     }
                 },
                 actions = {
+                    val saveEnabled = hasChanges && fullName.isNotBlank() && phone.isNotBlank() && !isSaving
                     TextButton(
                         onClick = {
-                            onSaveClick(fullName, phone, vehicleTypeField, plateNumber, operatingAreaField)
+                            if (saveEnabled) {
+                                onSaveClick(
+                                    fullName,
+                                    phone,
+                                    vehicleTypeField,
+                                    plateNumber,
+                                    operatingAreaField
+                                )
+                            }
                         },
-                        enabled = fullName.isNotBlank() && phone.isNotBlank() && hasChanges
+                        enabled = saveEnabled
                     ) {
                         Text(
                             text = "Save",
-                            color = if (fullName.isNotBlank() && phone.isNotBlank() && hasChanges)
-                                PrimaryGreen else Color.Gray,
+                            color = if (saveEnabled) PrimaryGreen else Color.Gray,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Profile Picture Section
-            Box(
-                modifier = Modifier.size(120.dp),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .background(
-                            PrimaryGreen.copy(alpha = 0.1f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocalShipping,
-                        contentDescription = "Collector",
-                        tint = PrimaryGreen,
-                        modifier = Modifier.size(60.dp)
+                if (isSaving) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
                     )
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Camera button overlay
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(36.dp)
-                        .background(PrimaryGreen, CircleShape)
-                        .clickable { /* Handle photo upload */ },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Change photo",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+                ProfileImagePicker(
+                    currentImageUrl = currentImageUrl,
+                    previewUri = previewImageUri,
+                    onImageSelected = onImageSelected,
+                    modifier = Modifier.size(140.dp)
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Upload Photo",
-                fontSize = 14.sp,
-                color = PrimaryGreen,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable { /* Handle photo upload */ }
-            )
+                SectionLabel("Personal Information")
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Personal Information Section
-            Text(
-                text = "Personal Information",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-
-            // Full Name Field
-            OutlinedTextField(
-                value = fullName,
-                onValueChange = { fullName = it },
-                label = { Text("Full Name *") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Name",
-                        tint = PrimaryGreen
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = PrimaryGreen,
-                    unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Phone Field
-            OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = { Text("Phone Number *") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Phone",
-                        tint = PrimaryGreen
-                    )
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = PrimaryGreen,
-                    unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Vehicle Information Section
-            Text(
-                text = "Vehicle Information",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-
-            // Vehicle Type Dropdown
-            ExposedDropdownMenuBox(
-                expanded = showVehicleDropdown,
-                onExpandedChange = { showVehicleDropdown = !showVehicleDropdown }
-            ) {
                 OutlinedTextField(
-                    value = vehicleTypeField,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Vehicle Type") },
+                    value = fullName,
+                    onValueChange = { fullName = it },
+                    label = { Text("Full Name *") },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.DirectionsCar,
-                            contentDescription = "Vehicle",
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Name",
                             tint = PrimaryGreen
                         )
                     },
-                    trailingIcon = {
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Phone Number *") },
+                    leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Dropdown",
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Phone",
+                            tint = PrimaryGreen
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                SectionLabel("Vehicle Information")
+
+                ExposedDropdownMenuBox(
+                    expanded = showVehicleDropdown,
+                    onExpandedChange = { showVehicleDropdown = !showVehicleDropdown }
+                ) {
+                    OutlinedTextField(
+                        value = vehicleTypeField,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Vehicle Type") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsCar,
+                                contentDescription = "Vehicle",
+                                tint = PrimaryGreen
+                            )
+                        },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showVehicleDropdown)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = textFieldColors(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    DropdownMenu(
+                        expanded = showVehicleDropdown,
+                        onDismissRequest = { showVehicleDropdown = false }
+                    ) {
+                        vehicleOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    vehicleTypeField = option
+                                    showVehicleDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = plateNumber,
+                    onValueChange = { plateNumber = it },
+                    label = { Text("License Plate Number") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Badge,
+                            contentDescription = "Plate",
+                            tint = PrimaryGreen
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    placeholder = { Text("e.g. ABC 1234") }
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                SectionLabel("Operating Information")
+
+                OutlinedTextField(
+                    value = operatingAreaField,
+                    onValueChange = { operatingAreaField = it },
+                    label = { Text("Operating Area") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = "Area",
+                            tint = PrimaryGreen
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    minLines = 2,
+                    maxLines = 3,
+                    placeholder = { Text("e.g. Downtown, North District") }
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                SectionLabel("Account Security")
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { /* Navigate to change phone number */ }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Phone Security",
+                            tint = PrimaryGreen
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Change Phone Number",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = "Update your registered phone number",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Navigate",
                             tint = Color.Gray
                         )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedBorderColor = PrimaryGreen,
-                        unfocusedBorderColor = Color.LightGray,
-                        containerColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                    }
+                }
 
-                ExposedDropdownMenu(
-                    expanded = showVehicleDropdown,
-                    onDismissRequest = { showVehicleDropdown = false }
-                ) {
-                    vehicleOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+
+            if (showDiscardDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDiscardDialog = false },
+                    title = { Text("Discard changes?") },
+                    text = { Text("You have unsaved changes. Are you sure you want to discard them?") },
+                    confirmButton = {
+                        TextButton(
                             onClick = {
-                                vehicleTypeField = option
-                                showVehicleDropdown = false
+                                showDiscardDialog = false
+                                onBackClick()
                             }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Plate Number Field
-            OutlinedTextField(
-                value = plateNumber,
-                onValueChange = { plateNumber = it },
-                label = { Text("License Plate Number") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Badge,
-                        contentDescription = "Plate",
-                        tint = PrimaryGreen
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = PrimaryGreen,
-                    unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                placeholder = { Text("e.g. ABC 1234") }
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Operating Information Section
-            Text(
-                text = "Operating Information",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-
-            // Operating Area Field
-            OutlinedTextField(
-                value = operatingAreaField,
-                onValueChange = { operatingAreaField = it },
-                label = { Text("Operating Area") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Area",
-                        tint = PrimaryGreen
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = PrimaryGreen,
-                    unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp),
-                minLines = 2,
-                maxLines = 3,
-                placeholder = { Text("e.g. Downtown, North District") }
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Account Security Section
-            Text(
-                text = "Account Security",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(2.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { /* Navigate to change password */ }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = "Password",
-                        tint = PrimaryGreen
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Change Phone Number",
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 16.sp
-                        )
-                        Text(
-                            text = "Update your registered phone number",
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = "Navigate",
-                        tint = Color.Gray
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-
-    // Discard Changes Dialog
-    if (showDiscardDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscardDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Warning",
-                    tint = Color(0xFFFF9800),
-                    modifier = Modifier.size(48.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = "Discard Changes?",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text("You have unsaved changes. Are you sure you want to go back without saving?")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDiscardDialog = false
-                        onBackClick()
+                        ) {
+                            Text("Discard", color = PrimaryGreen)
+                        }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red
-                    )
-                ) {
-                    Text("Discard", color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDiscardDialog = false }) {
-                    Text("Keep Editing", color = PrimaryGreen)
-                }
+                    dismissButton = {
+                        TextButton(onClick = { showDiscardDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
-        )
+        }
     }
 }
 
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.Gray,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun textFieldColors() = TextFieldDefaults.outlinedTextFieldColors(
+    focusedBorderColor = PrimaryGreen,
+    unfocusedBorderColor = Color.LightGray,
+    containerColor = Color.White
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
-fun CollectorEditProfileScreenPreview() {
+private fun CollectorEditProfileScreenPreview() {
     SampahJujurTheme {
+        val snackbarHostState = remember { SnackbarHostState() }
         CollectorEditProfileScreen(
             user = User(
                 id = "collector1",
                 fullName = "John Collector",
-                email = "john@example.com",
-                phone = "+1 (555) 123-4567",
-                userType = "collector"
+                phone = "+62 812 3456 7890",
+                userType = User.ROLE_COLLECTOR,
+                vehicleType = "Truck",
+                vehiclePlateNumber = "B 1234 XYZ",
+                operatingArea = "Central Jakarta"
             ),
-            vehicleType = "Truck",
-            vehiclePlateNumber = "ABC 123",
-            operatingArea = "Downtown, North District"
+            currentImageUrl = "",
+            previewImageUri = null,
+            profileImageChanged = false,
+            isSaving = false,
+            snackbarHostState = snackbarHostState,
+            onImageSelected = {}
         )
     }
 }

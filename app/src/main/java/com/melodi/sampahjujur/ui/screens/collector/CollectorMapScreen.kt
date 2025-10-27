@@ -2,22 +2,30 @@ package com.melodi.sampahjujur.ui.screens.collector
 
 import android.graphics.drawable.Drawable
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.BottomSheetScaffold
+import androidx.compose.material.BottomSheetValue
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.rememberBottomSheetScaffoldState
+import androidx.compose.material.rememberBottomSheetState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -44,8 +52,9 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun CollectorMapScreen(
     viewModel: CollectorViewModel = hiltViewModel(),
@@ -93,6 +102,22 @@ fun CollectorMapScreen(
 
     var selectedRequestId by rememberSaveable { mutableStateOf<String?>(null) }
     var shouldCenterCollector by rememberSaveable { mutableStateOf(true) }
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = BottomSheetValue.Collapsed
+    )
+    val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = bottomSheetState
+    )
+    val sortedRequests = remember(pendingRequests, mapState.collectorLocation) {
+        sortRequestsByDistance(
+            requests = pendingRequests,
+            collectorLocation = mapState.collectorLocation
+        )
+    }
+    val coroutineScope = rememberCoroutineScope()
+    val isSheetCollapsed by remember {
+        derivedStateOf { bottomSheetState.currentValue == BottomSheetValue.Collapsed }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.refreshCollectorLocation()
@@ -115,6 +140,12 @@ fun CollectorMapScreen(
         }
     }
 
+    LaunchedEffect(pendingRequests.isEmpty()) {
+        if (pendingRequests.isEmpty()) {
+            bottomSheetState.collapse()
+        }
+    }
+
     LaunchedEffect(selectedRequestId, mapState.pendingMarkers) {
         selectedRequestId?.let { requestId ->
             mapState.pendingMarkers.firstOrNull { it.requestId == requestId }?.let { markerInfo ->
@@ -124,134 +155,193 @@ fun CollectorMapScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Pickup Map", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    Icon(imageVector = Icons.Default.Map, contentDescription = null, tint = PrimaryGreen)
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
+    val navBarHeight = 72.dp
+    val collapsedHeaderHeight = navBarHeight + 120.dp
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        BottomSheetScaffold(
+            scaffoldState = bottomSheetScaffoldState,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Pickup Map", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.White
+                    )
                 )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    shouldCenterCollector = true
-                    viewModel.refreshCollectorLocation()
-                },
-                containerColor = PrimaryGreen
-            ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "My Location", tint = Color.White)
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        shouldCenterCollector = true
+                        viewModel.refreshCollectorLocation()
+                    },
+                    containerColor = PrimaryGreen
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = "My Location", tint = Color.White)
+                }
+            },
+            sheetPeekHeight = if (pendingRequests.isEmpty()) 0.dp else collapsedHeaderHeight,
+            sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            sheetElevation = 8.dp,
+            sheetBackgroundColor = Color.White,
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            backgroundColor = Color(0xFFF5F5F5),
+            sheetContent = {
+                if (pendingRequests.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No pending requests nearby",
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(bottom = navBarHeight + 48.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(48.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Color.LightGray.copy(alpha = 0.6f))
+                            .align(Alignment.CenterHorizontally)
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column {
+                            Text(
+                                text = "Nearby Requests",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "${sortedRequests.size} pending nearby",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    if (isSheetCollapsed) bottomSheetState.expand() else bottomSheetState.collapse()
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isSheetCollapsed) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = if (isSheetCollapsed) "Expand" else "Collapse",
+                                tint = PrimaryGreen
+                            )
+                        }
+                    }
+
+                    if (isSheetCollapsed) {
+                        Text(
+                            text = "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp)
+                        ) {
+                            items(sortedRequests) { (request, distanceKm) ->
+                                val isSelected = selectedRequestId == request.id
+                                MapRequestCard(
+                                    request = request,
+                                    isSelected = isSelected,
+                                    distanceKm = distanceKm,
+                                    onClick = { selectedRequestId = request.id },
+                                    onViewDetails = { onRequestSelected(request.id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
             }
-        },
-        bottomBar = {
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(Color(0xFFF5F5F5))
+                    .padding(bottom = navBarHeight + 12.dp)
+            ) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { mapView },
+                    update = { view ->
+                        view.overlays.removeAll { it is Marker }
+
+                        mapState.collectorLocation?.let { location ->
+                            val marker = Marker(view).apply {
+                                position = GeoPoint(location.latitude, location.longitude)
+                                title = "Your Location"
+                                icon = collectorMarkerIcon
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                            }
+                            view.overlays.add(marker)
+                        }
+
+                        mapState.pendingMarkers.forEach { markerInfo ->
+                            val marker = Marker(view).apply {
+                                position = GeoPoint(markerInfo.latitude, markerInfo.longitude)
+                                title = markerInfo.address.ifBlank { "Request #${markerInfo.requestId.take(6)}" }
+                                val details = buildList {
+                                    add("Status: ${markerInfo.status}")
+                                    markerInfo.distanceKm?.let {
+                                        add(String.format(Locale.getDefault(), "Distance: %.1f km", it))
+                                    }
+                                }
+                                snippet = details.joinToString("\n")
+                                icon = requestMarkerIcon
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                setOnMarkerClickListener { m, _ ->
+                                    selectedRequestId = markerInfo.requestId
+                                    view.controller.animateTo(m.position, 16.0, 500L)
+                                    true
+                                }
+                            }
+                            view.overlays.add(marker)
+                        }
+
+                        if (mapState.collectorLocation == null && mapState.pendingMarkers.isNotEmpty()) {
+                            val first = mapState.pendingMarkers.first()
+                            view.controller.setCenter(GeoPoint(first.latitude, first.longitude))
+                        }
+
+                        view.invalidate()
+                    }
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
             CollectorBottomNavBar(
                 selectedRoute = com.melodi.sampahjujur.navigation.Screen.CollectorMap.route,
                 onNavigate = onNavigate
             )
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = Color(0xFFF5F5F5)
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { mapView },
-                update = { view ->
-                    // Remove existing markers to avoid duplicates
-                    view.overlays.removeAll { it is Marker }
-
-                    // Collector marker
-                    mapState.collectorLocation?.let { location ->
-                        val marker = Marker(view).apply {
-                            position = GeoPoint(location.latitude, location.longitude)
-                            title = "Your Location"
-                            icon = collectorMarkerIcon
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        }
-                        view.overlays.add(marker)
-                    }
-
-                    // Pending request markers
-                    mapState.pendingMarkers.forEach { markerInfo ->
-                        val marker = Marker(view).apply {
-                            position = GeoPoint(markerInfo.latitude, markerInfo.longitude)
-                            title = markerInfo.address.ifBlank { "Request #${markerInfo.requestId.take(6)}" }
-                            val details = buildList {
-                                add("Status: ${markerInfo.status}")
-                                markerInfo.distanceKm?.let {
-                                    add(String.format(Locale.getDefault(), "Distance: %.1f km", it))
-                                }
-                            }
-                            snippet = details.joinToString("\n")
-                            icon = requestMarkerIcon
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            setOnMarkerClickListener { m, _ ->
-                                selectedRequestId = markerInfo.requestId
-                                view.controller.animateTo(m.position, 16.0, 500L)
-                                true
-                            }
-                        }
-                        view.overlays.add(marker)
-                    }
-
-                    if (mapState.collectorLocation == null && mapState.pendingMarkers.isNotEmpty()) {
-                        val first = mapState.pendingMarkers.first()
-                        view.controller.setCenter(GeoPoint(first.latitude, first.longitude))
-                    }
-
-                    view.invalidate()
-                }
-            )
-
-            if (pendingRequests.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.95f)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    val sortedRequests = remember(pendingRequests, mapState.collectorLocation) {
-                        sortRequestsByDistance(
-                            requests = pendingRequests,
-                            collectorLocation = mapState.collectorLocation
-                        )
-                    }
-
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(sortedRequests) { (request, distanceKm) ->
-                            val isSelected = selectedRequestId == request.id
-                            MapRequestCard(
-                                request = request,
-                                isSelected = isSelected,
-                                distanceKm = distanceKm,
-                                onClick = {
-                                    selectedRequestId = request.id
-                                },
-                                onViewDetails = { onRequestSelected(request.id) }
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -302,11 +392,11 @@ private fun MapRequestCard(
     isSelected: Boolean,
     distanceKm: Double? = null,
     onClick: () -> Unit,
-    onViewDetails: () -> Unit
+    onViewDetails: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .width(240.dp)
+        modifier = modifier
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(

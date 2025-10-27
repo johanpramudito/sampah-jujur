@@ -443,7 +443,8 @@ class AuthViewModel @Inject constructor(
         phone: String,
         vehicleType: String,
         vehiclePlateNumber: String,
-        operatingArea: String
+        operatingArea: String,
+        profileImageUrl: String? = null
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
@@ -453,7 +454,8 @@ class AuthViewModel @Inject constructor(
                 phone = phone,
                 vehicleType = vehicleType,
                 vehiclePlateNumber = vehiclePlateNumber,
-                operatingArea = operatingArea
+                operatingArea = operatingArea,
+                profileImageUrl = profileImageUrl
             )
 
             if (result.isSuccess) {
