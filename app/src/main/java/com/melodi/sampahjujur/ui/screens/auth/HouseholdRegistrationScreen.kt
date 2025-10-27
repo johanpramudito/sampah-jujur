@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -35,7 +36,9 @@ import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 fun HouseholdRegistrationScreen(
     viewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onRegisterSuccess: () -> Unit = {},
-    onLoginClick: () -> Unit = {}
+    onLoginClick: () -> Unit = {},
+    onTermsClick: () -> Unit = {},
+    onPrivacyPolicyClick: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -273,33 +276,51 @@ fun HouseholdRegistrationScreen(
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(color = Color.Gray)) {
-                            append("I agree to the ")
-                        }
-                        withStyle(
-                            style = SpanStyle(
-                                color = PrimaryGreen,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        ) {
-                            append("Terms & Conditions")
-                        }
-                        withStyle(style = SpanStyle(color = Color.Gray)) {
-                            append(" and ")
-                        }
-                        withStyle(
-                            style = SpanStyle(
-                                color = PrimaryGreen,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        ) {
-                            append("Privacy Policy")
-                        }
-                    },
-                    fontSize = 14.sp,
-                    modifier = Modifier.weight(1f)
+
+                val annotatedText = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = Color.Gray, fontSize = 14.sp)) {
+                        append("I agree to the ")
+                    }
+                    pushStringAnnotation(tag = "terms", annotation = "terms")
+                    withStyle(
+                        style = SpanStyle(
+                            color = PrimaryGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    ) {
+                        append("Terms & Conditions")
+                    }
+                    pop()
+                    withStyle(style = SpanStyle(color = Color.Gray, fontSize = 14.sp)) {
+                        append(" and ")
+                    }
+                    pushStringAnnotation(tag = "privacy", annotation = "privacy")
+                    withStyle(
+                        style = SpanStyle(
+                            color = PrimaryGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    ) {
+                        append("Privacy Policy")
+                    }
+                    pop()
+                }
+
+                ClickableText(
+                    text = annotatedText,
+                    modifier = Modifier.weight(1f),
+                    onClick = { offset ->
+                        annotatedText.getStringAnnotations(tag = "terms", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                onTermsClick()
+                            }
+                        annotatedText.getStringAnnotations(tag = "privacy", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                onPrivacyPolicyClick()
+                            }
+                    }
                 )
             }
 
