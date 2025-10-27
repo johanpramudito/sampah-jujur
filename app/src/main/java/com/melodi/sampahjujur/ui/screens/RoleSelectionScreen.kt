@@ -24,8 +24,7 @@ import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 @Composable
 fun RoleSelectionScreen(
     onHouseholdSelected: () -> Unit = {},
-    onCollectorSelected: () -> Unit = {},
-    onLoginClick: () -> Unit = {}
+    onCollectorSelected: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -79,23 +78,6 @@ fun RoleSelectionScreen(
                 description = "I collect recyclable materials",
                 onClick = onCollectorSelected
             )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Login Link
-            TextButton(onClick = onLoginClick) {
-                Text(
-                    text = "Already have an account? ",
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "Log in",
-                    color = PrimaryGreen,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
         }
     }
 }

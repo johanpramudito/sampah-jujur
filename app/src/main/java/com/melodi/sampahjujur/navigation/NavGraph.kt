@@ -223,6 +223,12 @@ fun SampahJujurNavGraph(
                 },
                 onLoginClick = {
                     navController.popBackStack()
+                },
+                onTermsClick = {
+                    navController.navigate(Screen.TermsAndConditions.route)
+                },
+                onPrivacyPolicyClick = {
+                    navController.navigate(Screen.PrivacyPolicy.route)
                 }
             )
         }
@@ -249,6 +255,12 @@ fun SampahJujurNavGraph(
                 },
                 onLoginClick = {
                     navController.popBackStack()
+                },
+                onTermsClick = {
+                    navController.navigate(Screen.TermsAndConditions.route)
+                },
+                onPrivacyPolicyClick = {
+                    navController.navigate(Screen.PrivacyPolicy.route)
                 }
             )
         }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -20,8 +21,11 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,7 +43,9 @@ import com.melodi.sampahjujur.viewmodel.PhoneAuthState
 fun CollectorRegistrationScreen(
     viewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onRegisterSuccess: () -> Unit = {},
-    onLoginClick: () -> Unit = {}
+    onLoginClick: () -> Unit = {},
+    onTermsClick: () -> Unit = {},
+    onPrivacyPolicyClick: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -262,7 +268,7 @@ fun CollectorRegistrationScreen(
 
             // Terms Checkbox
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Checkbox(
@@ -274,10 +280,51 @@ fun CollectorRegistrationScreen(
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "I agree to Collector Terms and Conditions",
-                    fontSize = 14.sp,
-                    color = Color.Gray
+
+                val annotatedText = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = Color.Gray, fontSize = 14.sp)) {
+                        append("I agree to the ")
+                    }
+                    pushStringAnnotation(tag = "terms", annotation = "terms")
+                    withStyle(
+                        style = SpanStyle(
+                            color = PrimaryGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    ) {
+                        append("Terms & Conditions")
+                    }
+                    pop()
+                    withStyle(style = SpanStyle(color = Color.Gray, fontSize = 14.sp)) {
+                        append(" and ")
+                    }
+                    pushStringAnnotation(tag = "privacy", annotation = "privacy")
+                    withStyle(
+                        style = SpanStyle(
+                            color = PrimaryGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    ) {
+                        append("Privacy Policy")
+                    }
+                    pop()
+                }
+
+                ClickableText(
+                    text = annotatedText,
+                    modifier = Modifier.weight(1f),
+                    onClick = { offset ->
+                        annotatedText.getStringAnnotations(tag = "terms", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                onTermsClick()
+                            }
+                        annotatedText.getStringAnnotations(tag = "privacy", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                onPrivacyPolicyClick()
+                            }
+                    }
                 )
             }
 
