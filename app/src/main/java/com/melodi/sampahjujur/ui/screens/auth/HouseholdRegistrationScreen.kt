@@ -21,6 +21,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -270,33 +273,34 @@ fun HouseholdRegistrationScreen(
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = Color.Gray)) {
+                            append("I agree to the ")
+                        }
+                        withStyle(
+                            style = SpanStyle(
+                                color = PrimaryGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        ) {
+                            append("Terms & Conditions")
+                        }
+                        withStyle(style = SpanStyle(color = Color.Gray)) {
+                            append(" and ")
+                        }
+                        withStyle(
+                            style = SpanStyle(
+                                color = PrimaryGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        ) {
+                            append("Privacy Policy")
+                        }
+                    },
+                    fontSize = 14.sp,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = "I agree to the ",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "Terms & Conditions",
-                        fontSize = 14.sp,
-                        color = PrimaryGreen,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = " and ",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "Privacy Policy",
-                        fontSize = 14.sp,
-                        color = PrimaryGreen,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
