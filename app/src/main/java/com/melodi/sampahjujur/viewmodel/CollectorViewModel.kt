@@ -12,6 +12,7 @@ import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
+import com.melodi.sampahjujur.utils.CollectorNotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +55,8 @@ data class CollectorPerformanceMetrics(
 class CollectorViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val notificationHelper: CollectorNotificationHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectorUiState())
@@ -77,6 +79,9 @@ class CollectorViewModel @Inject constructor(
 
     private val _acceptRequestResult = MutableLiveData<Result<Unit>?>()
     val acceptRequestResult: LiveData<Result<Unit>?> = _acceptRequestResult
+
+    private val knownPendingRequestIds = mutableSetOf<String>()
+    private var pendingNotificationInitialized = false
 
     init {
         startListeningToPendingRequests()
@@ -102,6 +107,22 @@ class CollectorViewModel @Inject constructor(
                     _mapState.value = _mapState.value.copy(pendingMarkers = emptyList())
                 }
                 .collect { requests ->
+                    val incomingIds = requests.map { it.id }.toSet()
+                    if (pendingNotificationInitialized) {
+                        requests
+                            .filter { it.id !in knownPendingRequestIds }
+                            .forEach { newRequest ->
+                                viewModelScope.launch {
+                                    notificationHelper.notifyNewPendingRequest(newRequest)
+                                }
+                            }
+                    } else {
+                        pendingNotificationInitialized = true
+                    }
+                    knownPendingRequestIds
+                        .apply { clear() }
+                        .addAll(incomingIds)
+
                     val currentState = _uiState.value
                     val filtered = applyPendingRequestFilters(
                         requests = requests,
