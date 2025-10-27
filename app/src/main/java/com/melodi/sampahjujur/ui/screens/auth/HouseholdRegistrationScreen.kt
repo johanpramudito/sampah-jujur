@@ -21,6 +21,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +36,9 @@ import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 fun HouseholdRegistrationScreen(
     viewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onRegisterSuccess: () -> Unit = {},
-    onLoginClick: () -> Unit = {}
+    onLoginClick: () -> Unit = {},
+    onTermsClick: () -> Unit = {},
+    onPrivacyPolicyClick: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -270,33 +276,52 @@ fun HouseholdRegistrationScreen(
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = "I agree to the ",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "Terms & Conditions",
-                        fontSize = 14.sp,
-                        color = PrimaryGreen,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = " and ",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "Privacy Policy",
-                        fontSize = 14.sp,
-                        color = PrimaryGreen,
-                        fontWeight = FontWeight.SemiBold
-                    )
+
+                val annotatedText = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = Color.Gray, fontSize = 14.sp)) {
+                        append("I agree to the ")
+                    }
+                    pushStringAnnotation(tag = "terms", annotation = "terms")
+                    withStyle(
+                        style = SpanStyle(
+                            color = PrimaryGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    ) {
+                        append("Terms & Conditions")
+                    }
+                    pop()
+                    withStyle(style = SpanStyle(color = Color.Gray, fontSize = 14.sp)) {
+                        append(" and ")
+                    }
+                    pushStringAnnotation(tag = "privacy", annotation = "privacy")
+                    withStyle(
+                        style = SpanStyle(
+                            color = PrimaryGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    ) {
+                        append("Privacy Policy")
+                    }
+                    pop()
                 }
+
+                ClickableText(
+                    text = annotatedText,
+                    modifier = Modifier.weight(1f),
+                    onClick = { offset ->
+                        annotatedText.getStringAnnotations(tag = "terms", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                onTermsClick()
+                            }
+                        annotatedText.getStringAnnotations(tag = "privacy", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                onPrivacyPolicyClick()
+                            }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
