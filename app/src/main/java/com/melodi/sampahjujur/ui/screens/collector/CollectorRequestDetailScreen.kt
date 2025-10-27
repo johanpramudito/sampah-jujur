@@ -34,6 +34,7 @@ import com.melodi.sampahjujur.ui.screens.household.StatusBadge
 import com.melodi.sampahjujur.ui.screens.household.WasteItemDetailCard
 import com.melodi.sampahjujur.ui.screens.household.formatDateTime
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
+import com.melodi.sampahjujur.ui.theme.StatusInProgress
 import com.melodi.sampahjujur.viewmodel.CollectorViewModel
 import kotlinx.coroutines.flow.flowOf
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -585,6 +586,142 @@ fun CollectorRequestDetailScreen(
                                     fontSize = 14.sp,
                                     color = Color.DarkGray
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // Action Buttons
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        when (request.status) {
+                            PickupRequest.STATUS_PENDING -> {
+                                Button(
+                                    onClick = onAcceptRequest,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                                    shape = RoundedCornerShape(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Accept request",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Accept Request",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                            PickupRequest.STATUS_ACCEPTED -> {
+                                Button(
+                                    onClick = onStartPickup,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                                    shape = RoundedCornerShape(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Start pickup",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Mark As In Progress",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = { showCancelDialog = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    shape = RoundedCornerShape(28.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color.Red
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel request",
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Cancel Request")
+                                }
+                            }
+                            PickupRequest.STATUS_IN_PROGRESS -> {
+                                Button(
+                                    onClick = onCompletePickup,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = StatusInProgress),
+                                    shape = RoundedCornerShape(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Complete pickup",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Complete Transaction",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                            PickupRequest.STATUS_COMPLETED -> {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = PrimaryGreen.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text(
+                                        text = "This pickup has been completed.",
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        color = PrimaryGreen,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            PickupRequest.STATUS_CANCELLED -> {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color.Red.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text(
+                                        text = "This pickup was cancelled.",
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        color = Color.Red,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
