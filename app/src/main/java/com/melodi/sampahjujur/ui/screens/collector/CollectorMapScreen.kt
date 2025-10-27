@@ -201,16 +201,17 @@ fun CollectorMapScreen(
                         )
                     }
                 } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                            .padding(bottom = navBarHeight + 48.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(bottom = navBarHeight + 48.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(width = 48.dp, height = 4.dp)
+                            .width(48.dp)
+                            .height(4.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(Color.LightGray.copy(alpha = 0.6f))
                             .align(Alignment.CenterHorizontally)

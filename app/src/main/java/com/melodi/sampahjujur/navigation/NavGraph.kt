@@ -548,32 +548,9 @@ fun SampahJujurNavGraph(
 
         // Collector Edit Profile Screen
         composable(Screen.CollectorEditProfile.route) {
-            val authState by authViewModel.authState.collectAsState()
-            val user = when (authState) {
-                is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
-                    (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
-                }
-                else -> User(
-                    id = "",
-                    fullName = "",
-                    email = "",
-                    phone = "",
-                    userType = "collector"
-                )
-            }
-
-            CollectorEditProfileScreen(
-                user = user,
-                vehicleType = "",
-                vehiclePlateNumber = "",
-                operatingArea = "",
-                onBackClick = {
-                    navController.popBackStack()
-                },
-                onSaveClick = { fullName, phone, vehicleType, plateNumber, operatingArea ->
-                    // TODO: Update in ViewModel (master has updateCollectorProfile method and User fields)
-                    navController.popBackStack()
-                }
+            CollectorEditProfileRoute(
+                onBackClick = { navController.popBackStack() },
+                authViewModel = authViewModel
             )
         }
 
