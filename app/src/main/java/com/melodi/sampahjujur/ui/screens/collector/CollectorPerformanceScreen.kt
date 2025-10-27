@@ -100,7 +100,6 @@ fun CollectorPerformanceScreen(
                             contentDescription = "Back",
                             tint = PrimaryGreen
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

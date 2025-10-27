@@ -511,9 +511,6 @@ fun SampahJujurNavGraph(
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
                 },
-                onEarningsClick = {
-                    // TODO: Handle earnings
-                },
                 onPerformanceClick = {
                     navController.navigate(Screen.CollectorPerformance.route)
                 },

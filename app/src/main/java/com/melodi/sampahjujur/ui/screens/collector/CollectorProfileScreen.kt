@@ -34,7 +34,6 @@ fun CollectorProfileScreen(
     vehicleInfo: String = "",
     onEditProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onEarningsClick: () -> Unit = {},
     onPerformanceClick: () -> Unit = {},
     onHelpSupportClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
@@ -169,7 +168,7 @@ fun CollectorProfileScreen(
                 }
             }
 
-            // Performance Stats Card
+            // Performance Overview Card
             item {
                 Card(
                     modifier = Modifier
@@ -202,6 +201,25 @@ fun CollectorProfileScreen(
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Total Earnings",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Rp ${String.format("%,.0f", totalEarnings)}",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryGreen
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -289,51 +307,6 @@ fun CollectorProfileScreen(
                                 )
                             }
                         }
-                    }
-                }
-            }
-
-            // Earnings Card
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .clickable(onClick = onEarningsClick),
-                    colors = CardDefaults.cardColors(
-                        containerColor = PrimaryGreen.copy(alpha = 0.1f)
-                    ),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Total Earnings",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Rp ${String.format("%,.0f", totalEarnings)}",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = PrimaryGreen
-                            )
-                        }
-
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "View earnings",
-                            tint = PrimaryGreen,
-                            modifier = Modifier.size(32.dp)
-                        )
                     }
                 }
             }
