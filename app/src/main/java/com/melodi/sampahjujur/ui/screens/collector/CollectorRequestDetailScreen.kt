@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -392,7 +391,6 @@ fun CollectorRequestDetailScreen(
                             if (hasValidLocation) {
                                 PickupLocationMap(
                                     location = request.pickupLocation,
-                                    onNavigate = { onNavigateToLocation(request.pickupLocation) },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(200.dp)
@@ -435,26 +433,28 @@ fun CollectorRequestDetailScreen(
                                 )
                             }
 
-                            if (request.status == PickupRequest.STATUS_ACCEPTED ||
-                                request.status == PickupRequest.STATUS_IN_PROGRESS
-                            ) {
+                            if (hasValidLocation) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                OutlinedButton(
+                                Button(
                                     onClick = { onNavigateToLocation(request.pickupLocation) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    enabled = hasValidLocation,
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = PrimaryGreen
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = PrimaryGreen
                                     ),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Navigation,
-                                        contentDescription = "Navigate"
+                                        contentDescription = "Open in Maps",
+                                        tint = Color.White
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Start Navigation")
+                                    Text(
+                                        text = "Open In Maps",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }
@@ -578,7 +578,6 @@ fun CollectorRequestDetailScreen(
 @Composable
 private fun PickupLocationMap(
     location: PickupRequest.Location,
-    onNavigate: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -587,6 +586,11 @@ private fun PickupLocationMap(
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(false)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
+            setBuiltInZoomControls(false)
+            isClickable = false
+            isFocusable = false
+            isFocusableInTouchMode = false
+            setOnTouchListener { _, _ -> true }
         }
     }
 
@@ -615,7 +619,6 @@ private fun PickupLocationMap(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onNavigate)
     ) {
         AndroidView(
             factory = { mapView },
@@ -623,32 +626,6 @@ private fun PickupLocationMap(
                 .fillMaxWidth()
                 .height(200.dp)
         )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.35f))
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Navigation,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Open in Maps",
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
     }
 }
 
@@ -689,4 +666,3 @@ fun CollectorRequestDetailScreenPreview() {
         )
     }
 }
-
