@@ -64,12 +64,13 @@ class CollectorNotificationHelper @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val addressLine = request.pickupLocation.address.ifBlank { "A household needs a pickup." }
+        val shortId = request.id.take(8).uppercase()
+        val addressLine = request.pickupLocation.address.ifBlank { "Request #$shortId" }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_collector_location)
-            .setContentTitle("New pickup request available")
+            .setContentTitle("New request #$shortId")
             .setContentText(addressLine)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(addressLine))
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Request #$shortId\n$addressLine"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
@@ -78,3 +79,6 @@ class CollectorNotificationHelper @Inject constructor(
         notificationManager.notify(request.id.hashCode(), notification)
     }
 }
+
+
+
