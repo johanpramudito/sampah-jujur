@@ -28,7 +28,13 @@ class PreferencesRepository @Inject constructor(
         val LOCATION_ENABLED = booleanPreferencesKey("location_enabled")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
         val LANGUAGE = stringPreferencesKey("language")
+
+        // Theme mode constants
+        const val THEME_LIGHT = "light"
+        const val THEME_DARK = "dark"
+        const val THEME_SYSTEM = "system"
     }
 
     /**
@@ -48,11 +54,19 @@ class PreferencesRepository @Inject constructor(
         }
 
     /**
-     * Get dark mode enabled state
+     * Get dark mode enabled state (legacy support)
      */
     val isDarkModeEnabled: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[DARK_MODE_ENABLED] ?: false // Default to light mode
+        }
+
+    /**
+     * Get theme mode (light, dark, or system)
+     */
+    val themeMode: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[THEME_MODE] ?: THEME_SYSTEM // Default to system
         }
 
     /**
@@ -82,11 +96,20 @@ class PreferencesRepository @Inject constructor(
     }
 
     /**
-     * Set dark mode enabled state
+     * Set dark mode enabled state (legacy support)
      */
     suspend fun setDarkModeEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[DARK_MODE_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Set theme mode (light, dark, or system)
+     */
+    suspend fun setThemeMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_MODE] = mode
         }
     }
 

@@ -482,6 +482,7 @@ fun CollectorRequestDetailScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
+<<<<<<< HEAD
                             if (request.wasteItems.isEmpty()) {
                                 Text(
                                     text = "No waste items listed.",
@@ -492,6 +493,50 @@ fun CollectorRequestDetailScreen(
                                 request.wasteItems.forEach { item ->
                                     WasteItemDetailCard(item = item)
                                     Spacer(modifier = Modifier.height(12.dp))
+=======
+                            request.wasteItems.forEachIndexed { index, item ->
+                                WasteItemDetailCard(item = item)
+                                if (index < request.wasteItems.size - 1) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Totals
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Total Weight",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        text = "${request.wasteItems.sumOf { it.weight }} kg",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "Estimated Value",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        text = "Rp ${String.format("%,.0f", request.wasteItems.sumOf { it.estimatedValue })}",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryGreen
+                                    )
+>>>>>>> 24007c3573623e4ae3033f9c84abb6ae0679aee7
                                 }
                             }
                         }

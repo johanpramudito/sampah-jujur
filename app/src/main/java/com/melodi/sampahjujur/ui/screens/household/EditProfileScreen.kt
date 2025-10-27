@@ -42,13 +42,14 @@ fun EditProfileScreen(
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onBackClick: () -> Unit = {},
-    onSaveClick: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> }
+    onChangePasswordClick: () -> Unit = {},
+    onSaveClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     var fullName by remember { mutableStateOf(user.fullName) }
-    var email by remember { mutableStateOf(user.email) }
+    val email = user.email // Read-only, cannot be changed
     var phone by remember { mutableStateOf(user.phone) }
     var address by remember { mutableStateOf(user.address) }
     var profileImageUrl by remember { mutableStateOf(user.profileImageUrl) }
@@ -113,7 +114,6 @@ fun EditProfileScreen(
     }
 
     val hasChanges = fullName != user.fullName ||
-                     email != user.email ||
                      phone != user.phone ||
                      address != user.address ||
                      newImageUri != null
@@ -180,8 +180,8 @@ fun EditProfileScreen(
                                             )
                                         }
 
-                                        // Call onSaveClick with all profile data including image URL
-                                        onSaveClick(fullName, email, phone, address, finalProfileImageUrl)
+                                        // Call onSaveClick with all profile data including image URL (email excluded as it's read-only)
+                                        onSaveClick(fullName, phone, address, finalProfileImageUrl)
                                     } catch (e: Exception) {
                                         snackbarHostState.showSnackbar("Failed to upload profile picture: ${e.message}")
                                     } finally {
@@ -294,27 +294,36 @@ fun EditProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email Field
+            // Email Field (Read-only)
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
-                label = { Text("Email Address *") },
+                onValueChange = { }, // No-op, read-only
+                label = { Text("Email Address") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Email,
                         contentDescription = "Email",
-                        tint = PrimaryGreen
+                        tint = Color.Gray
                     )
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                enabled = false,
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = PrimaryGreen,
-                    unfocusedBorderColor = Color.LightGray,
-                    containerColor = Color.White
+                    disabledBorderColor = Color.LightGray,
+                    disabledTextColor = Color.DarkGray,
+                    disabledLabelColor = Color.Gray,
+                    containerColor = Color(0xFFF5F5F5)
                 ),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
+            )
+
+            // Info text about email
+            Text(
+                text = "Email address cannot be changed as it's linked to your account",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -389,7 +398,7 @@ fun EditProfileScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { /* Navigate to change password */ }
+                        .clickable { onChangePasswordClick() }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

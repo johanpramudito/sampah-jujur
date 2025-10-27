@@ -180,7 +180,7 @@ fun CompleteTransactionDialog(
                                         it[index] = item.copy(actualValue = newValue)
                                     }
                                 },
-                                label = { Text("Actual Value ($)") },
+                                label = { Text("Actual Value (Rp)") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -193,7 +193,7 @@ fun CompleteTransactionDialog(
                                 singleLine = true,
                                 supportingText = {
                                     Text(
-                                        text = "Est: $${item.estimatedValue}",
+                                        text = "Est: Rp ${String.format("%,.0f", item.estimatedValue)}",
                                         fontSize = 11.sp,
                                         color = Color.Gray
                                     )
@@ -257,13 +257,13 @@ fun CompleteTransactionDialog(
                                     color = Color.Gray
                                 )
                                 Text(
-                                    text = "$$totalActualValue",
+                                    text = "Rp ${String.format("%,.0f", totalActualValue)}",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = PrimaryGreen
                                 )
                                 Text(
-                                    text = "Est: $$totalEstimatedValue",
+                                    text = "Est: Rp ${String.format("%,.0f", totalEstimatedValue)}",
                                     fontSize = 11.sp,
                                     color = Color.Gray
                                 )

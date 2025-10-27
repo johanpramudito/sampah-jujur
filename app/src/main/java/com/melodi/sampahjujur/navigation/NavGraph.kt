@@ -50,6 +50,7 @@ sealed class Screen(val route: String) {
     object HouseholdLocationPicker : Screen("household_location_picker")
     object HouseholdProfile : Screen("household_profile")
     object HouseholdEditProfile : Screen("household_edit_profile")
+    object HouseholdStatistics : Screen("household_statistics")
 
     // Collector Main
     object CollectorDashboard : Screen("collector_dashboard")
@@ -63,6 +64,9 @@ sealed class Screen(val route: String) {
     // Shared
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
+    object About : Screen("about")
+    object ChangePassword : Screen("change_password")
+    object LanguageSelection : Screen("language_selection")
     object PrivacyPolicy : Screen("privacy_policy")
     object TermsAndConditions : Screen("terms_and_conditions")
 }
@@ -337,13 +341,27 @@ fun SampahJujurNavGraph(
                 )
             }
 
+            // Get HouseholdViewModel to fetch user requests for statistics
+            val householdViewModel: com.melodi.sampahjujur.viewmodel.HouseholdViewModel =
+                androidx.hilt.navigation.compose.hiltViewModel()
+            val requests by householdViewModel.userRequests.observeAsState(emptyList())
+
+            // Calculate statistics from requests
+            val totalRequests = requests.size
+            val totalWasteCollected = requests.sumOf { it.wasteItems.sumOf { item -> item.weight } }
+            val totalEarnings = requests.filter { it.status == PickupRequest.STATUS_COMPLETED }
+                .sumOf { it.wasteItems.sumOf { item -> item.estimatedValue } }
+
             HouseholdProfileScreen(
                 user = user,
-                totalRequests = 0,
-                totalWasteCollected = 0.0,
-                totalEarnings = 0.0,
+                totalRequests = totalRequests,
+                totalWasteCollected = totalWasteCollected,
+                totalEarnings = totalEarnings,
                 onEditProfileClick = {
                     navController.navigate(Screen.HouseholdEditProfile.route)
+                },
+                onStatisticsClick = {
+                    navController.navigate(Screen.HouseholdStatistics.route)
                 },
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
@@ -352,7 +370,7 @@ fun SampahJujurNavGraph(
                     navController.navigate(Screen.HelpSupport.route)
                 },
                 onAboutClick = {
-                    // TODO: Handle about
+                    navController.navigate(Screen.About.route)
                 },
                 onLogoutClick = {
                     // Sign out from both Firebase and Google
@@ -396,8 +414,20 @@ fun SampahJujurNavGraph(
                 onBackClick = {
                     navController.popBackStack()
                 },
-                onSaveClick = { fullName, email, phone, address, profileImageUrl ->
+                onChangePasswordClick = {
+                    navController.navigate(Screen.ChangePassword.route)
+                },
+                onSaveClick = { fullName, phone, address, profileImageUrl ->
                     // TODO: Update in ViewModel (master has updateHouseholdProfile method)
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Household Statistics Screen
+        composable(Screen.HouseholdStatistics.route) {
+            HouseholdStatisticsScreen(
+                onBackClick = {
                     navController.popBackStack()
                 }
             )
@@ -486,7 +516,7 @@ fun SampahJujurNavGraph(
                     navController.navigate(Screen.HelpSupport.route)
                 },
                 onAboutClick = {
-                    // TODO: Handle about
+                    navController.navigate(Screen.About.route)
                 },
                 onLogoutClick = {
                     // Sign out from both Firebase and Google
@@ -546,15 +576,13 @@ fun SampahJujurNavGraph(
                     navController.popBackStack()
                 },
                 onLanguageClick = {
-                    // TODO: Handle language
+                    navController.navigate(Screen.LanguageSelection.route)
                 },
                 onPrivacyPolicyClick = {
-                    // TODO: Master has PrivacyPolicyScreen implementation
-                    // navController.navigate(Screen.PrivacyPolicy.route)
+                    navController.navigate(Screen.PrivacyPolicy.route)
                 },
                 onTermsClick = {
-                    // TODO: Master has TermsAndConditionsScreen implementation
-                    // navController.navigate(Screen.TermsAndConditions.route)
+                    navController.navigate(Screen.TermsAndConditions.route)
                 },
                 onDeleteAccountClick = {
                     // TODO: Handle delete account
@@ -570,30 +598,53 @@ fun SampahJujurNavGraph(
                 },
                 onLiveChatClick = {
                     // TODO: Handle live chat
-                },
-                onSubmitFeedback = { name, email, message ->
-                    // TODO: Handle feedback submission
                 }
             )
         }
 
-        // TODO: Master branch has these screens - implement when needed:
+        // About Screen
+        composable(Screen.About.route) {
+            AboutScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Change Password Screen
+        composable(Screen.ChangePassword.route) {
+            ChangePasswordScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Language Selection Screen
+        composable(Screen.LanguageSelection.route) {
+            LanguageSelectionScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         // Privacy Policy Screen
-        // composable(Screen.PrivacyPolicy.route) {
-        //     PrivacyPolicyScreen(
-        //         onBackClick = {
-        //             navController.popBackStack()
-        //         }
-        //     )
-        // }
+        composable(Screen.PrivacyPolicy.route) {
+            PrivacyPolicyScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
 
         // Terms & Conditions Screen
-        // composable(Screen.TermsAndConditions.route) {
-        //     TermsAndConditionsScreen(
-        //         onBackClick = {
-        //             navController.popBackStack()
-        //         }
-        //     )
-        // }
+        composable(Screen.TermsAndConditions.route) {
+            TermsAndConditionsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }

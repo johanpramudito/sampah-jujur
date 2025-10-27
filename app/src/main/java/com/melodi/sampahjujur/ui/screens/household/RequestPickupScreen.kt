@@ -307,7 +307,7 @@ fun RequestPickupScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Est. Value: $${wasteItems.sumOf { it.estimatedValue }}",
+                                    text = "Est. Value: Rp ${String.format("%,.0f", wasteItems.sumOf { it.estimatedValue })}",
                                     fontWeight = FontWeight.Bold,
                                     color = PrimaryGreen
                                 )
@@ -549,7 +549,7 @@ fun WasteItemCard(
                     color = Color.Gray
                 )
                 Text(
-                    text = "Value: $${item.estimatedValue}",
+                    text = "Value: Rp ${String.format("%,.0f", item.estimatedValue)}",
                     fontSize = 12.sp,
                     color = PrimaryGreen
                 )

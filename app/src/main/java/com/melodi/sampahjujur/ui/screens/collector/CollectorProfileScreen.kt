@@ -321,7 +321,7 @@ fun CollectorProfileScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "$$totalEarnings",
+                                text = "Rp ${String.format("%,.0f", totalEarnings)}",
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = PrimaryGreen

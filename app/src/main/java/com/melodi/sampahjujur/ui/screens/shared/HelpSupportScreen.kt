@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,12 +32,29 @@ data class FAQItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HelpSupportScreen(
+    viewModel: com.melodi.sampahjujur.viewmodel.HelpSupportViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onBackClick: () -> Unit = {},
-    onLiveChatClick: () -> Unit = {},
-    onSubmitFeedback: (String, String, String) -> Unit = { _, _, _ -> }
+    onLiveChatClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("FAQ", "Contact Us")
+    val uiState by viewModel.uiState.collectAsState()
+    var showSuccessDialog by remember { mutableStateOf(false) }
+
+    // Show success dialog when feedback is submitted
+    LaunchedEffect(uiState.submitSuccess) {
+        if (uiState.submitSuccess) {
+            showSuccessDialog = true
+            viewModel.clearSubmitSuccess()
+        }
+    }
+
+    // Show error snackbar if there's an error
+    if (uiState.error != null) {
+        LaunchedEffect(uiState.error) {
+            // Error will be shown in the ContactUsTab
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -71,14 +89,7 @@ fun HelpSupportScreen(
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.White,
-                contentColor = PrimaryGreen,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = PrimaryGreen,
-                        height = 3.dp
-                    )
-                }
+                contentColor = PrimaryGreen
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -99,9 +110,21 @@ fun HelpSupportScreen(
                 0 -> FAQTab()
                 1 -> ContactUsTab(
                     onLiveChatClick = onLiveChatClick,
-                    onSubmitFeedback = onSubmitFeedback
+                    onSubmitFeedback = { name, email, message ->
+                        viewModel.submitFeedback(name, email, message)
+                    },
+                    isSubmitting = uiState.isSubmitting,
+                    error = uiState.error,
+                    onClearError = { viewModel.clearError() }
                 )
             }
+        }
+
+        // Success Dialog
+        if (showSuccessDialog) {
+            FeedbackSuccessDialog(
+                onDismiss = { showSuccessDialog = false }
+            )
         }
     }
 }
@@ -219,11 +242,34 @@ fun FAQCard(faqItem: FAQItem) {
 @Composable
 fun ContactUsTab(
     onLiveChatClick: () -> Unit,
-    onSubmitFeedback: (String, String, String) -> Unit
+    onSubmitFeedback: (String, String, String) -> Unit,
+    isSubmitting: Boolean = false,
+    error: String? = null,
+    onClearError: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var wasSubmitting by remember { mutableStateOf(false) }
+
+    // Clear form after successful submission
+    LaunchedEffect(isSubmitting) {
+        if (wasSubmitting && !isSubmitting && error == null) {
+            // Form was submitted and now finished without errors - clear it
+            name = ""
+            email = ""
+            message = ""
+        }
+        wasSubmitting = isSubmitting
+    }
+
+    // Show error snackbar
+    if (error != null) {
+        LaunchedEffect(error) {
+            kotlinx.coroutines.delay(3000)
+            onClearError()
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -233,6 +279,39 @@ fun ContactUsTab(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { Spacer(modifier = Modifier.height(8.dp)) }
+
+        // Error Message
+        if (error != null) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFEBEE)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = "Error",
+                            tint = Color(0xFFD32F2F),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = error,
+                            fontSize = 14.sp,
+                            color = Color(0xFFD32F2F)
+                        )
+                    }
+                }
+            }
+        }
 
         // Quick Actions
         item {
@@ -404,9 +483,7 @@ fun ContactUsTab(
             Button(
                 onClick = {
                     onSubmitFeedback(name, email, message)
-                    name = ""
-                    email = ""
-                    message = ""
+                    // Clear form - will be done after success
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -415,19 +492,34 @@ fun ContactUsTab(
                     containerColor = PrimaryGreen
                 ),
                 shape = RoundedCornerShape(28.dp),
-                enabled = name.isNotBlank() && email.isNotBlank() && message.isNotBlank()
+                enabled = !isSubmitting && name.isNotBlank() && email.isNotBlank() && message.isNotBlank()
             ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "Send"
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Send Message",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Sending...",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Send"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Send Message",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
             }
         }
 
@@ -467,10 +559,74 @@ fun ContactInfoRow(
     }
 }
 
+@Composable
+fun FeedbackSuccessDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(PrimaryGreen.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Success",
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = "Feedback Sent!",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Text(
+                text = "Thank you for your feedback! We appreciate you taking the time to help us improve. Our team will review your message and get back to you soon.",
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                textAlign = TextAlign.Center,
+                color = Color.DarkGray
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryGreen
+                ),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Got it", fontWeight = FontWeight.SemiBold)
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        containerColor = Color.White
+    )
+}
+
 @Preview(showBackground = true)
 @Composable
 fun HelpSupportScreenPreview() {
     SampahJujurTheme {
         HelpSupportScreen()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FeedbackSuccessDialogPreview() {
+    SampahJujurTheme {
+        FeedbackSuccessDialog(onDismiss = {})
     }
 }
