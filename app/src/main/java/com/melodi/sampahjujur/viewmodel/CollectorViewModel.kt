@@ -8,6 +8,7 @@ import com.melodi.sampahjujur.model.Earnings
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.Transaction
 import com.melodi.sampahjujur.model.TransactionItem
+import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -24,6 +26,25 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import javax.inject.Inject
+
+data class CollectorPerformanceMetrics(
+    val totalCompleted: Int = 0,
+    val totalInProgress: Int = 0,
+    val totalAccepted: Int = 0,
+    val totalCancelled: Int = 0,
+    val activePickups: Int = 0,
+    val completionRate: Double = 0.0,
+    val cancellationRate: Double = 0.0,
+    val totalTransactions: Int = 0,
+    val totalEarnings: Double = 0.0,
+    val totalWasteKg: Double = 0.0,
+    val averagePerPickup: Double = 0.0,
+    val averagePerKg: Double = 0.0,
+    val earningsToday: Double = 0.0,
+    val earningsThisWeek: Double = 0.0,
+    val earningsThisMonth: Double = 0.0,
+    val recentTransactions: List<Transaction> = emptyList()
+)
 
 /**
  * ViewModel for the collector user interface.
@@ -44,6 +65,9 @@ class CollectorViewModel @Inject constructor(
 
     private val _mapState = MutableStateFlow(CollectorMapState())
     val mapState: StateFlow<CollectorMapState> = _mapState.asStateFlow()
+
+    private val _performanceMetrics = MutableStateFlow(CollectorPerformanceMetrics())
+    val performanceMetrics: StateFlow<CollectorPerformanceMetrics> = _performanceMetrics.asStateFlow()
 
     private val _pendingRequests = MutableLiveData<List<PickupRequest>>()
     val pendingRequests: LiveData<List<PickupRequest>> = _pendingRequests
@@ -104,12 +128,17 @@ class CollectorViewModel @Inject constructor(
             val currentUser = authRepository.getCurrentUser()
             if (currentUser?.isCollector() == true) {
                 wasteRepository.getCollectorRequests(currentUser.id)
-                    .catch { _myRequests.value = emptyList() }
+                    .catch {
+                        _myRequests.value = emptyList()
+                        updatePerformanceMetrics(emptyList(), _earningsState.value)
+                    }
                     .collect { requests ->
                         _myRequests.value = requests
+                        updatePerformanceMetrics(requests, _earningsState.value)
                     }
             } else {
                 _myRequests.value = emptyList()
+                updatePerformanceMetrics(emptyList(), _earningsState.value)
             }
         }
     }
@@ -119,12 +148,17 @@ class CollectorViewModel @Inject constructor(
             val currentUser = authRepository.getCurrentUser()
             if (currentUser?.isCollector() == true) {
                 wasteRepository.getCollectorEarnings(currentUser.id)
-                    .catch { _earningsState.value = Earnings() }
+                    .catch {
+                        _earningsState.value = Earnings()
+                        updatePerformanceMetrics(_myRequests.value ?: emptyList(), Earnings())
+                    }
                     .collect { earnings ->
                         _earningsState.value = earnings
+                        updatePerformanceMetrics(_myRequests.value ?: emptyList(), earnings)
                     }
             } else {
                 _earningsState.value = Earnings()
+                updatePerformanceMetrics(_myRequests.value ?: emptyList(), Earnings())
             }
         }
     }
@@ -348,6 +382,11 @@ class CollectorViewModel @Inject constructor(
         return wasteRepository.watchPickupRequest(requestId)
     }
 
+    fun observeUser(userId: String): Flow<User?> {
+        if (userId.isBlank()) return flowOf(null)
+        return wasteRepository.observeUser(userId)
+    }
+
     /**
      * Filters pending requests based on search criteria
      *
@@ -484,6 +523,45 @@ class CollectorViewModel @Inject constructor(
             collectorLocation.longitude,
             request.pickupLocation.latitude,
             request.pickupLocation.longitude
+        )
+    }
+
+    private fun updatePerformanceMetrics(
+        requests: List<PickupRequest>,
+        earnings: Earnings
+    ) {
+        val accepted = requests.count { it.status == PickupRequest.STATUS_ACCEPTED }
+        val inProgress = requests.count { it.status == PickupRequest.STATUS_IN_PROGRESS }
+        val completed = requests.count { it.status == PickupRequest.STATUS_COMPLETED }
+        val cancelled = requests.count { it.status == PickupRequest.STATUS_CANCELLED }
+
+        val totalTracked = accepted + inProgress + completed + cancelled
+        val active = accepted + inProgress
+
+        val completionRate = if (totalTracked > 0) completed.toDouble() / totalTracked else 0.0
+        val cancellationRate = if (totalTracked > 0) cancelled.toDouble() / totalTracked else 0.0
+
+        val sortedTransactions = earnings.transactionHistory
+            .sortedByDescending { it.completedAt }
+            .take(5)
+
+        _performanceMetrics.value = CollectorPerformanceMetrics(
+            totalCompleted = completed,
+            totalInProgress = inProgress,
+            totalAccepted = accepted,
+            totalCancelled = cancelled,
+            activePickups = active,
+            completionRate = completionRate,
+            cancellationRate = cancellationRate,
+            totalTransactions = earnings.totalTransactions,
+            totalEarnings = earnings.totalEarnings,
+            totalWasteKg = earnings.totalWasteCollected,
+            averagePerPickup = earnings.getAveragePerTransaction(),
+            averagePerKg = earnings.getAveragePerKg(),
+            earningsToday = earnings.earningsToday,
+            earningsThisWeek = earnings.earningsThisWeek,
+            earningsThisMonth = earnings.earningsThisMonth,
+            recentTransactions = sortedTransactions
         )
     }
 

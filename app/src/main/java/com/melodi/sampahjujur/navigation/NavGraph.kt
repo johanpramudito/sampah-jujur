@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,6 +25,7 @@ import com.melodi.sampahjujur.ui.screens.collector.*
 import com.melodi.sampahjujur.ui.screens.household.*
 import com.melodi.sampahjujur.ui.screens.shared.*
 import com.melodi.sampahjujur.viewmodel.AuthViewModel
+import com.melodi.sampahjujur.viewmodel.CollectorViewModel
 
 
 sealed class Screen(val route: String) {
@@ -59,12 +61,15 @@ sealed class Screen(val route: String) {
     }
     object CollectorMap : Screen("collector_map")
     object CollectorProfile : Screen("collector_profile")
+    object CollectorPerformance : Screen("collector_performance")
     object CollectorEditProfile : Screen("collector_edit_profile")
 
     // Shared
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
     object About : Screen("about")
+    object ChangePassword : Screen("change_password")
+    object LanguageSelection : Screen("language_selection")
     object PrivacyPolicy : Screen("privacy_policy")
     object TermsAndConditions : Screen("terms_and_conditions")
 }
@@ -412,7 +417,10 @@ fun SampahJujurNavGraph(
                 onBackClick = {
                     navController.popBackStack()
                 },
-                onSaveClick = { fullName, email, phone, address, profileImageUrl ->
+                onChangePasswordClick = {
+                    navController.navigate(Screen.ChangePassword.route)
+                },
+                onSaveClick = { fullName, phone, address, profileImageUrl ->
                     // TODO: Update in ViewModel (master has updateHouseholdProfile method)
                     navController.popBackStack()
                 }
@@ -487,13 +495,15 @@ fun SampahJujurNavGraph(
                     userType = "collector"
                 )
             }
+            val collectorViewModel: CollectorViewModel = hiltViewModel()
+            val performanceMetrics by collectorViewModel.performanceMetrics.collectAsState()
 
             CollectorProfileScreen(
                 user = user,
-                totalCollections = 0,
-                totalWasteCollected = 0.0,
-                totalEarnings = 0.0,
-                completionRate = 0.0,
+                totalCollections = performanceMetrics.totalCompleted,
+                totalWasteCollected = performanceMetrics.totalWasteKg,
+                totalEarnings = performanceMetrics.totalEarnings,
+                completionRate = performanceMetrics.completionRate,
                 vehicleInfo = "",
                 onEditProfileClick = {
                     navController.navigate(Screen.CollectorEditProfile.route)
@@ -501,11 +511,8 @@ fun SampahJujurNavGraph(
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
                 },
-                onEarningsClick = {
-                    // TODO: Handle earnings
-                },
                 onPerformanceClick = {
-                    // TODO: Handle performance
+                    navController.navigate(Screen.CollectorPerformance.route)
                 },
                 onHelpSupportClick = {
                     navController.navigate(Screen.HelpSupport.route)
@@ -530,6 +537,12 @@ fun SampahJujurNavGraph(
                         Screen.CollectorProfile.route -> { /* Already here */ }
                     }
                 }
+            )
+        }
+
+        composable(Screen.CollectorPerformance.route) {
+            CollectorPerformanceRoute(
+                onBackClick = { navController.popBackStack() }
             )
         }
 
@@ -571,7 +584,7 @@ fun SampahJujurNavGraph(
                     navController.popBackStack()
                 },
                 onLanguageClick = {
-                    // TODO: Handle language
+                    navController.navigate(Screen.LanguageSelection.route)
                 },
                 onPrivacyPolicyClick = {
                     navController.navigate(Screen.PrivacyPolicy.route)
@@ -600,6 +613,24 @@ fun SampahJujurNavGraph(
         // About Screen
         composable(Screen.About.route) {
             AboutScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Change Password Screen
+        composable(Screen.ChangePassword.route) {
+            ChangePasswordScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Language Selection Screen
+        composable(Screen.LanguageSelection.route) {
+            LanguageSelectionScreen(
                 onBackClick = {
                     navController.popBackStack()
                 }

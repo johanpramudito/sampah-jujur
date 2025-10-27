@@ -689,11 +689,11 @@ fun CollectorRequestCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Navigation,
-                                    contentDescription = "Navigate",
+                                    contentDescription = "Open in Maps",
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Navigate", fontWeight = FontWeight.Medium)
+                                Text("Open In Maps", fontWeight = FontWeight.Medium)
                             }
                         }
                         PickupRequest.STATUS_IN_PROGRESS -> {
