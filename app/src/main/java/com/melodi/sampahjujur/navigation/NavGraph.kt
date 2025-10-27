@@ -516,7 +516,9 @@ fun SampahJujurNavGraph(
                 totalWasteCollected = performanceMetrics.totalWasteKg,
                 totalEarnings = performanceMetrics.totalEarnings,
                 completionRate = performanceMetrics.completionRate,
-                vehicleInfo = "",
+                vehicleType = user.vehicleType,
+                vehiclePlateNumber = user.vehiclePlateNumber,
+                profileImageUrl = user.profileImageUrl,
                 onEditProfileClick = {
                     navController.navigate(Screen.CollectorEditProfile.route)
                 },
