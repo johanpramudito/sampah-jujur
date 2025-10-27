@@ -482,18 +482,6 @@ fun CollectorRequestDetailScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-<<<<<<< HEAD
-                            if (request.wasteItems.isEmpty()) {
-                                Text(
-                                    text = "No waste items listed.",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                            } else {
-                                request.wasteItems.forEach { item ->
-                                    WasteItemDetailCard(item = item)
-                                    Spacer(modifier = Modifier.height(12.dp))
-=======
                             request.wasteItems.forEachIndexed { index, item ->
                                 WasteItemDetailCard(item = item)
                                 if (index < request.wasteItems.size - 1) {
@@ -536,7 +524,6 @@ fun CollectorRequestDetailScreen(
                                         fontWeight = FontWeight.Bold,
                                         color = PrimaryGreen
                                     )
->>>>>>> 24007c3573623e4ae3033f9c84abb6ae0679aee7
                                 }
                             }
                         }
