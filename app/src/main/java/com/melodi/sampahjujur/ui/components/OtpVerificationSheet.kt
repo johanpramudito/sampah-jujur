@@ -86,15 +86,6 @@ fun OtpVerificationSheet(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(4.dp)
-                    .background(Color.LightGray, shape = RoundedCornerShape(2.dp))
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // Title
             Text(
