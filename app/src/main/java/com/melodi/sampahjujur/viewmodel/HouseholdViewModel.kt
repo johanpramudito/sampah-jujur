@@ -11,6 +11,7 @@ import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
+import com.melodi.sampahjujur.utils.HouseholdNotificationHelper
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -31,7 +32,8 @@ class HouseholdViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
-    private val preferencesRepository: com.melodi.sampahjujur.repository.PreferencesRepository
+    private val preferencesRepository: com.melodi.sampahjujur.repository.PreferencesRepository,
+    private val notificationHelper: HouseholdNotificationHelper
 ) : ViewModel() {
 
     companion object {
@@ -50,6 +52,9 @@ class HouseholdViewModel @Inject constructor(
 
     private val _createRequestResult = MutableLiveData<Result<PickupRequest>?>()
     val createRequestResult: LiveData<Result<PickupRequest>?> = _createRequestResult
+
+    private val requestStatusMap = mutableMapOf<String, String>()
+    private var statusNotificationInitialized = false
 
     init {
         initializeHouseholdData()
@@ -111,6 +116,31 @@ class HouseholdViewModel @Inject constructor(
                     )
                 }
                 .collect { requests ->
+                    val statusMap = requests.associate { it.id to it.status }
+                    if (statusNotificationInitialized) {
+                        requests.forEach { request ->
+                            val previousStatus = requestStatusMap[request.id]
+                            val currentStatus = request.status
+                            if (previousStatus != null && previousStatus != currentStatus) {
+                                when (currentStatus) {
+                                    PickupRequest.STATUS_ACCEPTED,
+                                    PickupRequest.STATUS_IN_PROGRESS,
+                                    PickupRequest.STATUS_COMPLETED,
+                                    PickupRequest.STATUS_CANCELLED -> {
+                                        viewModelScope.launch {
+                                            notificationHelper.notifyRequestStatusChanged(request, currentStatus)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        statusNotificationInitialized = true
+                    }
+
+                    requestStatusMap.clear()
+                    requestStatusMap.putAll(statusMap)
+
                     _userRequests.value = requests
                 }
         }
@@ -525,4 +555,7 @@ data class HouseholdUiState(
     val selectedAddress: String = "",
     val isLocationEnabled: Boolean = true
 )
+
+
+
 

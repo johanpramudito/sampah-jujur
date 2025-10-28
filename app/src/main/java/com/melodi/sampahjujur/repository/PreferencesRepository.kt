@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -52,6 +53,8 @@ class PreferencesRepository @Inject constructor(
         .map { preferences ->
             preferences[NOTIFICATIONS_ENABLED] ?: true // Default to enabled
         }
+
+    suspend fun areNotificationsEnabled(): Boolean = isNotificationsEnabled.first()
 
     /**
      * Get dark mode enabled state (legacy support)

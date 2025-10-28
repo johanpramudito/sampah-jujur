@@ -1,8 +1,19 @@
 package com.melodi.sampahjujur.ui.screens.collector
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,12 +23,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.ui.components.CollectorBottomNavBar
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
@@ -31,7 +45,9 @@ fun CollectorProfileScreen(
     totalWasteCollected: Double = 0.0,
     totalEarnings: Double = 0.0,
     completionRate: Double = 0.0,
-    vehicleInfo: String = "",
+    vehicleType: String = "",
+    vehiclePlateNumber: String = "",
+    profileImageUrl: String? = null,
     onEditProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onPerformanceClick: () -> Unit = {},
@@ -88,19 +104,29 @@ fun CollectorProfileScreen(
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Profile Picture
-                        Box(
-                            modifier = Modifier
-                                .size(80.dp)
-                                .background(Color.White, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.LocalShipping,
-                                contentDescription = "Collector",
-                                tint = PrimaryGreen,
-                                modifier = Modifier.size(48.dp)
+                        if (!profileImageUrl.isNullOrBlank()) {
+                            Image(
+                                painter = rememberAsyncImagePainter(profileImageUrl),
+                                contentDescription = "Collector profile photo",
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
                             )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .background(Color.White, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocalShipping,
+                                    contentDescription = "Collector",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -120,20 +146,29 @@ fun CollectorProfileScreen(
                             color = Color.White.copy(alpha = 0.9f)
                         )
 
-                        if (vehicleInfo.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(2.dp))
+                        val hasVehicleInfo = vehicleType.isNotBlank() || vehiclePlateNumber.isNotBlank()
+                        if (hasVehicleInfo) {
+                            Spacer(modifier = Modifier.height(6.dp))
                             Row(
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.DirectionsCar,
-                                    contentDescription = "Vehicle",
+                                    contentDescription = "Vehicle information",
                                     tint = Color.White.copy(alpha = 0.9f),
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                val label = buildString {
+                                    if (vehicleType.isNotBlank()) append(vehicleType)
+                                    if (vehiclePlateNumber.isNotBlank()) {
+                                        if (isNotEmpty()) append(" • ")
+                                        append(vehiclePlateNumber.uppercase())
+                                    }
+                                }
                                 Text(
-                                    text = vehicleInfo,
+                                    text = label,
                                     fontSize = 14.sp,
                                     color = Color.White.copy(alpha = 0.9f)
                                 )
@@ -454,13 +489,16 @@ fun CollectorProfileScreenPreview() {
                 fullName = "John Collector",
                 email = "john.collector@example.com",
                 phone = "+1 (555) 123-4567",
-                userType = "collector"
+                userType = "collector",
+                profileImageUrl = ""
             ),
             totalCollections = 47,
             totalWasteCollected = 523.5,
             totalEarnings = 1287.50,
             completionRate = 0.96,
-            vehicleInfo = "Blue Truck - ABC 123"
+            vehicleType = "Truck",
+            vehiclePlateNumber = "ABC 123",
+            profileImageUrl = null
         )
     }
 }

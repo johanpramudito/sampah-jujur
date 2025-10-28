@@ -572,7 +572,8 @@ class AuthRepository @Inject constructor(
         phone: String,
         vehicleType: String,
         vehiclePlateNumber: String,
-        operatingArea: String
+        operatingArea: String,
+        profileImageUrl: String? = null
     ): Result<User> {
         return try {
             val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
@@ -593,7 +594,8 @@ class AuthRepository @Inject constructor(
                 phone = phone,
                 vehicleType = vehicleType,
                 vehiclePlateNumber = vehiclePlateNumber,
-                operatingArea = operatingArea
+                operatingArea = operatingArea,
+                profileImageUrl = profileImageUrl ?: existingUser.profileImageUrl
             )
 
             // Update in Firestore
