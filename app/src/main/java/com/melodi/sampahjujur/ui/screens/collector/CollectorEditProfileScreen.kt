@@ -39,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -73,6 +74,7 @@ import com.melodi.sampahjujur.ui.components.ProfileImagePicker
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
+import com.melodi.sampahjujur.utils.ValidationUtils
 import com.melodi.sampahjujur.viewmodel.AuthViewModel
 import com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState
 import kotlinx.coroutines.Dispatchers
@@ -222,6 +224,9 @@ fun CollectorEditProfileScreen(
     var operatingAreaField by remember { mutableStateOf(operatingArea) }
     var showVehicleDropdown by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
+    var showPhoneDialog by remember { mutableStateOf(false) }
+    var phoneDialogInput by remember { mutableStateOf("") }
+    var phoneDialogError by remember { mutableStateOf<String?>(null) }
 
     val vehicleOptions = listOf("Motorcycle", "Car", "Truck", "Van", "Other")
 
@@ -337,7 +342,7 @@ fun CollectorEditProfileScreen(
 
                 OutlinedTextField(
                     value = phone,
-                    onValueChange = { phone = it },
+                    onValueChange = { /* Read-only field */ },
                     label = { Text("Phone Number *") },
                     leadingIcon = {
                         Icon(
@@ -347,8 +352,9 @@ fun CollectorEditProfileScreen(
                         )
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    readOnly = true,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = textFieldColors(),
+                    colors = readOnlyTextFieldColors(),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true
                 )
@@ -455,7 +461,11 @@ fun CollectorEditProfileScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { /* Navigate to change phone number */ }
+                            .clickable(enabled = !isSaving) {
+                                phoneDialogInput = phone
+                                phoneDialogError = null
+                                showPhoneDialog = true
+                            }
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -486,6 +496,76 @@ fun CollectorEditProfileScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
+            }
+
+            if (showPhoneDialog) {
+                AlertDialog(
+                    onDismissRequest = { showPhoneDialog = false },
+                    title = { Text("Change Phone Number") },
+                    text = {
+                        Column {
+                            Text(
+                                text = "Enter the new phone number you want to use for this account.",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            OutlinedTextField(
+                                value = phoneDialogInput,
+                                onValueChange = {
+                                    phoneDialogInput = it
+                                    phoneDialogError = null
+                                },
+                                label = { Text("New Phone Number") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Phone,
+                                        contentDescription = "Phone",
+                                        tint = PrimaryGreen
+                                    )
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                singleLine = true,
+                                isError = phoneDialogError != null,
+                                colors = textFieldColors()
+                            )
+                            if (phoneDialogError != null) {
+                                Text(
+                                    text = phoneDialogError!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val sanitizedInput = phoneDialogInput.trim()
+                            val validation = ValidationUtils.validateIndonesianPhone(sanitizedInput)
+                            if (!validation.isValid) {
+                                phoneDialogError = validation.errorMessage
+                                return@TextButton
+                            }
+
+                            val formattedPhone = ValidationUtils.formatPhoneForFirebase(sanitizedInput)
+                            if (formattedPhone == null) {
+                                phoneDialogError = "Unable to format phone number"
+                                return@TextButton
+                            }
+
+                            phone = formattedPhone
+                            showPhoneDialog = false
+                        }) {
+                            Text("Update", color = PrimaryGreen)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showPhoneDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
 
             if (showDiscardDialog) {
@@ -533,6 +613,20 @@ private fun textFieldColors() = TextFieldDefaults.outlinedTextFieldColors(
     focusedBorderColor = PrimaryGreen,
     unfocusedBorderColor = Color.LightGray,
     containerColor = Color.White
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun readOnlyTextFieldColors() = TextFieldDefaults.outlinedTextFieldColors(
+    focusedBorderColor = Color.LightGray,
+    unfocusedBorderColor = Color.LightGray,
+    containerColor = Color(0xFFEDEDED),
+    focusedTextColor = Color.DarkGray,
+    unfocusedTextColor = Color.DarkGray,
+    disabledTextColor = Color.DarkGray,
+    disabledBorderColor = Color.LightGray,
+    focusedLabelColor = Color.Gray,
+    unfocusedLabelColor = Color.Gray
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
