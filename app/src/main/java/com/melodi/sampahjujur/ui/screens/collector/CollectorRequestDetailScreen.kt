@@ -48,6 +48,7 @@ import org.osmdroid.views.overlay.Marker
 fun CollectorRequestDetailRoute(
     requestId: String,
     onBackClick: () -> Unit,
+    onNavigateToChat: (String) -> Unit = {},
     viewModel: CollectorViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -179,7 +180,8 @@ fun CollectorRequestDetailRoute(
             onStartPickup = { viewModel.markRequestInProgress(currentRequest.id) },
             onCompletePickup = { showCompleteDialog = true },
             onContactHousehold = { contactHousehold(it) },
-            onCancelRequest = { viewModel.cancelCollectorRequest(currentRequest.id) }
+            onCancelRequest = { viewModel.cancelCollectorRequest(currentRequest.id) },
+            onOpenChat = { onNavigateToChat(requestId) }
         )
     }
 
@@ -224,7 +226,8 @@ fun CollectorRequestDetailScreen(
     onStartPickup: () -> Unit = {},
     onCompletePickup: () -> Unit = {},
     onContactHousehold: (User?) -> Unit = {},
-    onCancelRequest: () -> Unit = {}
+    onCancelRequest: () -> Unit = {},
+    onOpenChat: () -> Unit = {}
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
     val displayName = household?.fullName?.takeIf { it.isNotBlank() } ?: "Unknown Household"
@@ -377,6 +380,20 @@ fun CollectorRequestDetailScreen(
                                             text = emailAddress,
                                             fontSize = 12.sp,
                                             color = Color.Gray
+                                        )
+                                    }
+                                }
+
+                                // Show chat button only for accepted/in-progress requests
+                                if (request.status == PickupRequest.STATUS_ACCEPTED ||
+                                    request.status == PickupRequest.STATUS_IN_PROGRESS) {
+                                    IconButton(
+                                        onClick = onOpenChat
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Message,
+                                            contentDescription = "Chat",
+                                            tint = PrimaryGreen
                                         )
                                     }
                                 }

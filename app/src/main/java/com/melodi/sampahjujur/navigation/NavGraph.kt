@@ -64,6 +64,12 @@ sealed class Screen(val route: String) {
     object CollectorPerformance : Screen("collector_performance")
     object CollectorEditProfile : Screen("collector_edit_profile")
 
+    // Chat
+    object ChatList : Screen("chat_list")
+    object Chat : Screen("chat/{requestId}") {
+        fun createRoute(requestId: String) = "chat/$requestId"
+    }
+
     // Shared
     object Settings : Screen("settings")
     object HelpSupport : Screen("help_support")
@@ -336,6 +342,9 @@ fun SampahJujurNavGraph(
                 requestId = requestId,
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onNavigateToChat = { reqId ->
+                    navController.navigate(Screen.Chat.createRoute(reqId))
                 }
             )
         }
@@ -488,7 +497,10 @@ fun SampahJujurNavGraph(
             val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
             CollectorRequestDetailRoute(
                 requestId = requestId,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onNavigateToChat = { reqId ->
+                    navController.navigate(Screen.Chat.createRoute(reqId))
+                }
             )
         }
 
@@ -641,6 +653,36 @@ fun SampahJujurNavGraph(
         composable(Screen.TermsAndConditions.route) {
             TermsAndConditionsScreen(
                 onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Chat List Screen
+        composable(Screen.ChatList.route) {
+            com.melodi.sampahjujur.ui.screens.chat.ChatListScreen(
+                onNavigateToChat = { requestId ->
+                    navController.navigate(Screen.Chat.createRoute(requestId))
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Chat Screen
+        composable(
+            route = Screen.Chat.route,
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
+            com.melodi.sampahjujur.ui.screens.chat.ChatScreen(
+                requestId = requestId,
+                onNavigateBack = {
                     navController.popBackStack()
                 }
             )

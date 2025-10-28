@@ -24,7 +24,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class WasteRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val authRepository: AuthRepository,
+    private val chatRepository: ChatRepository
 ) {
 
     companion object {
@@ -214,6 +216,7 @@ class WasteRepository @Inject constructor(
      */
     suspend fun acceptPickupRequest(requestId: String, collectorId: String): Result<Unit> {
         return try {
+            // First, update the request status
             firestore.runTransaction { transaction ->
                 val requestRef = firestore.collection(PICKUP_REQUESTS_COLLECTION).document(requestId)
                 val snapshot = transaction.get(requestRef)
@@ -238,6 +241,47 @@ class WasteRepository @Inject constructor(
                     )
                 )
             }.await()
+
+            // After successful acceptance, create a chat
+            try {
+                // Get request details to extract household info
+                val requestDoc = firestore.collection(PICKUP_REQUESTS_COLLECTION)
+                    .document(requestId)
+                    .get()
+                    .await()
+
+                val request = requestDoc.toObject(PickupRequest::class.java)
+
+                if (request != null) {
+                    // Get household and collector user details
+                    val household = authRepository.getUserById(request.householdId)
+                    val collector = authRepository.getUserById(collectorId)
+
+                    if (household != null && collector != null) {
+                        // Create chat for this request
+                        val chatResult = chatRepository.createChat(
+                            requestId = requestId,
+                            householdId = request.householdId,
+                            householdName = household.fullName,
+                            collectorId = collectorId,
+                            collectorName = collector.fullName
+                        )
+
+                        chatResult.onSuccess { chatId ->
+                            android.util.Log.d("WasteRepository", "Successfully created chat $chatId for request $requestId")
+                        }.onFailure { error ->
+                            android.util.Log.e("WasteRepository", "Failed to create chat for request $requestId: ${error.message}", error)
+                        }
+                    } else {
+                        android.util.Log.e("WasteRepository", "Could not create chat: household=$household, collector=$collector")
+                    }
+                } else {
+                    android.util.Log.e("WasteRepository", "Could not create chat: request is null")
+                }
+            } catch (e: Exception) {
+                // Log error but don't fail the acceptance
+                android.util.Log.e("WasteRepository", "Exception while creating chat for request $requestId", e)
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {
