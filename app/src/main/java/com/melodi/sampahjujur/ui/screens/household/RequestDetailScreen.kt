@@ -55,6 +55,7 @@ import java.util.*
 fun HouseholdRequestDetailRoute(
     requestId: String,
     onBackClick: () -> Unit,
+    onNavigateToChat: (String) -> Unit = {},
     viewModel: HouseholdViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -142,7 +143,8 @@ fun HouseholdRequestDetailRoute(
                 viewModel.cancelPickupRequest(requestId)
                 onBackClick()
             },
-            onContactCollector = { launchDialer(collectorInfo?.phone) }
+            onContactCollector = { launchDialer(collectorInfo?.phone) },
+            onOpenChat = { onNavigateToChat(requestId) }
         )
     }
 }
@@ -156,7 +158,8 @@ fun RequestDetailScreen(
     collectorVehicle: String? = null,
     onBackClick: () -> Unit = {},
     onCancelRequest: () -> Unit = {},
-    onContactCollector: () -> Unit = {}
+    onContactCollector: () -> Unit = {},
+    onOpenChat: () -> Unit = {}
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -584,27 +587,50 @@ fun RequestDetailScreen(
                         }
                     }
                     "accepted", "in_progress" -> {
-                        Button(
-                            onClick = onContactCollector,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PrimaryGreen
-                            ),
-                            shape = RoundedCornerShape(28.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = "Contact"
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Contact Collector",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White
-                            )
+                            // Open Chat Button
+                            Button(
+                                onClick = onOpenChat,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PrimaryGreen
+                                ),
+                                shape = RoundedCornerShape(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Message,
+                                    contentDescription = "Chat"
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Open Chat",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+
+                            // Call Collector Button
+                            OutlinedButton(
+                                onClick = onContactCollector,
+                                modifier = Modifier
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(28.dp),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(
+                                    width = 2.dp
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = "Call",
+                                    tint = PrimaryGreen
+                                )
+                            }
                         }
                     }
                 }
