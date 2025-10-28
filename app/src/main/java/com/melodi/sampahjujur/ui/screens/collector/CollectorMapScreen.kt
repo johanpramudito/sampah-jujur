@@ -281,8 +281,6 @@ fun CollectorMapScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .background(Color(0xFFF5F5F5))
-                    .padding(bottom = navBarHeight + 12.dp)
             ) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
