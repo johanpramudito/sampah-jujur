@@ -117,23 +117,28 @@ class HouseholdViewModel @Inject constructor(
                 }
                 .collect { requests ->
                     val statusMap = requests.associate { it.id to it.status }
-                    if (statusNotificationInitialized) {
-                        requests.forEach { request ->
-                            val previousStatus = requestStatusMap[request.id]
-                            val currentStatus = request.status
-                            if (previousStatus != null && previousStatus != currentStatus) {
-                                when (currentStatus) {
-                                    PickupRequest.STATUS_ACCEPTED,
-                                    PickupRequest.STATUS_IN_PROGRESS,
-                                    PickupRequest.STATUS_COMPLETED,
-                                    PickupRequest.STATUS_CANCELLED -> {
-                                        viewModelScope.launch {
-                                            notificationHelper.notifyRequestStatusChanged(request, currentStatus)
+
+                    // Only send notifications if current user is a household user AND the request belongs to them
+                    val currentUser = authRepository.getCurrentUser()
+                    if (statusNotificationInitialized && currentUser?.isHousehold() == true) {
+                        requests
+                            .filter { it.householdId == currentUser.id } // Ensure request belongs to current user
+                            .forEach { request ->
+                                val previousStatus = requestStatusMap[request.id]
+                                val currentStatus = request.status
+                                if (previousStatus != null && previousStatus != currentStatus) {
+                                    when (currentStatus) {
+                                        PickupRequest.STATUS_ACCEPTED,
+                                        PickupRequest.STATUS_IN_PROGRESS,
+                                        PickupRequest.STATUS_COMPLETED,
+                                        PickupRequest.STATUS_CANCELLED -> {
+                                            viewModelScope.launch {
+                                                notificationHelper.notifyRequestStatusChanged(request, currentStatus)
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
                     } else {
                         statusNotificationInitialized = true
                     }

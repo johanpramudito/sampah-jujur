@@ -5,6 +5,10 @@ import androidx.preference.PreferenceManager
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
 import org.osmdroid.config.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Application class for the Sampah Jujur app.
@@ -12,19 +16,23 @@ import dagger.hilt.android.HiltAndroidApp
  */
 @HiltAndroidApp
 class SampahJujurApplication : Application() {
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     override fun onCreate() {
         super.onCreate()
 
-        // Configure OpenStreetMap user agent and preferences cache
+        // Configure OpenStreetMap user agent and preferences cache (must be on main thread)
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this))
         Configuration.getInstance().userAgentValue = BuildConfig.APPLICATION_ID
 
-        // Initialize Cloudinary for image uploads
-        try {
-            CloudinaryUploadService.initialize(this)
-        } catch (e: Exception) {
-            // Log the error but don't crash the app
-            android.util.Log.e("SampahJujurApp", "Failed to initialize Cloudinary", e)
+        // Initialize Cloudinary for image uploads on background thread
+        applicationScope.launch {
+            try {
+                CloudinaryUploadService.initialize(this@SampahJujurApplication)
+            } catch (e: Exception) {
+                // Log the error but don't crash the app
+                android.util.Log.e("SampahJujurApp", "Failed to initialize Cloudinary", e)
+            }
         }
     }
 }

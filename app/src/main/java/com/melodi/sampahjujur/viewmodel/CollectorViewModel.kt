@@ -108,7 +108,10 @@ class CollectorViewModel @Inject constructor(
                 }
                 .collect { requests ->
                     val incomingIds = requests.map { it.id }.toSet()
-                    if (pendingNotificationInitialized) {
+
+                    // Only send notifications if current user is a collector
+                    val currentUser = authRepository.getCurrentUser()
+                    if (pendingNotificationInitialized && currentUser?.isCollector() == true) {
                         requests
                             .filter { it.id !in knownPendingRequestIds }
                             .forEach { newRequest ->
