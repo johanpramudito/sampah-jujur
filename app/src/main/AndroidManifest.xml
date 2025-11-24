@@ -60,6 +60,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- BroadcastReceiver for notification reply action -->
+        <receiver
+            android:name=".utils.NotificationReplyReceiver"
+            android:exported="false"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.melodi.sampahjujur.ACTION_REPLY" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
