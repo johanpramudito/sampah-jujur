@@ -204,6 +204,7 @@ fun CollectorMapScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = 750.dp) // Expanded height - stops just before title bar
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                         .padding(bottom = navBarHeight + 48.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
