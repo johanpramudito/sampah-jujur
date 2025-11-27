@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -11,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -99,7 +103,34 @@ fun ChatScreen(
                         value = messageText,
                         onValueChange = { messageText = it },
                         placeholder = { Text("Type a message...") },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onPreviewKeyEvent { keyEvent ->
+                                // Handle Enter key to send message on physical keyboards
+                                if (keyEvent.key == Key.Enter) {
+                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                        if (messageText.isNotBlank() && !isSending && currentChat != null) {
+                                            viewModel.sendMessage(messageText)
+                                            messageText = ""
+                                        }
+                                    }
+                                    // Consume both KeyDown and KeyUp
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Send
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (messageText.isNotBlank() && !isSending && currentChat != null) {
+                                    viewModel.sendMessage(messageText)
+                                    messageText = ""
+                                }
+                            }
+                        ),
                         maxLines = 4,
                         enabled = !isSending && currentChat != null
                     )

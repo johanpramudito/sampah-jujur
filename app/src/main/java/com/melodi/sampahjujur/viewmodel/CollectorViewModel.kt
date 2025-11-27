@@ -12,7 +12,7 @@ import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
-import com.melodi.sampahjujur.utils.CollectorNotificationHelper
+// Removed CollectorNotificationHelper - using FCM instead
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,8 +55,7 @@ data class CollectorPerformanceMetrics(
 class CollectorViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
-    private val locationRepository: LocationRepository,
-    private val notificationHelper: CollectorNotificationHelper
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectorUiState())
@@ -109,19 +108,8 @@ class CollectorViewModel @Inject constructor(
                 .collect { requests ->
                     val incomingIds = requests.map { it.id }.toSet()
 
-                    // Only send notifications if current user is a collector
-                    val currentUser = authRepository.getCurrentUser()
-                    if (pendingNotificationInitialized && currentUser?.isCollector() == true) {
-                        requests
-                            .filter { it.id !in knownPendingRequestIds }
-                            .forEach { newRequest ->
-                                viewModelScope.launch {
-                                    notificationHelper.notifyNewPendingRequest(newRequest)
-                                }
-                            }
-                    } else {
-                        pendingNotificationInitialized = true
-                    }
+                    // FCM notifications are now sent from the server when requests are created
+                    // No need for local notification logic here
                     knownPendingRequestIds
                         .apply { clear() }
                         .addAll(incomingIds)

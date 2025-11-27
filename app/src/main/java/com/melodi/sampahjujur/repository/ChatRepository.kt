@@ -14,7 +14,8 @@ import javax.inject.Singleton
 
 @Singleton
 class ChatRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val notificationRepository: NotificationRepository
 ) {
     private val chatsCollection = firestore.collection("chats")
 
@@ -107,6 +108,14 @@ class ChatRepository @Inject constructor(
 
                     chatsCollection.document(chatId).update(updateData).await()
                 }
+
+                // Send notification to recipient (skip for system messages)
+                notificationRepository.notifyChatMessage(
+                    chatId = chatId,
+                    senderId = message.senderId,
+                    messageText = message.text,
+                    senderName = message.senderName
+                )
             }
 
             Result.success(messageId)

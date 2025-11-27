@@ -11,7 +11,7 @@ import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
-import com.melodi.sampahjujur.utils.HouseholdNotificationHelper
+// Removed HouseholdNotificationHelper - using FCM instead
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -32,8 +32,7 @@ class HouseholdViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
-    private val preferencesRepository: com.melodi.sampahjujur.repository.PreferencesRepository,
-    private val notificationHelper: HouseholdNotificationHelper
+    private val preferencesRepository: com.melodi.sampahjujur.repository.PreferencesRepository
 ) : ViewModel() {
 
     companion object {
@@ -132,9 +131,8 @@ class HouseholdViewModel @Inject constructor(
                                         PickupRequest.STATUS_IN_PROGRESS,
                                         PickupRequest.STATUS_COMPLETED,
                                         PickupRequest.STATUS_CANCELLED -> {
-                                            viewModelScope.launch {
-                                                notificationHelper.notifyRequestStatusChanged(request, currentStatus)
-                                            }
+                                            // FCM notifications are now sent from the server
+                                            // No need for local notification logic here
                                         }
                                     }
                                 }

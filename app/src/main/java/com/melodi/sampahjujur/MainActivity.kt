@@ -32,32 +32,56 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        requestNotificationPermissionIfNeeded()
+        requestRequiredPermissions()
 
         setContent {
             SampahJujurApp()
         }
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    private fun requestRequiredPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
 
-        val alreadyGranted = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
+        // Check location permissions (required for all Android versions)
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
 
-        if (!alreadyGranted) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+
+        // Check notification permission (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        // Request all missing permissions at once
+        if (permissionsToRequest.isNotEmpty()) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                REQUEST_CODE_POST_NOTIFICATIONS
+                permissionsToRequest.toTypedArray(),
+                REQUEST_CODE_PERMISSIONS
             )
         }
     }
 
     companion object {
-        private const val REQUEST_CODE_POST_NOTIFICATIONS = 1001
+        private const val REQUEST_CODE_PERMISSIONS = 1001
     }
 }
 

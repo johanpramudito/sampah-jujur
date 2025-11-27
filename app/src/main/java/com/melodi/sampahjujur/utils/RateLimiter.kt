@@ -20,7 +20,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class RateLimiter @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val prefs = context.getSharedPreferences("rate_limiter", Context.MODE_PRIVATE)
 

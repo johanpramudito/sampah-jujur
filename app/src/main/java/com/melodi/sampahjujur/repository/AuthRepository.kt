@@ -4,6 +4,7 @@ import android.app.Activity
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.utils.FirebaseErrorHandler
 import com.melodi.sampahjujur.utils.ValidationUtils
+import com.melodi.sampahjujur.utils.FcmTokenManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.PhoneAuthCredential
@@ -24,7 +25,8 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val fcmTokenManager: FcmTokenManager
 ) {
 
     /**
@@ -144,6 +146,10 @@ class AuthRepository @Inject constructor(
                 // User already registered, return existing user
                 val user = existingUser.toObject(User::class.java)
                     ?: throw Exception("Failed to parse user data")
+
+                // Save FCM token
+                fcmTokenManager.refreshAndSaveFcmToken()
+
                 return Result.success(user)
             }
 
@@ -178,6 +184,9 @@ class AuthRepository @Inject constructor(
                 phone = phone.trim(),
                 userType = User.ROLE_COLLECTOR
             )
+
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
 
             Result.success(user)
         } catch (e: Exception) {
@@ -237,6 +246,9 @@ class AuthRepository @Inject constructor(
                 throw Exception("This account is registered as a collector. Please use collector login.")
             }
 
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
+
             Result.success(user)
         } catch (e: Exception) {
             val errorMessage = FirebaseErrorHandler.getErrorMessage(e)
@@ -275,6 +287,9 @@ class AuthRepository @Inject constructor(
                 auth.signOut() // Sign out user with wrong role
                 throw Exception("This account is registered as a household. Please use household login.")
             }
+
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
 
             Result.success(user)
         } catch (e: Exception) {
@@ -386,6 +401,9 @@ class AuthRepository @Inject constructor(
                 newUser
             }
 
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
+
             android.util.Log.d("AuthRepository", "signInWithGoogle: Sign-in completed successfully for user: ${user.fullName}")
             Result.success(user)
         } catch (e: Exception) {
@@ -458,7 +476,9 @@ class AuthRepository @Inject constructor(
     /**
      * Signs out the current user
      */
-    fun signOut() {
+    suspend fun signOut() {
+        // Clear FCM token before signing out
+        fcmTokenManager.clearFcmToken()
         auth.signOut()
     }
 

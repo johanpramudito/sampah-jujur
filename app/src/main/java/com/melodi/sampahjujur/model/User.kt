@@ -56,6 +56,10 @@ data class User(
     @set:PropertyName("operatingArea")
     var operatingArea: String = "",
 
+    @get:PropertyName("fcmToken")
+    @set:PropertyName("fcmToken")
+    var fcmToken: String = "",
+
     @get:PropertyName("draftWasteItems")
     @set:PropertyName("draftWasteItems")
     var draftWasteItems: List<WasteItem> = emptyList()

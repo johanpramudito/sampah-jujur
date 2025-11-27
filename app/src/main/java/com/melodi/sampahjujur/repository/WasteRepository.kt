@@ -26,7 +26,8 @@ import javax.inject.Singleton
 class WasteRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val authRepository: AuthRepository,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val notificationRepository: NotificationRepository
 ) {
 
     companion object {
@@ -51,6 +52,9 @@ class WasteRepository @Inject constructor(
             val requestWithId = pickupRequest.copy(id = docRef.id)
 
             docRef.set(requestWithId).await()
+
+            // Notify all collectors of new request
+            notificationRepository.notifyNewRequest(requestWithId.id)
 
             Result.success(requestWithId)
         } catch (e: Exception) {
@@ -283,6 +287,9 @@ class WasteRepository @Inject constructor(
                 android.util.Log.e("WasteRepository", "Exception while creating chat for request $requestId", e)
             }
 
+            // Notify household that request was accepted
+            notificationRepository.notifyStatusChange(requestId, PickupRequest.STATUS_ACCEPTED)
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -334,6 +341,9 @@ class WasteRepository @Inject constructor(
                 Unit
             }.await()
 
+            // Notify household that request is in progress
+            notificationRepository.notifyStatusChange(requestId, PickupRequest.STATUS_IN_PROGRESS)
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -379,6 +389,9 @@ class WasteRepository @Inject constructor(
                     )
                 )
             }.await()
+
+            // Notify household that request was cancelled
+            notificationRepository.notifyStatusChange(requestId, PickupRequest.STATUS_CANCELLED)
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -483,6 +496,9 @@ class WasteRepository @Inject constructor(
 
                 transactionData
             }.await()
+
+            // Notify household that request was completed
+            notificationRepository.notifyStatusChange(requestId, PickupRequest.STATUS_COMPLETED)
 
             Result.success(transactionRecord)
         } catch (e: Exception) {
