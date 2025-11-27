@@ -56,6 +56,10 @@ fun RequestPickupScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val createRequestResult by viewModel.createRequestResult.observeAsState()
 
+    // Observe waste item loading state
+    val isAddingWasteItem by viewModel.isAddingWasteItem.collectAsState()
+    val wasteItemSuccess by viewModel.wasteItemOperationSuccess.collectAsState()
+
     // Permission launcher for location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -385,7 +389,12 @@ fun RequestPickupScreen(
     // Show Add Item Dialog
     if (showAddItemDialog) {
         AddWasteItemDialog(
-            onDismiss = { showAddItemDialog = false },
+            isLoading = isAddingWasteItem,
+            onDismiss = {
+                if (!isAddingWasteItem) {
+                    showAddItemDialog = false
+                }
+            },
             onAddItem = { type, weight, value, description, imageUrl ->
                 viewModel.addWasteItem(
                     WasteItem(
@@ -396,9 +405,18 @@ fun RequestPickupScreen(
                         imageUrl = imageUrl
                     )
                 )
-                showAddItemDialog = false
+                // Don't close dialog immediately - wait for loading to complete
             }
         )
+    }
+
+    // Close dialog and show success when waste item is added
+    LaunchedEffect(isAddingWasteItem, wasteItemSuccess) {
+        if (!isAddingWasteItem && wasteItemSuccess != null && showAddItemDialog) {
+            showAddItemDialog = false
+            snackbarHostState.showSnackbar(wasteItemSuccess)
+            viewModel.clearWasteItemSuccess()
+        }
     }
 
     // Show success dialog when request is created

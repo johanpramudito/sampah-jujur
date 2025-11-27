@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddWasteItemDialog(
+    isLoading: Boolean = false,
     onDismiss: () -> Unit = {},
     onAddItem: (type: String, weight: Double, value: Double, description: String, imageUrl: String) -> Unit = { _, _, _, _, _ -> }
 ) {
@@ -77,7 +78,8 @@ fun AddWasteItemDialog(
             weight.toDoubleOrNull() != null &&
             weight.toDouble() > 0 &&
             imageUri != null &&
-            !isUploading
+            !isUploading &&
+            !isLoading
         }
     }
 
@@ -307,7 +309,7 @@ fun AddWasteItemDialog(
                                     )
                                     val weightValue = weight.toDoubleOrNull() ?: 0.0
                                     onAddItem(selectedType, weightValue, calculatedValue, description, uploadedUrl)
-                                    onDismiss()
+                                    // Don't call onDismiss() here - let parent handle it after database save
                                 } catch (e: Exception) {
                                     uploadError = "Upload failed: ${e.message}"
                                     isUploading = false
@@ -324,7 +326,7 @@ fun AddWasteItemDialog(
                     shape = RoundedCornerShape(28.dp),
                     enabled = isFormValid
                 ) {
-                    if (isUploading) {
+                    if (isUploading || isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             color = Color.White

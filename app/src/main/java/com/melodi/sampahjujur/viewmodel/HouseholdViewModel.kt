@@ -53,6 +53,13 @@ class HouseholdViewModel @Inject constructor(
     private val _createRequestResult = MutableLiveData<Result<PickupRequest>?>()
     val createRequestResult: LiveData<Result<PickupRequest>?> = _createRequestResult
 
+    // Loading state for waste item operations
+    private val _isAddingWasteItem = MutableStateFlow(false)
+    val isAddingWasteItem: StateFlow<Boolean> = _isAddingWasteItem.asStateFlow()
+
+    private val _wasteItemOperationSuccess = MutableStateFlow<String?>(null)
+    val wasteItemOperationSuccess: StateFlow<String?> = _wasteItemOperationSuccess.asStateFlow()
+
     private val requestStatusMap = mutableMapOf<String, String>()
     private var statusNotificationInitialized = false
 
@@ -320,19 +327,28 @@ class HouseholdViewModel @Inject constructor(
      */
     fun addWasteItem(wasteItem: WasteItem) {
         viewModelScope.launch {
+            _isAddingWasteItem.value = true
+            _wasteItemOperationSuccess.value = null
+
             val householdUid = ensureHouseholdId()
             if (householdUid == null) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "User not authenticated"
                 )
+                _isAddingWasteItem.value = false
                 return@launch
             }
 
             val result = wasteRepository.addWasteItem(householdUid, wasteItem)
+            _isAddingWasteItem.value = false
+
             if (result.isFailure) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = result.exceptionOrNull()?.message ?: "Failed to add waste item"
                 )
+            } else {
+                _wasteItemOperationSuccess.value = "Waste item added successfully"
+                Log.d(TAG, "Waste item added successfully: ${wasteItem.type}")
             }
         }
     }
@@ -501,6 +517,13 @@ class HouseholdViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    /**
+     * Clears the success message for waste item operations
+     */
+    fun clearWasteItemSuccess() {
+        _wasteItemOperationSuccess.value = null
     }
 
     /**
