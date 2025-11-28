@@ -1,6 +1,8 @@
 package com.melodi.sampahjujur.ui.screens.household
 
+import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +26,18 @@ import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
 import com.melodi.sampahjujur.utils.WastePriceCalculator
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
+import java.util.UUID
+
+/**
+ * Helper function to cache image URI in SharedPreferences for retry
+ */
+private fun cacheImageUri(context: Context, tempId: String, imageUri: Uri) {
+    val sharedPrefs = context.getSharedPreferences("image_cache", Context.MODE_PRIVATE)
+    sharedPrefs.edit().putString("image_$tempId", imageUri.toString()).apply()
+    Log.d("AddWasteItemDialog", "Cached image URI for retry: image_$tempId")
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -302,16 +316,30 @@ fun AddWasteItemDialog(
                             uploadError = null
                             coroutineScope.launch {
                                 try {
-                                    val uploadedUrl = CloudinaryUploadService.uploadImage(
-                                        context = context,
-                                        imageUri = imageUri!!,
-                                        folder = "sampah-jujur/waste-items"
-                                    )
-                                    val weightValue = weight.toDoubleOrNull() ?: 0.0
-                                    onAddItem(selectedType, weightValue, calculatedValue, description, uploadedUrl)
+                                    withTimeout(5000L) {
+                                        val uploadedUrl = CloudinaryUploadService.uploadImage(
+                                            context = context,
+                                            imageUri = imageUri!!,
+                                            folder = "sampah-jujur/waste-items"
+                                        )
+                                        val weightValue = weight.toDoubleOrNull() ?: 0.0
+                                        onAddItem(selectedType, weightValue, calculatedValue, description, uploadedUrl)
                                     // Don't call onDismiss() here - let parent handle it after database save
+                                    }
+                                } catch (e: TimeoutCancellationException) {
+                                    // Timeout - likely offline
+                                    // Generate temp ID and cache image URI for retry
+                                    val tempId = UUID.randomUUID().toString()
+                                    cacheImageUri(context, tempId, imageUri!!)
+
+                                    Log.w("AddWasteItemDialog", "Upload timeout - saving offline with tempId: $tempId")
+                                    val weightValue = weight.toDoubleOrNull() ?: 0.0
+                                    // Save with special format: "pending_upload:tempId"
+                                    onAddItem(selectedType, weightValue, calculatedValue, description, "pending_upload:$tempId")
+                                    uploadError = "Saved offline - image will upload when online"
+                                    isUploading = false
                                 } catch (e: Exception) {
-                                    uploadError = "Upload failed: ${e.message}"
+                                    uploadError = "Image upload failed: ${e.message}"
                                     isUploading = false
                                 }
                             }

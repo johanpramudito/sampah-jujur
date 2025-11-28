@@ -3,6 +3,7 @@ package com.melodi.sampahjujur.di
 import android.content.Context
 import androidx.room.Room
 import com.melodi.sampahjujur.data.local.SampahJujurDatabase
+import com.melodi.sampahjujur.data.local.dao.PickupRequestDao
 import com.melodi.sampahjujur.data.local.dao.TransactionDao
 import com.melodi.sampahjujur.data.local.dao.UserDao
 import com.melodi.sampahjujur.data.local.dao.WasteItemDao
@@ -76,5 +77,17 @@ object DatabaseModule {
     @Singleton
     fun provideTransactionDao(database: SampahJujurDatabase): TransactionDao {
         return database.transactionDao()
+    }
+
+    /**
+     * Provides PickupRequestDao for pickup request operations
+     *
+     * @param database SampahJujurDatabase instance
+     * @return PickupRequestDao
+     */
+    @Provides
+    @Singleton
+    fun providePickupRequestDao(database: SampahJujurDatabase): PickupRequestDao {
+        return database.pickupRequestDao()
     }
 }

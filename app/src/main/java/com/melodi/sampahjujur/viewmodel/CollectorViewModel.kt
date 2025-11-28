@@ -11,6 +11,7 @@ import com.melodi.sampahjujur.model.TransactionItem
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
+import com.melodi.sampahjujur.repository.TransactionCacheRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import com.melodi.sampahjujur.utils.CollectorNotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -56,6 +57,7 @@ class CollectorViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
+    private val transactionCacheRepository: TransactionCacheRepository,
     private val notificationHelper: CollectorNotificationHelper
 ) : ViewModel() {
 
@@ -168,12 +170,15 @@ class CollectorViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = authRepository.getCurrentUser()
             if (currentUser?.isCollector() == true) {
-                wasteRepository.getCollectorEarnings(currentUser.id)
+                // Use cached transactions from Room for offline support
+                transactionCacheRepository.getCachedTransactionsByCollector(currentUser.id)
                     .catch {
                         _earningsState.value = Earnings()
                         updatePerformanceMetrics(_myRequests.value ?: emptyList(), Earnings())
                     }
-                    .collect { earnings ->
+                    .collect { cachedTransactions ->
+                        // Convert cached transactions to Earnings model
+                        val earnings = calculateEarningsFromTransactions(cachedTransactions)
                         _earningsState.value = earnings
                         updatePerformanceMetrics(_myRequests.value ?: emptyList(), earnings)
                     }
@@ -182,6 +187,29 @@ class CollectorViewModel @Inject constructor(
                 updatePerformanceMetrics(_myRequests.value ?: emptyList(), Earnings())
             }
         }
+    }
+
+    private fun calculateEarningsFromTransactions(
+        transactions: List<Transaction>
+    ): Earnings {
+        if (transactions.isEmpty()) return Earnings()
+
+        val now = System.currentTimeMillis()
+        val totalEarnings = transactions.sumOf { it.finalAmount }
+        val totalWasteKg = transactions.sumOf { it.getTotalWeight() }
+        val earningsToday = transactions.filter { it.completedAt >= now - 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
+        val earningsThisWeek = transactions.filter { it.completedAt >= now - 7 * 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
+        val earningsThisMonth = transactions.filter { it.completedAt >= now - 30 * 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
+
+        return Earnings(
+            totalTransactions = transactions.size,
+            totalEarnings = totalEarnings,
+            totalWasteCollected = totalWasteKg,
+            earningsToday = earningsToday,
+            earningsThisWeek = earningsThisWeek,
+            earningsThisMonth = earningsThisMonth,
+            transactionHistory = transactions
+        )
     }
 
     /**
@@ -340,6 +368,13 @@ class CollectorViewModel @Inject constructor(
             val currentState = _uiState.value
 
             _uiState.value = if (result.isSuccess) {
+                // Cache the completed transaction to Room database
+                result.getOrNull()?.let { transaction ->
+                    viewModelScope.launch {
+                        transactionCacheRepository.cacheTransaction(transaction)
+                    }
+                }
+
                 currentState.copy(
                     isLoading = false,
                     showTransactionSuccess = true,

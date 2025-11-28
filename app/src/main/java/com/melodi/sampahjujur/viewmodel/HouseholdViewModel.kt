@@ -5,10 +5,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.melodi.sampahjujur.data.sync.SyncManager
 import com.melodi.sampahjujur.model.PickupRequest
+import com.melodi.sampahjujur.model.Transaction
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
+import com.melodi.sampahjujur.repository.TransactionCacheRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
 import com.melodi.sampahjujur.utils.HouseholdNotificationHelper
@@ -32,8 +35,10 @@ class HouseholdViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
+    private val transactionCacheRepository: TransactionCacheRepository,
     private val preferencesRepository: com.melodi.sampahjujur.repository.PreferencesRepository,
-    private val notificationHelper: HouseholdNotificationHelper
+    private val notificationHelper: HouseholdNotificationHelper,
+    private val syncManager: SyncManager
 ) : ViewModel() {
 
     companion object {
@@ -60,12 +65,20 @@ class HouseholdViewModel @Inject constructor(
     private val _wasteItemOperationSuccess = MutableStateFlow<String?>(null)
     val wasteItemOperationSuccess: StateFlow<String?> = _wasteItemOperationSuccess.asStateFlow()
 
+    // Transaction history for household
+    private val _transactionHistory = MutableStateFlow<List<Transaction>>(emptyList())
+    val transactionHistory: StateFlow<List<Transaction>> = _transactionHistory.asStateFlow()
+
+    private val _isLoadingTransactions = MutableStateFlow(false)
+    val isLoadingTransactions: StateFlow<Boolean> = _isLoadingTransactions.asStateFlow()
+
     private val requestStatusMap = mutableMapOf<String, String>()
     private var statusNotificationInitialized = false
 
     init {
         initializeHouseholdData()
         observeLocationSettings()
+        loadTransactionHistory()
     }
 
     /**
@@ -221,6 +234,28 @@ class HouseholdViewModel @Inject constructor(
             }
 
             householdId = currentUser.id
+
+            // Pre-sync waste items with image retry logic if online
+            // This ensures images are uploaded before submitting pickup request
+            if (syncManager.isOnline()) {
+                Log.d(TAG, "Pre-syncing waste items before pickup request submission")
+                _uiState.value = _uiState.value.copy(isSyncingImages = true)
+
+                val syncResult = syncManager.syncWasteItemsWithImageRetry(currentUser.id)
+
+                _uiState.value = _uiState.value.copy(isSyncingImages = false)
+
+                if (syncResult.isFailure) {
+                    Log.e(TAG, "Image sync failed before submission", syncResult.exceptionOrNull())
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "Failed to upload images. Please check your connection and try again."
+                    )
+                    return@launch
+                }
+
+                Log.d(TAG, "Image sync completed successfully")
+            }
 
             val totalValue = wasteItems.sumOf { it.estimatedValue }
 
@@ -513,6 +548,40 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
+     * Loads transaction history from cache for the current household
+     */
+    private fun loadTransactionHistory() {
+        viewModelScope.launch {
+            val currentUser = authRepository.getCurrentUser()
+            if (currentUser?.isHousehold() == true) {
+                _isLoadingTransactions.value = true
+                transactionCacheRepository.getCachedTransactionsByHousehold(currentUser.id)
+                    .catch { error ->
+                        Log.e(TAG, "Failed to load transaction history", error)
+                        _transactionHistory.value = emptyList()
+                        _isLoadingTransactions.value = false
+                    }
+                    .collect { cachedTransactions ->
+                        val transactions = cachedTransactions.sortedByDescending { it.completedAt }
+                        _transactionHistory.value = transactions
+                        _isLoadingTransactions.value = false
+                        Log.d(TAG, "Loaded ${transactions.size} transactions from cache")
+                    }
+            } else {
+                _transactionHistory.value = emptyList()
+                _isLoadingTransactions.value = false
+            }
+        }
+    }
+
+    /**
+     * Refreshes transaction history from cache
+     */
+    fun refreshTransactionHistory() {
+        loadTransactionHistory()
+    }
+
+    /**
      * Clears any error messages
      */
     fun clearError() {
@@ -572,6 +641,7 @@ class HouseholdViewModel @Inject constructor(
 data class HouseholdUiState(
     val isLoading: Boolean = false,
     val isLoadingLocation: Boolean = false,
+    val isSyncingImages: Boolean = false,
     val errorMessage: String? = null,
     val currentWasteItems: List<WasteItem> = emptyList(),
     val selectedLocation: GeoPoint? = null,

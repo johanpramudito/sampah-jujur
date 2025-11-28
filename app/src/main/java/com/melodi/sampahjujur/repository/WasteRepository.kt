@@ -9,7 +9,9 @@ import com.melodi.sampahjujur.model.WasteItem
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.melodi.sampahjujur.data.local.dao.PickupRequestDao
 import com.melodi.sampahjujur.data.local.dao.WasteItemDao
+import com.melodi.sampahjujur.data.local.entity.PickupRequestEntity
 import com.melodi.sampahjujur.data.local.entity.WasteItemEntity
 import com.melodi.sampahjujur.data.sync.SyncManager
 import kotlinx.coroutines.channels.awaitClose
@@ -33,6 +35,7 @@ class WasteRepository @Inject constructor(
     private val authRepository: AuthRepository,
     private val chatRepository: ChatRepository,
     private val wasteItemDao: WasteItemDao,
+    private val pickupRequestDao: PickupRequestDao,
     private val syncManager: SyncManager
 ) {
 
@@ -45,19 +48,38 @@ class WasteRepository @Inject constructor(
     }
 
     /**
-     * Posts a new pickup request to Firestore
+     * Posts a new pickup request using offline-first approach:
+     * 1. Save to Room immediately (works offline)
+     * 2. Try to sync to Firestore if online
+     * 3. If offline, SyncManager will retry when connection returns
      *
      * @param pickupRequest The pickup request to be created
      * @return Result containing the created PickupRequest with generated ID or error
      */
     suspend fun postPickupRequest(pickupRequest: PickupRequest): Result<PickupRequest> {
         return try {
-            val docRef = firestore.collection(PICKUP_REQUESTS_COLLECTION)
-                .document()
+            // Generate ID first
+            val requestId = UUID.randomUUID().toString()
+            val requestWithId = pickupRequest.copy(id = requestId)
 
-            val requestWithId = pickupRequest.copy(id = docRef.id)
+            // 1. Save to Room first (offline-capable, instant)
+            val entity = PickupRequestEntity.fromPickupRequest(requestWithId)
+            pickupRequestDao.insert(entity)
 
-            docRef.set(requestWithId).await()
+            // 2. Try to sync to Firebase if online
+            if (syncManager.isOnline()) {
+                try {
+                    val docRef = firestore.collection(PICKUP_REQUESTS_COLLECTION)
+                        .document(requestId)
+                    docRef.set(requestWithId).await()
+
+                    // Mark as synced
+                    pickupRequestDao.markAsSynced(requestId)
+                } catch (e: Exception) {
+                    // Firebase failed but Room succeeded - will sync later
+                    android.util.Log.w("WasteRepository", "Firebase sync failed, will retry later: ${e.message}")
+                }
+            }
 
             Result.success(requestWithId)
         } catch (e: Exception) {

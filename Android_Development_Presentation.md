@@ -12,7 +12,7 @@
 
 This presentation explores three fundamental concepts in modern Android development:
 
-1. **LazyColumn** - The Jetpack Compose replacement for RecyclerView
+1. **Lazy Lists** - The Jetpack Compose replacement for RecyclerView
 2. **Kotlin Coroutines** - Asynchronous programming made simple
 3. **Room Database** - SQLite abstraction for local data storage
 
@@ -20,19 +20,27 @@ All examples are taken from the **Sampah Jujur** project - a waste collection ma
 
 ---
 
-## Slide 2: Introduction to Lazy Lists
+## Slide 2: From RecyclerView to Lazy Lists
 
-### From RecyclerView to LazyColumn
+### The Evolution of List Rendering in Android
 
-> **Diagram: RecyclerView vs LazyColumn**
+Jetpack Compose introduces **Lazy Lists** as a declarative alternative to RecyclerView. Instead of separate XML layouts, Adapter classes, and ViewHolder boilerplate, Lazy Lists handle everything in a single composable function.
+
+**Definisi (Bahasa Indonesia):**
+> **Lazy Lists** adalah komponen di Jetpack Compose yang digunakan untuk menampilkan daftar item secara efisien. Disebut "lazy" karena hanya me-render item yang terlihat di layar, sementara item di luar layar tidak di-compose. Lazy Lists menggantikan RecyclerView dengan pendekatan deklaratif yang lebih sederhana, tanpa memerlukan Adapter atau ViewHolder.
+
+> **Diagram: RecyclerView vs Lazy Lists**
 > ```
-> Traditional (XML + RecyclerView)          Jetpack Compose (LazyColumn)
+> Traditional (XML + RecyclerView)          Jetpack Compose (Lazy Lists)
 > ┌─────────────────────────────┐          ┌─────────────────────────────┐
-> │  RecyclerView               │          │  LazyColumn                 │
-> │  ├── Adapter                │   →      │  ├── items() { }            │
-> │  ├── ViewHolder             │          │  └── Composable Item        │
-> │  └── LayoutManager          │          │                             │
+> │  RecyclerView (XML)         │          │  Lazy Lists (Compose)       │
+> │  ├── RecyclerView.xml       │          │  ├── LazyColumn { }         │
+> │  ├── Adapter class          │   →      │  ├── LazyRow { }            │
+> │  ├── ViewHolder class       │          │  └── LazyVerticalGrid { }   │
+> │  └── LayoutManager setup    │          │                             │
+> │                             │          │  All in one composable!     │
 > └─────────────────────────────┘          └─────────────────────────────┘
+>    Imperative (HOW to render)              Declarative (WHAT to render)
 >        ~100 lines of code                       ~20 lines of code
 > ```
 
@@ -41,6 +49,19 @@ All examples are taken from the **Sampah Jujur** project - a waste collection ma
 - **Only renders visible items** - Items off-screen aren't composed
 - **Efficient memory usage** - Similar to RecyclerView's view recycling
 - **Automatic optimization** - No manual ViewHolder management needed
+
+Unlike RecyclerView's manual adapter management, Lazy Lists handle optimization automatically while providing a simpler API.
+
+### Key Differences
+
+| Feature | RecyclerView | LazyColumn |
+|---------|-------------|------------|
+| **View Recycling** | Yes | No (Compose handles it internally) |
+| **Memory Usage** | Optimized with ViewHolders | Slightly higher due to recompositions |
+| **Ease of Use** | Requires Adapter, ViewHolder | Simple Composable functions |
+| **Animation Support** | Manual implementation | Built-in with `animateItemPlacement` |
+| **State Management** | Manual handling | Uses `rememberLazyListState` |
+| **Interoperability** | Works with View-based UI | Works with Compose UI |
 
 ### Key Components
 
@@ -54,11 +75,15 @@ All examples are taken from the **Sampah Jujur** project - a waste collection ma
 
 ## Slide 3: LazyColumn - Basic Structure
 
-### Core Concept
+### Vertical Scrolling with LazyColumn
 
-LazyColumn uses two main building blocks:
+**LazyColumn** is the vertical scrolling implementation of Lazy Lists - think of it as the direct replacement for RecyclerView with a vertical LayoutManager.
+
+**Important**: All Lazy Lists (LazyColumn, LazyRow, LazyVerticalGrid) use the **same DSL**:
 - `item { }` - For single elements (headers, footers)
 - `items(list) { }` - For list data
+
+This unified API makes it easy to switch between different layout orientations!
 
 ### Code Example
 
