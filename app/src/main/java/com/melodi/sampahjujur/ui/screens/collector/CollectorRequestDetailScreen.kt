@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -18,14 +19,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.TransactionItem
 import com.melodi.sampahjujur.model.User
@@ -56,6 +62,7 @@ fun CollectorRequestDetailRoute(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showCompleteDialog by remember { mutableStateOf(false) }
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
@@ -211,6 +218,45 @@ fun CollectorRequestDetailRoute(
             }
         )
     }
+
+    // Full-Screen Image Viewer
+    if (selectedImageUrl != null) {
+        Dialog(
+            onDismissRequest = { selectedImageUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { selectedImageUrl = null }
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(selectedImageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Waste Item Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+
+                IconButton(
+                    onClick = { selectedImageUrl = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -230,6 +276,7 @@ fun CollectorRequestDetailScreen(
     onOpenChat: () -> Unit = {}
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
     val displayName = household?.fullName?.takeIf { it.isNotBlank() } ?: "Unknown Household"
     val phoneNumber = household?.phone?.takeIf { it.isNotBlank() }
     val emailAddress = household?.email?.takeIf { it.isNotBlank() }
@@ -580,7 +627,12 @@ fun CollectorRequestDetailScreen(
                             Spacer(modifier = Modifier.height(12.dp))
 
                             request.wasteItems.forEachIndexed { index, item ->
-                                WasteItemDetailCard(item = item)
+                                WasteItemDetailCard(
+                                    item = item,
+                                    onImageClick = { imageUrl ->
+                                        selectedImageUrl = imageUrl
+                                    }
+                                )
                                 if (index < request.wasteItems.size - 1) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
@@ -837,6 +889,45 @@ fun CollectorRequestDetailScreen(
                 }
             }
         )
+    }
+
+    // Full-Screen Image Viewer
+    if (selectedImageUrl != null) {
+        Dialog(
+            onDismissRequest = { selectedImageUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { selectedImageUrl = null }
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(selectedImageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Waste Item Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+
+                IconButton(
+                    onClick = { selectedImageUrl = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
     }
 }
 

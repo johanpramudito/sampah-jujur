@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,6 +30,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.request.CachePolicy
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -861,20 +863,30 @@ fun WasteItemDetailCard(
             if (item.imageUrl.isNotBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
 
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(item.imageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Waste item image",
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .border(1.dp, Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                         .clickable { onImageClick(item.imageUrl) },
-                    contentScale = ContentScale.Crop
-                )
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(item.imageUrl)
+                            .crossfade(true)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .networkCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = "Waste item image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                        error = painterResource(id = android.R.drawable.ic_menu_report_image)
+                    )
+                }
             }
         }
     }
