@@ -9,9 +9,15 @@ import com.melodi.sampahjujur.model.WasteItem
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.melodi.sampahjujur.data.local.dao.PickupRequestDao
+import com.melodi.sampahjujur.data.local.dao.WasteItemDao
+import com.melodi.sampahjujur.data.local.entity.PickupRequestEntity
+import com.melodi.sampahjujur.data.local.entity.WasteItemEntity
+import com.melodi.sampahjujur.data.sync.SyncManager
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 import java.util.UUID
@@ -21,13 +27,17 @@ import javax.inject.Singleton
 /**
  * Repository class for handling all interactions with the Firestore pickup_requests collection.
  * Manages pickup request lifecycle from creation to completion.
+ * Now includes Room Database integration for offline-first waste item management.
  */
 @Singleton
 class WasteRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val authRepository: AuthRepository,
     private val chatRepository: ChatRepository,
-    private val notificationRepository: NotificationRepository
+    private val notificationRepository: NotificationRepository,
+    private val wasteItemDao: WasteItemDao,
+    private val pickupRequestDao: PickupRequestDao,
+    private val syncManager: SyncManager
 ) {
 
     companion object {
@@ -39,19 +49,38 @@ class WasteRepository @Inject constructor(
     }
 
     /**
-     * Posts a new pickup request to Firestore
+     * Posts a new pickup request using offline-first approach:
+     * 1. Save to Room immediately (works offline)
+     * 2. Try to sync to Firestore if online
+     * 3. If offline, SyncManager will retry when connection returns
      *
      * @param pickupRequest The pickup request to be created
      * @return Result containing the created PickupRequest with generated ID or error
      */
     suspend fun postPickupRequest(pickupRequest: PickupRequest): Result<PickupRequest> {
         return try {
-            val docRef = firestore.collection(PICKUP_REQUESTS_COLLECTION)
-                .document()
+            // Generate ID first
+            val requestId = UUID.randomUUID().toString()
+            val requestWithId = pickupRequest.copy(id = requestId)
 
-            val requestWithId = pickupRequest.copy(id = docRef.id)
+            // 1. Save to Room first (offline-capable, instant)
+            val entity = PickupRequestEntity.fromPickupRequest(requestWithId)
+            pickupRequestDao.insert(entity)
 
-            docRef.set(requestWithId).await()
+            // 2. Try to sync to Firebase if online
+            if (syncManager.isOnline()) {
+                try {
+                    val docRef = firestore.collection(PICKUP_REQUESTS_COLLECTION)
+                        .document(requestId)
+                    docRef.set(requestWithId).await()
+
+                    // Mark as synced
+                    pickupRequestDao.markAsSynced(requestId)
+                } catch (e: Exception) {
+                    // Firebase failed but Room succeeded - will sync later
+                    android.util.Log.w("WasteRepository", "Firebase sync failed, will retry later: ${e.message}")
+                }
+            }
 
             // Notify all collectors of new request
             notificationRepository.notifyNewRequest(requestWithId.id)
@@ -590,93 +619,76 @@ class WasteRepository @Inject constructor(
         }
     }
 
-    fun listenToHouseholdWasteItems(householdId: String): Flow<List<WasteItem>> = callbackFlow {
-        val listener = firestore.collection(USERS_COLLECTION)
-            .document(householdId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
-
-                val items = snapshot?.toObject(User::class.java)?.draftWasteItems.orEmpty()
-                val normalizedItems = mutableListOf<WasteItem>()
-
-                items.forEach { item ->
-                    if (item.id.isNotBlank()) {
-                        if (normalizedItems.none { it.id == item.id }) {
-                            normalizedItems.add(item)
-                        }
-                    } else {
-                        normalizedItems.add(item)
-                    }
-                }
-
-                val sortedItems = normalizedItems.sortedByDescending { it.createdAt }
-                trySend(sortedItems)
+    /**
+     * Listen to household waste items from Room database (offline-first).
+     * Returns real-time Flow of waste items stored locally.
+     * Firebase sync happens in the background via SyncManager.
+     */
+    fun listenToHouseholdWasteItems(householdId: String): Flow<List<WasteItem>> {
+        // Return Room data as primary source (offline-first)
+        return wasteItemDao.getWasteItemsByHousehold(householdId)
+            .map { entities ->
+                entities.map { it.toWasteItem() }
             }
-
-        awaitClose { listener.remove() }
     }
 
+    /**
+     * Add waste item using offline-first approach:
+     * 1. Save to Room immediately (instant response)
+     * 2. Sync to Firebase in background
+     */
     suspend fun addWasteItem(householdId: String, wasteItem: WasteItem): Result<WasteItem> {
         return try {
-            val resultItem = firestore.runTransaction { transaction ->
-                val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
-                val snapshot = transaction.get(userRef)
-                val existing = snapshot.toObject(User::class.java)?.draftWasteItems ?: emptyList()
+            val createdAt = if (wasteItem.createdAt == 0L) {
+                System.currentTimeMillis()
+            } else {
+                wasteItem.createdAt
+            }
 
-                val createdAt = if (wasteItem.createdAt == 0L) {
-                    System.currentTimeMillis()
-                } else {
-                    wasteItem.createdAt
-                }
+            val itemWithId = wasteItem.copy(
+                id = wasteItem.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                createdAt = createdAt
+            )
 
-                val itemWithId = wasteItem.copy(
-                    id = wasteItem.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
-                    createdAt = createdAt
-                )
+            // 1. Save to Room first (offline-capable, instant)
+            val entity = WasteItemEntity.fromWasteItem(itemWithId, householdId, isSynced = false)
+            wasteItemDao.insert(entity)
 
-                val updatedItems = existing.filterNot { it.id == itemWithId.id } + itemWithId
+            // 2. Try to sync to Firebase in background
+            if (syncManager.isOnline()) {
+                syncManager.syncSingleItem(entity, householdId)
+            }
 
-                if (snapshot.exists()) {
-                    transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, updatedItems)
-                } else {
-                    transaction.set(
-                        userRef,
-                        mapOf(FIELD_DRAFT_WASTE_ITEMS to updatedItems),
-                        SetOptions.merge()
-                    )
-                }
-
-                itemWithId
-            }.await()
-
-            Result.success(resultItem)
+            Result.success(itemWithId)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
+    /**
+     * Delete waste item using offline-first approach
+     */
     suspend fun deleteWasteItem(householdId: String, wasteItemId: String): Result<Unit> {
         return try {
-            firestore.runTransaction { transaction ->
-                val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
-                val snapshot = transaction.get(userRef)
-                if (!snapshot.exists()) {
-                    return@runTransaction Unit
-                }
+            // 1. Delete from Room first
+            wasteItemDao.deleteById(wasteItemId)
 
-                val existing = snapshot.toObject(User::class.java)?.draftWasteItems ?: emptyList()
-                val updatedItems = existing.filterNot { it.id == wasteItemId }
+            // 2. Sync deletion to Firebase if online
+            if (syncManager.isOnline()) {
+                firestore.runTransaction { transaction ->
+                    val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
+                    val snapshot = transaction.get(userRef)
+                    if (!snapshot.exists()) {
+                        return@runTransaction Unit
+                    }
 
-                if (updatedItems.size == existing.size) {
-                    return@runTransaction Unit
-                }
+                    val existing = snapshot.toObject(User::class.java)?.draftWasteItems ?: emptyList()
+                    val updatedItems = existing.filterNot { it.id == wasteItemId }
 
-                transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, updatedItems)
-                Unit
-            }.await()
+                    transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, updatedItems)
+                    Unit
+                }.await()
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -684,24 +696,33 @@ class WasteRepository @Inject constructor(
         }
     }
 
+    /**
+     * Clear all waste items for a household (offline-first)
+     */
     suspend fun clearWasteItems(householdId: String): Result<Unit> {
         return try {
-            firestore.runTransaction { transaction ->
-                val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
-                val snapshot = transaction.get(userRef)
+            // 1. Clear from Room first
+            wasteItemDao.deleteAllForHousehold(householdId)
 
-                if (!snapshot.exists()) {
-                    transaction.set(
-                        userRef,
-                        mapOf(FIELD_DRAFT_WASTE_ITEMS to emptyList<WasteItem>()),
-                        SetOptions.merge()
-                    )
-                } else {
-                    transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, emptyList<WasteItem>())
-                }
+            // 2. Sync to Firebase if online
+            if (syncManager.isOnline()) {
+                firestore.runTransaction { transaction ->
+                    val userRef = firestore.collection(USERS_COLLECTION).document(householdId)
+                    val snapshot = transaction.get(userRef)
 
-                Unit
-            }.await()
+                    if (!snapshot.exists()) {
+                        transaction.set(
+                            userRef,
+                            mapOf(FIELD_DRAFT_WASTE_ITEMS to emptyList<WasteItem>()),
+                            SetOptions.merge()
+                        )
+                    } else {
+                        transaction.update(userRef, FIELD_DRAFT_WASTE_ITEMS, emptyList<WasteItem>())
+                    }
+
+                    Unit
+                }.await()
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

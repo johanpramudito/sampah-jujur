@@ -12,6 +12,8 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.melodi.sampahjujur.data.local.dao.UserDao
+import com.melodi.sampahjujur.data.local.entity.UserEntity
 import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -21,12 +23,14 @@ import javax.inject.Singleton
  * Repository class for handling user authentication with Firebase Auth.
  * Provides separate registration flows for household and collector users.
  * Includes phone authentication, password reset, and comprehensive error handling.
+ * Now includes Room Database caching for faster profile loading.
  */
 @Singleton
 class AuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val fcmTokenManager: FcmTokenManager
+    private val fcmTokenManager: FcmTokenManager,
+    private val userDao: UserDao
 ) {
 
     /**
@@ -474,16 +478,21 @@ class AuthRepository @Inject constructor(
     }
 
     /**
-     * Signs out the current user
+     * Signs out the current user and clears local cache
      */
     suspend fun signOut() {
         // Clear FCM token before signing out
         fcmTokenManager.clearFcmToken()
         auth.signOut()
+        // Clear Room cache on sign out
+        userDao.clearAll()
     }
 
     /**
-     * Gets the currently signed-in user
+     * Gets the currently signed-in user.
+     * Uses offline-first approach:
+     * 1. Check Room cache first (instant, works offline)
+     * 2. If not cached or stale, fetch from Firebase and update cache
      *
      * @return Current User object or null if not signed in
      */
@@ -491,14 +500,37 @@ class AuthRepository @Inject constructor(
         val currentUser = auth.currentUser ?: return null
 
         return try {
+            // 1. Try to get from Room cache first
+            val cachedUser = userDao.getUserById(currentUser.uid)
+
+            // Check if cache is fresh (less than 5 minutes old)
+            val cacheAge = System.currentTimeMillis() - (cachedUser?.lastSyncedAt ?: 0)
+            val isCacheFresh = cacheAge < 5 * 60 * 1000 // 5 minutes
+
+            if (cachedUser != null && isCacheFresh) {
+                // Return cached user with waste items from Room
+                return cachedUser.toUser()
+            }
+
+            // 2. Cache is stale or missing, fetch from Firebase
             val userDoc = firestore.collection("users")
                 .document(currentUser.uid)
                 .get()
                 .await()
 
-            userDoc.toObject(User::class.java)
+            val user = userDoc.toObject(User::class.java)
+
+            // 3. Update cache
+            if (user != null) {
+                val entity = UserEntity.fromUser(user)
+                userDao.insertOrUpdate(entity)
+            }
+
+            user
         } catch (e: Exception) {
-            null
+            // If Firebase fails, return cached user even if stale (offline fallback)
+            val cachedUser = userDao.getUserById(currentUser.uid)
+            cachedUser?.toUser()
         }
     }
 
