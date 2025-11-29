@@ -54,6 +54,12 @@ class LocationTrackingService : Service() {
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "location_tracking_channel"
         const val CHANNEL_NAME = "Location Tracking"
+
+        // SharedPreferences keys for persisting tracking state
+        private const val PREFS_NAME = "location_tracking_prefs"
+        private const val KEY_REQUEST_ID = "request_id"
+        private const val KEY_COLLECTOR_ID = "collector_id"
+        private const val KEY_IS_TRACKING = "is_tracking"
     }
 
     @Inject lateinit var locationRepository: LocationRepository
@@ -70,6 +76,18 @@ class LocationTrackingService : Service() {
         super.onCreate()
         Log.d(TAG, "🔧 ===== SERVICE CREATED =====")
         createNotificationChannel()
+
+        // Try to restore tracking state if service was restarted by system
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val wasTracking = prefs.getBoolean(KEY_IS_TRACKING, false)
+        if (wasTracking) {
+            val savedRequestId = prefs.getString(KEY_REQUEST_ID, null)
+            val savedCollectorId = prefs.getString(KEY_COLLECTOR_ID, null)
+            if (savedRequestId != null && savedCollectorId != null) {
+                Log.d(TAG, "🔄 Restoring tracking state: request=$savedRequestId, collector=$savedCollectorId")
+                startLocationTracking(savedRequestId, savedCollectorId)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -127,6 +145,13 @@ class LocationTrackingService : Service() {
         this.currentRequestId = requestId
         this.collectorId = collectorId
         this.isTracking = true
+
+        // Save tracking state to SharedPreferences (for service restart)
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_IS_TRACKING, true)
+            .putString(KEY_REQUEST_ID, requestId)
+            .putString(KEY_COLLECTOR_ID, collectorId)
+            .apply()
 
         // Start foreground with notification
         val notification = createNotification()
@@ -235,6 +260,13 @@ class LocationTrackingService : Service() {
         collectorId = null
         locationCallback = null
 
+        // Clear saved tracking state
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_IS_TRACKING, false)
+            .remove(KEY_REQUEST_ID)
+            .remove(KEY_COLLECTOR_ID)
+            .apply()
+
         // Stop foreground service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -276,16 +308,28 @@ class LocationTrackingService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Pickup in progress")
-            .setContentText("Tracking your location for household")
+            .setContentText("Live tracking active • Tap to open app")
+            .setSubText("Tracking continues in background")
             .setSmallIcon(R.drawable.ic_notification)  // Uses existing notification icon
             .setContentIntent(pendingIntent)
             .setOngoing(true)  // Cannot be dismissed
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setPriority(NotificationCompat.PRIORITY_LOW)  // Low priority to not annoy user
+            .setAutoCancel(false)  // Don't auto-cancel
             .build()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d(TAG, "📱 App closed/swiped away - Service continues running in background")
+
+        // DO NOT stop the service when app is closed
+        // Service will continue tracking until request is completed/cancelled
+        // The Firestore listener will automatically stop the service when status changes
+    }
 
     override fun onDestroy() {
         super.onDestroy()

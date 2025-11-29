@@ -289,6 +289,61 @@ fun RequestDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // Live Tracking Info Banner (only for in_progress status)
+                        if (request.status == "in_progress") {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFE3F2FD) // Light blue
+                                ),
+                                elevation = CardDefaults.cardElevation(0.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MyLocation,
+                                        contentDescription = "Live Tracking",
+                                        tint = Color(0xFF1976D2), // Blue
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Live Tracking Active",
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp,
+                                            color = Color(0xFF1976D2)
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = if (collectorLocation != null)
+                                                "Collector is on the way"
+                                            else
+                                                "Waiting for collector location...",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF424242)
+                                        )
+                                    }
+                                    // Pulsing indicator dot
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .background(
+                                                Color(0xFF2196F3), // Blue dot
+                                                CircleShape
+                                            )
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
                         // OpenStreetMap Preview with Collector Location
                         Box {
                             LiveTrackingMapPreview(
@@ -296,7 +351,7 @@ fun RequestDetailScreen(
                                 pickupLongitude = request.pickupLocation.longitude,
                                 collectorLocation = collectorLocation
                             )
-                            // Expand icon overlay button
+                            // Expand button overlay (only for in_progress)
                             if (request.status == "in_progress") {
                                 IconButton(
                                     onClick = { showExpandedMap = true },
