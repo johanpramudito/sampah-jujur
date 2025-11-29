@@ -56,6 +56,10 @@ fun RequestPickupScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val createRequestResult by viewModel.createRequestResult.observeAsState()
 
+    // Observe waste item loading state
+    val isAddingWasteItem by viewModel.isAddingWasteItem.collectAsState()
+    val wasteItemSuccess by viewModel.wasteItemOperationSuccess.collectAsState()
+
     // Permission launcher for location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -357,20 +361,36 @@ fun RequestPickupScreen(
                         containerColor = PrimaryGreen
                     ),
                     shape = RoundedCornerShape(28.dp),
-                    enabled = wasteItems.isNotEmpty() && selectedAddress.isNotEmpty() && !uiState.isLoading
+                    enabled = wasteItems.isNotEmpty() && selectedAddress.isNotEmpty() && !uiState.isLoading && !uiState.isSyncingImages
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White
-                        )
-                    } else {
-                        Text(
-                            text = "Submit Pickup Request",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                    when {
+                        uiState.isSyncingImages -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Uploading images...",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
+                        uiState.isLoading -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White
+                            )
+                        }
+                        else -> {
+                            Text(
+                                text = "Submit Pickup Request",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }
@@ -385,7 +405,12 @@ fun RequestPickupScreen(
     // Show Add Item Dialog
     if (showAddItemDialog) {
         AddWasteItemDialog(
-            onDismiss = { showAddItemDialog = false },
+            isLoading = isAddingWasteItem,
+            onDismiss = {
+                if (!isAddingWasteItem) {
+                    showAddItemDialog = false
+                }
+            },
             onAddItem = { type, weight, value, description, imageUrl ->
                 viewModel.addWasteItem(
                     WasteItem(
@@ -396,9 +421,19 @@ fun RequestPickupScreen(
                         imageUrl = imageUrl
                     )
                 )
-                showAddItemDialog = false
+                // Don't close dialog immediately - wait for loading to complete
             }
         )
+    }
+
+    // Close dialog and show success when waste item is added
+    LaunchedEffect(isAddingWasteItem, wasteItemSuccess) {
+        val success = wasteItemSuccess
+        if (!isAddingWasteItem && success != null && showAddItemDialog) {
+            showAddItemDialog = false
+            snackbarHostState.showSnackbar(success)
+            viewModel.clearWasteItemSuccess()
+        }
     }
 
     // Show success dialog when request is created

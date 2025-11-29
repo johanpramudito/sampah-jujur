@@ -4,6 +4,7 @@ import android.app.Activity
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.utils.FirebaseErrorHandler
 import com.melodi.sampahjujur.utils.ValidationUtils
+import com.melodi.sampahjujur.utils.FcmTokenManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.PhoneAuthCredential
@@ -11,6 +12,8 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.melodi.sampahjujur.data.local.dao.UserDao
+import com.melodi.sampahjujur.data.local.entity.UserEntity
 import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -20,11 +23,14 @@ import javax.inject.Singleton
  * Repository class for handling user authentication with Firebase Auth.
  * Provides separate registration flows for household and collector users.
  * Includes phone authentication, password reset, and comprehensive error handling.
+ * Now includes Room Database caching for faster profile loading.
  */
 @Singleton
 class AuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val fcmTokenManager: FcmTokenManager,
+    private val userDao: UserDao
 ) {
 
     /**
@@ -144,6 +150,10 @@ class AuthRepository @Inject constructor(
                 // User already registered, return existing user
                 val user = existingUser.toObject(User::class.java)
                     ?: throw Exception("Failed to parse user data")
+
+                // Save FCM token
+                fcmTokenManager.refreshAndSaveFcmToken()
+
                 return Result.success(user)
             }
 
@@ -178,6 +188,9 @@ class AuthRepository @Inject constructor(
                 phone = phone.trim(),
                 userType = User.ROLE_COLLECTOR
             )
+
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
 
             Result.success(user)
         } catch (e: Exception) {
@@ -237,6 +250,9 @@ class AuthRepository @Inject constructor(
                 throw Exception("This account is registered as a collector. Please use collector login.")
             }
 
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
+
             Result.success(user)
         } catch (e: Exception) {
             val errorMessage = FirebaseErrorHandler.getErrorMessage(e)
@@ -275,6 +291,9 @@ class AuthRepository @Inject constructor(
                 auth.signOut() // Sign out user with wrong role
                 throw Exception("This account is registered as a household. Please use household login.")
             }
+
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
 
             Result.success(user)
         } catch (e: Exception) {
@@ -386,6 +405,9 @@ class AuthRepository @Inject constructor(
                 newUser
             }
 
+            // Save FCM token
+            fcmTokenManager.refreshAndSaveFcmToken()
+
             android.util.Log.d("AuthRepository", "signInWithGoogle: Sign-in completed successfully for user: ${user.fullName}")
             Result.success(user)
         } catch (e: Exception) {
@@ -456,14 +478,21 @@ class AuthRepository @Inject constructor(
     }
 
     /**
-     * Signs out the current user
+     * Signs out the current user and clears local cache
      */
-    fun signOut() {
+    suspend fun signOut() {
+        // Clear FCM token before signing out
+        fcmTokenManager.clearFcmToken()
         auth.signOut()
+        // Clear Room cache on sign out
+        userDao.clearAll()
     }
 
     /**
-     * Gets the currently signed-in user
+     * Gets the currently signed-in user.
+     * Uses offline-first approach:
+     * 1. Check Room cache first (instant, works offline)
+     * 2. If not cached or stale, fetch from Firebase and update cache
      *
      * @return Current User object or null if not signed in
      */
@@ -471,14 +500,37 @@ class AuthRepository @Inject constructor(
         val currentUser = auth.currentUser ?: return null
 
         return try {
+            // 1. Try to get from Room cache first
+            val cachedUser = userDao.getUserById(currentUser.uid)
+
+            // Check if cache is fresh (less than 5 minutes old)
+            val cacheAge = System.currentTimeMillis() - (cachedUser?.lastSyncedAt ?: 0)
+            val isCacheFresh = cacheAge < 5 * 60 * 1000 // 5 minutes
+
+            if (cachedUser != null && isCacheFresh) {
+                // Return cached user with waste items from Room
+                return cachedUser.toUser()
+            }
+
+            // 2. Cache is stale or missing, fetch from Firebase
             val userDoc = firestore.collection("users")
                 .document(currentUser.uid)
                 .get()
                 .await()
 
-            userDoc.toObject(User::class.java)
+            val user = userDoc.toObject(User::class.java)
+
+            // 3. Update cache
+            if (user != null) {
+                val entity = UserEntity.fromUser(user)
+                userDao.insertOrUpdate(entity)
+            }
+
+            user
         } catch (e: Exception) {
-            null
+            // If Firebase fails, return cached user even if stale (offline fallback)
+            val cachedUser = userDao.getUserById(currentUser.uid)
+            cachedUser?.toUser()
         }
     }
 

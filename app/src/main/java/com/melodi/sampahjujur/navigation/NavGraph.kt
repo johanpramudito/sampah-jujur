@@ -1,5 +1,6 @@
 package com.melodi.sampahjujur.navigation
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.melodi.sampahjujur.PendingNavigation
 import com.melodi.sampahjujur.di.GoogleSignInModule
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.User
@@ -83,7 +85,9 @@ sealed class Screen(val route: String) {
 @Composable
 fun SampahJujurNavGraph(
     navController: NavHostController,
-    authViewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    authViewModel: com.melodi.sampahjujur.viewmodel.AuthViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    pendingNavigation: PendingNavigation? = null,
+    onNavigationHandled: () -> Unit = {}
 ) {
     val authState by authViewModel.authState.collectAsState()
     val context = LocalContext.current
@@ -95,6 +99,34 @@ fun SampahJujurNavGraph(
             .requestEmail()
             .build()
         GoogleSignIn.getClient(context, gso)
+    }
+
+    // Handle deep linking from notifications
+    LaunchedEffect(pendingNavigation, authState) {
+        if (pendingNavigation != null && authState is AuthViewModel.AuthState.Authenticated) {
+            Log.d("NavGraph", "=== Handling Deep Link ===")
+            Log.d("NavGraph", "Pending Navigation: $pendingNavigation")
+            Log.d("NavGraph", "Auth State: Authenticated")
+
+            val route = when (pendingNavigation) {
+                is PendingNavigation.Chat -> {
+                    Log.d("NavGraph", "Navigating to Chat with requestId: ${pendingNavigation.requestId}")
+                    Screen.Chat.createRoute(pendingNavigation.requestId)
+                }
+                is PendingNavigation.HouseholdRequestDetail -> {
+                    Log.d("NavGraph", "Navigating to Household Request Detail: ${pendingNavigation.requestId}")
+                    Screen.HouseholdRequestDetail.createRoute(pendingNavigation.requestId)
+                }
+                is PendingNavigation.CollectorRequestDetail -> {
+                    Log.d("NavGraph", "Navigating to Collector Request Detail: ${pendingNavigation.requestId}")
+                    Screen.CollectorRequestDetail.createRoute(pendingNavigation.requestId)
+                }
+            }
+
+            navController.navigate(route)
+            onNavigationHandled()
+            Log.d("NavGraph", "Navigation completed, pending navigation cleared")
+        }
     }
 
     // Handle auth state changes during runtime (e.g., after login/logout)
@@ -139,12 +171,20 @@ fun SampahJujurNavGraph(
             LaunchedEffect(authState) {
                 when (authState) {
                     is com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated -> {
+                        // If there's a pending deep link navigation, let it be handled instead
+                        // Don't add pendingNavigation to LaunchedEffect keys or it will re-run when cleared
+                        if (pendingNavigation != null) {
+                            Log.d("NavGraph", "Loading screen: Skipping home navigation due to pending deep link: $pendingNavigation")
+                            return@LaunchedEffect
+                        }
+
                         val user = (authState as com.melodi.sampahjujur.viewmodel.AuthViewModel.AuthState.Authenticated).user
                         val destination = if (user.isHousehold()) {
                             Screen.HouseholdRequest.route
                         } else {
                             Screen.CollectorDashboard.route
                         }
+                        Log.d("NavGraph", "Loading screen: Navigating to home screen: $destination")
                         navController.navigate(destination) {
                             popUpTo(Screen.Loading.route) { inclusive = true }
                         }

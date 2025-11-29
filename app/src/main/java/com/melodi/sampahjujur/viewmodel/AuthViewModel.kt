@@ -352,9 +352,11 @@ class AuthViewModel @Inject constructor(
      * Signs out the current user
      */
     fun signOut() {
-        authRepository.signOut()
-        _authState.value = AuthState.Unauthenticated
-        _uiState.value = AuthUiState() // Reset UI state
+        viewModelScope.launch {
+            authRepository.signOut()
+            _authState.value = AuthState.Unauthenticated
+            _uiState.value = AuthUiState() // Reset UI state
+        }
     }
 
     /**
