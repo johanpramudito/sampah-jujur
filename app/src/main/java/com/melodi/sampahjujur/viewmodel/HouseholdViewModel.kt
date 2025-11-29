@@ -6,11 +6,13 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melodi.sampahjujur.data.sync.SyncManager
+import com.melodi.sampahjujur.model.LocationUpdate
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.Transaction
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
+import com.melodi.sampahjujur.repository.LocationTrackingRepository
 import com.melodi.sampahjujur.repository.TransactionCacheRepository
 import com.melodi.sampahjujur.repository.WasteRepository
 import com.melodi.sampahjujur.utils.CloudinaryUploadService
@@ -37,7 +39,8 @@ class HouseholdViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val transactionCacheRepository: TransactionCacheRepository,
     private val preferencesRepository: com.melodi.sampahjujur.repository.PreferencesRepository,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val locationTrackingRepository: LocationTrackingRepository
 ) : ViewModel() {
 
     companion object {
@@ -635,6 +638,18 @@ class HouseholdViewModel @Inject constructor(
                 selectedAddress = ""
             )
         }
+    }
+
+    /**
+     * Observes real-time collector location for a specific request.
+     * Returns Flow of LocationUpdate that updates when collector moves.
+     * Returns null if no location updates available or request not in progress.
+     *
+     * @param requestId The pickup request ID to observe
+     * @return Flow emitting latest LocationUpdate or null
+     */
+    fun observeCollectorLocation(requestId: String): Flow<LocationUpdate?> {
+        return locationTrackingRepository.streamCollectorLocation(requestId)
     }
 }
 

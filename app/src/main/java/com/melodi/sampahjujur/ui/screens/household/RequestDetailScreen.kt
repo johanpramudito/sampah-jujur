@@ -34,10 +34,12 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import com.melodi.sampahjujur.model.LocationUpdate
 import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.model.WasteItem
 import com.melodi.sampahjujur.ui.theme.*
 import com.melodi.sampahjujur.viewmodel.HouseholdViewModel
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -62,6 +64,22 @@ fun HouseholdRequestDetailRoute(
     val request by viewModel.observeRequest(requestId).collectAsState(initial = null)
     var collectorInfo by remember { mutableStateOf<com.melodi.sampahjujur.model.User?>(null) }
     val scope = rememberCoroutineScope()
+
+    // Observe real-time collector location ONLY when request is in_progress
+    val collectorLocation by remember(request?.status) {
+        if (request?.status == PickupRequest.STATUS_IN_PROGRESS) {
+            viewModel.observeCollectorLocation(requestId)
+        } else {
+            flowOf(null)
+        }
+    }.collectAsState(initial = null)
+
+    // Log location updates for debugging
+    LaunchedEffect(collectorLocation) {
+        collectorLocation?.let {
+            android.util.Log.d("HouseholdLocation", "Collector location updated: lat=${it.latitude}, lng=${it.longitude}, accuracy=${it.accuracy}m, timestamp=${it.timestamp}")
+        }
+    }
 
     fun launchDialer(phone: String?) {
         val target = phone?.takeIf { it.isNotBlank() }
@@ -138,6 +156,7 @@ fun HouseholdRequestDetailRoute(
             collectorVehicle = if (collectorInfo?.vehicleType?.isNotBlank() == true) {
                 "${collectorInfo?.vehicleType} - ${collectorInfo?.vehiclePlateNumber}"
             } else null,
+            collectorLocation = collectorLocation,
             onBackClick = onBackClick,
             onCancelRequest = {
                 viewModel.cancelPickupRequest(requestId)
@@ -156,6 +175,7 @@ fun RequestDetailScreen(
     collectorName: String? = null,
     collectorPhone: String? = null,
     collectorVehicle: String? = null,
+    collectorLocation: LocationUpdate? = null,
     onBackClick: () -> Unit = {},
     onCancelRequest: () -> Unit = {},
     onContactCollector: () -> Unit = {},
@@ -163,6 +183,7 @@ fun RequestDetailScreen(
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+    var showExpandedMap by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -266,11 +287,40 @@ fun RequestDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // OpenStreetMap Preview
-                        StaticMapPreview(
-                            latitude = request.pickupLocation.latitude,
-                            longitude = request.pickupLocation.longitude
-                        )
+                        // OpenStreetMap Preview with Collector Location
+                        Box {
+                            LiveTrackingMapPreview(
+                                pickupLatitude = request.pickupLocation.latitude,
+                                pickupLongitude = request.pickupLocation.longitude,
+                                collectorLocation = collectorLocation
+                            )
+                            // Expand icon overlay button
+                            if (request.status == "in_progress") {
+                                IconButton(
+                                    onClick = { showExpandedMap = true },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .background(
+                                                Color.White.copy(alpha = 0.95f),
+                                                RoundedCornerShape(18.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ZoomOutMap,
+                                            contentDescription = "Expand Map",
+                                            tint = PrimaryGreen,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -682,6 +732,17 @@ fun RequestDetailScreen(
         )
     }
 
+    // Expanded Map Dialog
+    if (showExpandedMap) {
+        ExpandedMapDialog(
+            pickupLatitude = request.pickupLocation.latitude,
+            pickupLongitude = request.pickupLocation.longitude,
+            pickupAddress = request.pickupLocation.address,
+            collectorLocation = collectorLocation,
+            onDismiss = { showExpandedMap = false }
+        )
+    }
+
     // Full-Screen Image Viewer
     if (selectedImageUrl != null) {
         Dialog(
@@ -832,6 +893,329 @@ fun getWasteTypeIcon(type: String) = when (type.lowercase()) {
 fun formatDateTime(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+@Composable
+fun LiveTrackingMapPreview(
+    pickupLatitude: Double,
+    pickupLongitude: Double,
+    collectorLocation: LocationUpdate? = null
+) {
+    val context = LocalContext.current
+    var mapView by remember { mutableStateOf<MapView?>(null) }
+    var pickupMarker by remember { mutableStateOf<Marker?>(null) }
+    var collectorMarker by remember { mutableStateOf<Marker?>(null) }
+    var isInitialized by remember { mutableStateOf(false) }
+
+    // Initialize OSMDroid configuration
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().load(
+            context,
+            context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+        )
+        Configuration.getInstance().userAgentValue = context.packageName
+    }
+
+    // Update ONLY collector marker position when location changes
+    LaunchedEffect(collectorLocation) {
+        if (!isInitialized) return@LaunchedEffect // Skip until map is initialized
+
+        mapView?.let { map ->
+            android.util.Log.d("MapUpdate", "Updating collector marker position: ${collectorLocation?.latitude}, ${collectorLocation?.longitude}")
+
+            if (collectorLocation != null) {
+                // Update or create collector marker
+                if (collectorMarker == null) {
+                    // First time - create and add collector marker
+                    collectorMarker = Marker(map).apply {
+                        position = collectorLocation.toGeoPoint()
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        title = "Collector"
+                        icon = context.getDrawable(com.melodi.sampahjujur.R.drawable.ic_collector_marker)
+                    }
+                    map.overlays.add(collectorMarker)
+                } else {
+                    // Update existing marker position (smooth movement)
+                    collectorMarker?.position = collectorLocation.toGeoPoint()
+                }
+            } else {
+                // Remove collector marker if no location
+                collectorMarker?.let { map.overlays.remove(it) }
+                collectorMarker = null
+            }
+
+            map.invalidate()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(12.dp))
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                MapView(ctx).apply {
+                    setTileSource(TileSourceFactory.MAPNIK)
+
+                    // Make completely non-interactive
+                    setMultiTouchControls(false)
+                    isClickable = false
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    setOnTouchListener { _, _ -> true } // Consume all touch events
+
+                    val pickupPoint = GeoPoint(pickupLatitude, pickupLongitude)
+                    controller.setZoom(16.0)
+                    controller.setCenter(pickupPoint)
+
+                    // Add pickup location marker (default OSMDroid marker)
+                    pickupMarker = Marker(this).apply {
+                        position = pickupPoint
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        title = "Pickup Location"
+                    }
+                    overlays.add(pickupMarker)
+
+                    // Store reference
+                    mapView = this
+                    isInitialized = true
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
+fun ExpandedMapDialog(
+    pickupLatitude: Double,
+    pickupLongitude: Double,
+    pickupAddress: String,
+    collectorLocation: LocationUpdate?,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var mapView by remember { mutableStateOf<MapView?>(null) }
+    var pickupMarker by remember { mutableStateOf<Marker?>(null) }
+    var collectorMarker by remember { mutableStateOf<Marker?>(null) }
+    var hasInitialCentering by remember { mutableStateOf(false) }
+
+    // Initialize OSMDroid configuration
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().load(
+            context,
+            context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+        )
+        Configuration.getInstance().userAgentValue = context.packageName
+    }
+
+    // Update ONLY collector marker position when location changes (without resetting zoom/center)
+    LaunchedEffect(collectorLocation) {
+        mapView?.let { map ->
+            if (collectorLocation != null) {
+                if (collectorMarker == null) {
+                    // First time - create and add collector marker
+                    collectorMarker = Marker(map).apply {
+                        position = collectorLocation.toGeoPoint()
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        title = "Collector"
+                        snippet = "Accuracy: ${collectorLocation.getAccuracyDescription()}"
+                        icon = context.getDrawable(com.melodi.sampahjujur.R.drawable.ic_collector_marker)
+                    }
+                    map.overlays.add(collectorMarker)
+
+                    // Only center on first collector location
+                    if (!hasInitialCentering) {
+                        map.controller.setCenter(collectorLocation.toGeoPoint())
+                        hasInitialCentering = true
+                    }
+                } else {
+                    // Just update position (smooth movement, no zoom/center change)
+                    collectorMarker?.position = collectorLocation.toGeoPoint()
+                    collectorMarker?.snippet = "Accuracy: ${collectorLocation.getAccuracyDescription()}"
+                }
+            } else {
+                // Remove collector marker if no location
+                collectorMarker?.let { map.overlays.remove(it) }
+                collectorMarker = null
+            }
+
+            map.invalidate()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
+            // Full-screen interactive map
+            AndroidView(
+                factory = { ctx ->
+                    MapView(ctx).apply {
+                        setTileSource(TileSourceFactory.MAPNIK)
+
+                        // Make interactive
+                        setMultiTouchControls(true)
+                        isClickable = true
+
+                        val pickupPoint = GeoPoint(pickupLatitude, pickupLongitude)
+                        controller.setZoom(16.0)
+                        controller.setCenter(pickupPoint)
+
+                        // Add pickup location marker (uses default OSMDroid marker)
+                        pickupMarker = Marker(this).apply {
+                            position = pickupPoint
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                            title = "Pickup Location"
+                            snippet = pickupAddress
+                        }
+                        overlays.add(pickupMarker)
+
+                        // Store reference
+                        mapView = this
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Header with address and close button
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.95f)
+                    ),
+                    elevation = CardDefaults.cardElevation(4.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "Location",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Live Tracking",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = pickupAddress,
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Zoom controls (right side)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Zoom In Button
+                FloatingActionButton(
+                    onClick = { mapView?.controller?.zoomIn() },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Zoom In",
+                        tint = PrimaryGreen
+                    )
+                }
+
+                // Zoom Out Button
+                FloatingActionButton(
+                    onClick = { mapView?.controller?.zoomOut() },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = "Zoom Out",
+                        tint = PrimaryGreen
+                    )
+                }
+            }
+
+            // Accuracy warning card - positioned above bottom
+            if (collectorLocation != null && !collectorLocation.isAccurate()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 100.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFF3CD)
+                    ),
+                    elevation = CardDefaults.cardElevation(4.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Warning",
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${collectorLocation.getAccuracyDescription()} - Location may be approximate",
+                            fontSize = 13.sp,
+                            color = Color(0xFF856404),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

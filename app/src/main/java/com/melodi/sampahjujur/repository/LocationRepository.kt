@@ -1,6 +1,7 @@
 package com.melodi.sampahjujur.repository
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Address
@@ -269,5 +270,69 @@ class LocationRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    /**
+     * Creates a location request optimized for battery efficiency on old phones.
+     * Uses BALANCED_POWER_ACCURACY for good balance between accuracy and battery life.
+     *
+     * Configuration:
+     * - Priority: BALANCED_POWER_ACCURACY (~100m accuracy, uses WiFi/cell towers)
+     * - Update Interval: 10 seconds (normal)
+     * - Fastest Interval: 5 seconds (minimum)
+     * - Distance Filter: 0 meters (TESTING - update every interval regardless of movement)
+     * - Max Delay: 0 seconds (TESTING - no batching for instant updates)
+     *
+     * @return LocationRequest configured for background tracking
+     */
+    fun createLocationRequest(): com.google.android.gms.location.LocationRequest {
+        return com.google.android.gms.location.LocationRequest.Builder(
+            com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+            10000L  // 10 seconds update interval
+        ).apply {
+            setMinUpdateIntervalMillis(10000L)      // Match interval to avoid "too fast" throttling
+            setMaxUpdateDelayMillis(0L)             // TESTING: No batching, instant updates
+            setMinUpdateDistanceMeters(0f)          // TESTING: Update every 10s regardless of movement
+            setWaitForAccurateLocation(false)       // Don't wait for GPS lock
+        }.build()
+    }
+
+    /**
+     * Requests continuous location updates with a callback.
+     * Used by LocationTrackingService for background tracking.
+     *
+     * @param locationRequest The location request configuration
+     * @param callback The callback to receive location updates
+     * @return Result indicating success or failure
+     */
+    @SuppressLint("MissingPermission")
+    suspend fun requestLocationUpdates(
+        locationRequest: com.google.android.gms.location.LocationRequest,
+        callback: com.google.android.gms.location.LocationCallback
+    ): Result<Unit> {
+        if (!hasLocationPermission()) {
+            return Result.failure(SecurityException("Location permission not granted"))
+        }
+
+        return try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                callback,
+                android.os.Looper.getMainLooper()
+            ).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Removes location updates for a specific callback.
+     * Should be called when tracking is no longer needed.
+     *
+     * @param callback The callback to remove
+     */
+    fun removeLocationUpdates(callback: com.google.android.gms.location.LocationCallback) {
+        fusedLocationClient.removeLocationUpdates(callback)
     }
 }

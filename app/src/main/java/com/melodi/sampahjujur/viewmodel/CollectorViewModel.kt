@@ -1,5 +1,8 @@
 package com.melodi.sampahjujur.viewmodel
 
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -11,10 +14,13 @@ import com.melodi.sampahjujur.model.TransactionItem
 import com.melodi.sampahjujur.model.User
 import com.melodi.sampahjujur.repository.AuthRepository
 import com.melodi.sampahjujur.repository.LocationRepository
+import com.melodi.sampahjujur.repository.LocationTrackingRepository
 import com.melodi.sampahjujur.repository.TransactionCacheRepository
 import com.melodi.sampahjujur.repository.WasteRepository
+import com.melodi.sampahjujur.service.LocationTrackingService
 // Removed CollectorNotificationHelper - using FCM instead
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,7 +63,9 @@ class CollectorViewModel @Inject constructor(
     private val wasteRepository: WasteRepository,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
-    private val transactionCacheRepository: TransactionCacheRepository
+    private val transactionCacheRepository: TransactionCacheRepository,
+    private val locationTrackingRepository: LocationTrackingRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectorUiState())
@@ -301,9 +309,12 @@ class CollectorViewModel @Inject constructor(
             val currentState = _uiState.value
 
             _uiState.value = if (result.isSuccess) {
+                // Start location tracking service
+                startLocationTrackingService(requestId, currentUser.id)
+
                 currentState.copy(
                     isLoading = false,
-                    successMessage = "Pickup started"
+                    successMessage = "Pickup started - Location tracking enabled"
                 )
             } else {
                 currentState.copy(
@@ -359,6 +370,9 @@ class CollectorViewModel @Inject constructor(
             val currentState = _uiState.value
 
             _uiState.value = if (result.isSuccess) {
+                // Stop location tracking (service will also auto-stop via Firestore listener)
+                stopLocationTrackingService()
+
                 // Cache the completed transaction to Room database
                 result.getOrNull()?.let { transaction ->
                     viewModelScope.launch {
@@ -409,6 +423,9 @@ class CollectorViewModel @Inject constructor(
             val currentState = _uiState.value
 
             _uiState.value = if (result.isSuccess) {
+                // Stop location tracking (service will also auto-stop via Firestore listener)
+                stopLocationTrackingService()
+
                 currentState.copy(
                     isLoading = false,
                     successMessage = "Request cancelled"
@@ -736,6 +753,43 @@ class CollectorViewModel @Inject constructor(
      */
     fun clearNavigation() {
         _uiState.value = _uiState.value.copy(selectedRequestForNavigation = null)
+    }
+
+    /**
+     * Starts the location tracking foreground service.
+     * Called when marking request as "in_progress".
+     *
+     * @param requestId The pickup request ID being tracked
+     * @param collectorId The collector's user ID
+     */
+    private fun startLocationTrackingService(requestId: String, collectorId: String) {
+        android.util.Log.d("CollectorViewModel", "🚀 STARTING LocationTrackingService for request: $requestId, collector: $collectorId")
+        val intent = Intent(context, LocationTrackingService::class.java).apply {
+            action = LocationTrackingService.ACTION_START_TRACKING
+            putExtra(LocationTrackingService.EXTRA_REQUEST_ID, requestId)
+            putExtra(LocationTrackingService.EXTRA_COLLECTOR_ID, collectorId)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.util.Log.d("CollectorViewModel", "📱 Starting foreground service (API ${Build.VERSION.SDK_INT})")
+            context.startForegroundService(intent)
+        } else {
+            android.util.Log.d("CollectorViewModel", "📱 Starting regular service (API ${Build.VERSION.SDK_INT})")
+            context.startService(intent)
+        }
+        android.util.Log.d("CollectorViewModel", "✅ Service start command sent")
+    }
+
+    /**
+     * Stops the location tracking service.
+     * Called when request is completed or cancelled.
+     * Service will also auto-stop via Firestore listener.
+     */
+    private fun stopLocationTrackingService() {
+        val intent = Intent(context, LocationTrackingService::class.java).apply {
+            action = LocationTrackingService.ACTION_STOP_TRACKING
+        }
+        context.startService(intent)
     }
 }
 

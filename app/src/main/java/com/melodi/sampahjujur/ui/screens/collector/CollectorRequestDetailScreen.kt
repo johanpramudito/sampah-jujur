@@ -314,6 +314,57 @@ fun CollectorRequestDetailScreen(
                     }
                 }
 
+                // Location Tracking Indicator (when in_progress)
+                if (request.status == PickupRequest.STATUS_IN_PROGRESS) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFE8F5E9)
+                            ),
+                            elevation = CardDefaults.cardElevation(0.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MyLocation,
+                                    contentDescription = "Location Tracking",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Location Tracking Active",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = PrimaryGreen
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Household can see your real-time location",
+                                        fontSize = 13.sp,
+                                        color = Color.DarkGray
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .background(
+                                            Color(0xFF2196F3),
+                                            CircleShape
+                                        )
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Household Info Card
                 item {
                     Card(
