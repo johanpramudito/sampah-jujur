@@ -118,7 +118,8 @@ class SampahJujurFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_REQUESTS)
-            .setSmallIcon(R.drawable.ic_collector_location)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(getLauncherIconBitmap())
             .setContentTitle("New request #$shortId")
             .setContentText(address)
             .setStyle(NotificationCompat.BigTextStyle().bigText("Request #$shortId\n$address"))
@@ -162,7 +163,8 @@ class SampahJujurFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_STATUS)
-            .setSmallIcon(R.drawable.ic_collector_location)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(getLauncherIconBitmap())
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
@@ -246,7 +248,8 @@ class SampahJujurFirebaseMessagingService : FirebaseMessagingService() {
             )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_CHAT)
-            .setSmallIcon(R.drawable.ic_chat)
+            .setSmallIcon(R.drawable.ic_notification)
+            // Don't set large icon for chat - let MessagingStyle show sender initials
             .setStyle(messagingStyle)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -267,6 +270,35 @@ class SampahJujurFirebaseMessagingService : FirebaseMessagingService() {
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * Get launcher icon as bitmap, handling both legacy and adaptive icons
+     */
+    private fun getLauncherIconBitmap(): android.graphics.Bitmap? {
+        return try {
+            val drawable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // For adaptive icons, get the foreground drawable
+                packageManager.getApplicationIcon(packageName)
+            } else {
+                // For legacy icons
+                android.graphics.drawable.BitmapDrawable(resources, android.graphics.BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
+            }
+
+            // Convert drawable to bitmap
+            val bitmap = android.graphics.Bitmap.createBitmap(
+                drawable.intrinsicWidth.coerceAtLeast(1),
+                drawable.intrinsicHeight.coerceAtLeast(1),
+                android.graphics.Bitmap.Config.ARGB_8888
+            )
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bitmap
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load launcher icon", e)
+            null
         }
     }
 }
