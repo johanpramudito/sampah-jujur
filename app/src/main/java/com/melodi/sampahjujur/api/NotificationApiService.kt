@@ -56,7 +56,8 @@ data class ChatMessageNotification(
     val chatId: String,
     val senderId: String,
     val messageText: String,
-    val senderName: String
+    val senderName: String,
+    val requestId: String // Added for deep linking to chat screen
 )
 
 /**

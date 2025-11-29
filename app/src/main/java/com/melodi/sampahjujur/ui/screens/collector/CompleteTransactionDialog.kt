@@ -79,16 +79,6 @@ fun CompleteTransactionDialog(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
-                // Drag Handle
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .background(Color.LightGray, shape = RoundedCornerShape(2.dp))
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
                 Text(
                     text = "Complete Pickup",
                     style = MaterialTheme.typography.headlineSmall.copy(

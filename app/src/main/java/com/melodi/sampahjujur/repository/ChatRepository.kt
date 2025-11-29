@@ -107,15 +107,16 @@ class ChatRepository @Inject constructor(
                     }
 
                     chatsCollection.document(chatId).update(updateData).await()
-                }
 
-                // Send notification to recipient (skip for system messages)
-                notificationRepository.notifyChatMessage(
-                    chatId = chatId,
-                    senderId = message.senderId,
-                    messageText = message.text,
-                    senderName = message.senderName
-                )
+                    // Send notification to recipient (skip for system messages)
+                    notificationRepository.notifyChatMessage(
+                        chatId = chatId,
+                        senderId = message.senderId,
+                        messageText = message.text,
+                        senderName = message.senderName,
+                        requestId = it.requestId // Include requestId for deep linking
+                    )
+                }
             }
 
             Result.success(messageId)

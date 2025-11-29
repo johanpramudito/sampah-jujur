@@ -69,11 +69,12 @@ class NotificationRepository @Inject constructor(
         chatId: String,
         senderId: String,
         messageText: String,
-        senderName: String
+        senderName: String,
+        requestId: String
     ): Result<Unit> {
         return try {
             val response = apiService.notifyChatMessage(
-                ChatMessageNotification(chatId, senderId, messageText, senderName)
+                ChatMessageNotification(chatId, senderId, messageText, senderName, requestId)
             )
             if (response.isSuccessful && response.body()?.success == true) {
                 Log.d(TAG, "Chat message notification sent successfully")

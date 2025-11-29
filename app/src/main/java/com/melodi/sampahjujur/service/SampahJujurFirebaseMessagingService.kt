@@ -179,6 +179,7 @@ class SampahJujurFirebaseMessagingService : FirebaseMessagingService() {
 
     private fun handleChatMessageNotification(data: Map<String, String>) {
         val chatId = data["chatId"] ?: return
+        val requestId = data["requestId"] ?: return // Required for deep linking
         val senderName = data["senderName"] ?: "Unknown"
         val messageText = data["messageText"] ?: return
         val conversationTitle = data["conversationTitle"] ?: senderName
@@ -225,7 +226,7 @@ class SampahJujurFirebaseMessagingService : FirebaseMessagingService() {
         val tapIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("destination", "chat")
-            putExtra("chatId", chatId)
+            putExtra("requestId", requestId) // Use requestId for deep linking
         }
 
         val tapPendingIntent = PendingIntent.getActivity(
