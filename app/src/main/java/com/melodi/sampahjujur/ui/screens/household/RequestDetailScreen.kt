@@ -56,6 +56,8 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.util.BoundingBox
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.pow
@@ -63,6 +65,10 @@ import kotlin.math.sin
 import kotlin.math.cos
 import kotlin.math.atan2
 import kotlin.math.sqrt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.URL
 
 /**
  * Route composable for Household Request Detail Screen
@@ -1114,6 +1120,67 @@ fun LiveTrackingMapPreview(
     }
 }
 
+data class RouteInfo(
+    val points: List<GeoPoint>,
+    val distance: Double, // in meters
+    val duration: Double  // in seconds
+)
+
+fun formatDuration(seconds: Double): String {
+    val minutes = (seconds / 60).toInt()
+    return when {
+        minutes < 1 -> "< 1 min"
+        minutes < 60 -> "$minutes min"
+        else -> {
+            val hours = minutes / 60
+            val remainingMinutes = minutes % 60
+            if (remainingMinutes == 0) "$hours hr" else "$hours hr $remainingMinutes min"
+        }
+    }
+}
+
+fun formatDistance(meters: Double): String {
+    return when {
+        meters < 1000 -> "${meters.toInt()} m"
+        else -> String.format(Locale.getDefault(), "%.1f km", meters / 1000)
+    }
+}
+
+suspend fun fetchRoute(startLat: Double, startLon: Double, endLat: Double, endLon: Double): RouteInfo? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val url = "https://router.project-osrm.org/route/v1/driving/$startLon,$startLat;$endLon,$endLat?overview=full&geometries=geojson"
+            val response = URL(url).readText()
+            val json = JSONObject(response)
+
+            if (json.getString("code") == "Ok") {
+                val routes = json.getJSONArray("routes")
+                if (routes.length() > 0) {
+                    val route = routes.getJSONObject(0)
+                    val geometry = route.getJSONObject("geometry")
+                    val coordinates = geometry.getJSONArray("coordinates")
+
+                    val points = mutableListOf<GeoPoint>()
+                    for (i in 0 until coordinates.length()) {
+                        val coord = coordinates.getJSONArray(i)
+                        val lon = coord.getDouble(0)
+                        val lat = coord.getDouble(1)
+                        points.add(GeoPoint(lat, lon))
+                    }
+
+                    val distance = route.getDouble("distance")
+                    val duration = route.getDouble("duration")
+
+                    RouteInfo(points, distance, duration)
+                } else null
+            } else null
+        } catch (e: Exception) {
+            android.util.Log.e("RouteError", "Failed to fetch route", e)
+            null
+        }
+    }
+}
+
 @Composable
 fun ProfileImage(
     imageUrl: String?,
@@ -1172,6 +1239,8 @@ fun ExpandedMapDialog(
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var pickupMarker by remember { mutableStateOf<Marker?>(null) }
     var collectorMarker by remember { mutableStateOf<Marker?>(null) }
+    var routePolyline by remember { mutableStateOf<Polyline?>(null) }
+    var routeInfo by remember { mutableStateOf<RouteInfo?>(null) }
     var hasInitialCentering by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -1220,10 +1289,41 @@ fun ExpandedMapDialog(
                     collectorMarker?.position = collectorLocation.toGeoPoint()
                     collectorMarker?.snippet = "Accuracy: ${collectorLocation.getAccuracyDescription()}"
                 }
+
+                // Fetch and draw route
+                coroutineScope.launch {
+                    val route = fetchRoute(
+                        collectorLocation.latitude,
+                        collectorLocation.longitude,
+                        pickupLatitude,
+                        pickupLongitude
+                    )
+
+                    if (route != null) {
+                        routeInfo = route
+
+                        // Remove old route polyline
+                        routePolyline?.let { map.overlays.remove(it) }
+
+                        // Create new route polyline
+                        routePolyline = Polyline().apply {
+                            setPoints(route.points)
+                            outlinePaint.color = android.graphics.Color.parseColor("#2196F3")
+                            outlinePaint.strokeWidth = 12f
+                            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        map.overlays.add(0, routePolyline) // Add at bottom so markers are on top
+
+                        map.invalidate()
+                    }
+                }
             } else {
-                // Remove collector marker if no location
+                // Remove collector marker and route if no location
                 collectorMarker?.let { map.overlays.remove(it) }
                 collectorMarker = null
+                routePolyline?.let { map.overlays.remove(it) }
+                routePolyline = null
+                routeInfo = null
             }
 
             map.invalidate()
@@ -1497,6 +1597,50 @@ fun ExpandedMapDialog(
                                         }
                                     }
                                 }
+
+                                // Notes Section (if notes exist)
+                                if (request.notes.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFFFF9E6)
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Info,
+                                                    contentDescription = "Note",
+                                                    tint = Color(0xFFFFA000),
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                                Text(
+                                                    text = "Note",
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color(0xFFFFA000)
+                                                )
+                                            }
+                                            Text(
+                                                text = request.notes,
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF5D4037),
+                                                lineHeight = 18.sp
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1599,6 +1743,49 @@ fun ExpandedMapDialog(
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
+
+                            // ETA and Distance Info
+                            if (routeInfo != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // ETA
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = "ETA",
+                                            tint = PrimaryGreen,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = formatDuration(routeInfo!!.duration),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = PrimaryGreen
+                                        )
+                                    }
+
+                                    // Distance
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.DirectionsCar,
+                                            contentDescription = "Distance",
+                                            tint = PrimaryGreen,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = formatDistance(routeInfo!!.distance),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = PrimaryGreen
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
