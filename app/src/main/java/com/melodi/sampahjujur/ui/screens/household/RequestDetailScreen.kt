@@ -171,6 +171,7 @@ fun HouseholdRequestDetailRoute(
             collectorVehicle = if (collectorInfo?.vehicleType?.isNotBlank() == true) {
                 "${collectorInfo?.vehicleType} - ${collectorInfo?.vehiclePlateNumber}"
             } else null,
+            collectorProfileImageUrl = collectorInfo?.profileImageUrl,
             collectorLocation = collectorLocation,
             onBackClick = onBackClick,
             onCancelRequest = {
@@ -190,6 +191,7 @@ fun RequestDetailScreen(
     collectorName: String? = null,
     collectorPhone: String? = null,
     collectorVehicle: String? = null,
+    collectorProfileImageUrl: String? = null,
     collectorLocation: LocationUpdate? = null,
     onBackClick: () -> Unit = {},
     onCancelRequest: () -> Unit = {},
@@ -362,22 +364,11 @@ fun RequestDetailScreen(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             // Collector Avatar
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(44.dp)
-                                                    .background(
-                                                        PrimaryGreen.copy(alpha = 0.1f),
-                                                        CircleShape
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Person,
-                                                    contentDescription = "Collector",
-                                                    tint = PrimaryGreen,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                            }
+                                            ProfileImage(
+                                                imageUrl = collectorProfileImageUrl,
+                                                size = 44.dp,
+                                                iconSize = 24.dp
+                                            )
 
                                             Spacer(modifier = Modifier.width(12.dp))
 
@@ -392,7 +383,7 @@ fun RequestDetailScreen(
                                                     Spacer(modifier = Modifier.height(3.dp))
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                                         Icon(
-                                                            imageVector = Icons.Default.LocalShipping,
+                                                            imageVector = Icons.Default.DirectionsCar,
                                                             contentDescription = "Vehicle",
                                                             tint = Color.Gray,
                                                             modifier = Modifier.size(14.dp)
@@ -673,22 +664,11 @@ fun RequestDetailScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .background(
-                                            PrimaryGreen.copy(alpha = 0.1f),
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = "Collector",
-                                        tint = PrimaryGreen,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
+                                ProfileImage(
+                                    imageUrl = collectorProfileImageUrl,
+                                    size = 56.dp,
+                                    iconSize = 32.dp
+                                )
 
                                 Spacer(modifier = Modifier.width(16.dp))
 
@@ -872,6 +852,7 @@ fun RequestDetailScreen(
             collectorLocation = collectorLocation,
             collectorName = collectorName,
             collectorVehicle = collectorVehicle,
+            collectorProfileImageUrl = collectorProfileImageUrl,
             onDismiss = { showExpandedMap = false },
             onContactCollector = onContactCollector,
             onOpenChat = onOpenChat
@@ -1133,6 +1114,45 @@ fun LiveTrackingMapPreview(
     }
 }
 
+@Composable
+fun ProfileImage(
+    imageUrl: String?,
+    size: androidx.compose.ui.unit.Dp,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.6f,
+    fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Person
+) {
+    if (!imageUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Profile Picture",
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .background(
+                    PrimaryGreen.copy(alpha = 0.1f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = fallbackIcon,
+                contentDescription = "Profile",
+                tint = PrimaryGreen,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ExpandedMapDialog(
@@ -1140,6 +1160,7 @@ fun ExpandedMapDialog(
     collectorLocation: LocationUpdate?,
     collectorName: String? = null,
     collectorVehicle: String? = null,
+    collectorProfileImageUrl: String? = null,
     onDismiss: () -> Unit,
     onContactCollector: () -> Unit = {},
     onOpenChat: () -> Unit = {}
@@ -1254,7 +1275,7 @@ fun ExpandedMapDialog(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.LocalShipping,
+                                        imageVector = Icons.Default.DirectionsCar,
                                         contentDescription = "Vehicle",
                                         tint = Color.Black,
                                         modifier = Modifier.size(24.dp)
@@ -1330,22 +1351,11 @@ fun ExpandedMapDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // Collector Avatar
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .background(
-                                            PrimaryGreen.copy(alpha = 0.1f),
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = "Collector",
-                                        tint = PrimaryGreen,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
+                                ProfileImage(
+                                    imageUrl = collectorProfileImageUrl,
+                                    size = 56.dp,
+                                    iconSize = 32.dp
+                                )
 
                                 Spacer(modifier = Modifier.width(12.dp))
 

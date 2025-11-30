@@ -259,6 +259,45 @@ fun CollectorRequestDetailRoute(
     }
 }
 
+@Composable
+fun ProfileImage(
+    imageUrl: String?,
+    size: androidx.compose.ui.unit.Dp,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.6f,
+    fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Person
+) {
+    if (!imageUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Profile Picture",
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .background(
+                    PrimaryGreen.copy(alpha = 0.1f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = fallbackIcon,
+                contentDescription = "Profile",
+                tint = PrimaryGreen,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectorRequestDetailScreen(
@@ -436,21 +475,11 @@ fun CollectorRequestDetailScreen(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(
-                                            PrimaryGreen.copy(alpha = 0.1f),
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = "Household",
-                                        tint = PrimaryGreen
-                                    )
-                                }
+                                ProfileImage(
+                                    imageUrl = household?.profileImageUrl,
+                                    size = 48.dp,
+                                    iconSize = 28.dp
+                                )
 
                                 Spacer(modifier = Modifier.width(12.dp))
 
