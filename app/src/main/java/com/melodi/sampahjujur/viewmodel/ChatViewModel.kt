@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.melodi.sampahjujur.model.Chat
 import com.melodi.sampahjujur.model.Message
+import com.melodi.sampahjujur.model.PickupRequest
 import com.melodi.sampahjujur.repository.ChatRepository
+import com.melodi.sampahjujur.repository.WasteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,6 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
+    private val wasteRepository: WasteRepository,
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
@@ -46,6 +49,15 @@ class ChatViewModel @Inject constructor(
     // Total unread count across all chats
     private val _totalUnreadCount = MutableStateFlow(0)
     val totalUnreadCount: StateFlow<Int> = _totalUnreadCount.asStateFlow()
+
+    // Request status for current chat
+    private val _requestStatus = MutableStateFlow<String?>(null)
+    val requestStatus: StateFlow<String?> = _requestStatus.asStateFlow()
+
+    // Helper to check if chat is read-only (request is completed or cancelled)
+    val isChatReadOnly: StateFlow<Boolean> = _requestStatus.map { status ->
+        status == PickupRequest.STATUS_COMPLETED || status == PickupRequest.STATUS_CANCELLED
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     init {
         observeChats()
@@ -100,6 +112,21 @@ class ChatViewModel @Inject constructor(
                             android.util.Log.d("ChatViewModel", "Messages collected: ${messageList.size} messages")
                             _messages.value = messageList
                         }
+                }
+
+                // Observe request status
+                if (chat.requestId.isNotBlank()) {
+                    viewModelScope.launch {
+                        android.util.Log.d("ChatViewModel", "Starting to observe request status for requestId: ${chat.requestId}")
+                        wasteRepository.observeRequest(chat.requestId)
+                            .catch { e ->
+                                android.util.Log.e("ChatViewModel", "Error observing request status", e)
+                            }
+                            .collect { request ->
+                                _requestStatus.value = request?.status
+                                android.util.Log.d("ChatViewModel", "Request status updated: ${request?.status}")
+                            }
+                    }
                 }
             }.onFailure { e ->
                 android.util.Log.e("ChatViewModel", "Failed to load chat $chatId", e)
@@ -203,6 +230,7 @@ class ChatViewModel @Inject constructor(
     fun clearCurrentChat() {
         _currentChat.value = null
         _messages.value = emptyList()
+        _requestStatus.value = null
     }
 
     /**

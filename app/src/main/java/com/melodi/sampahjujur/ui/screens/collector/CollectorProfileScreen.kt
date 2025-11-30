@@ -43,7 +43,7 @@ fun CollectorProfileScreen(
     user: User,
     totalCollections: Int = 0,
     totalWasteCollected: Double = 0.0,
-    totalEarnings: Double = 0.0,
+    totalSpent: Double = 0.0,
     completionRate: Double = 0.0,
     vehicleType: String = "",
     vehiclePlateNumber: String = "",
@@ -240,16 +240,16 @@ fun CollectorProfileScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "Total Earnings",
+                            text = "Total Purchases",
                             fontSize = 14.sp,
                             color = Color.Gray
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Rp ${String.format("%,.0f", totalEarnings)}",
+                            text = "Rp ${String.format("%,.0f", totalSpent)}",
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold,
-                            color = PrimaryGreen
+                            color = Color(0xFFFF6B35)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -494,7 +494,7 @@ fun CollectorProfileScreenPreview() {
             ),
             totalCollections = 47,
             totalWasteCollected = 523.5,
-            totalEarnings = 1287.50,
+            totalSpent = 1287500.0,
             completionRate = 0.96,
             vehicleType = "Truck",
             vehiclePlateNumber = "ABC 123",

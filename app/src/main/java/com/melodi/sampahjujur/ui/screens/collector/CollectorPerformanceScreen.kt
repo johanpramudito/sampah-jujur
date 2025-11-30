@@ -175,13 +175,13 @@ private fun PerformanceHighlights(metrics: CollectorPerformanceMetrics) {
                     .padding(20.dp)
             ) {
                 Text(
-                    text = "Total Earnings",
+                    text = "Total Purchases",
                     color = Color.White.copy(alpha = 0.85f),
                     style = MaterialTheme.typography.labelMedium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = formatCurrency(metrics.totalEarnings),
+                    text = formatCurrency(metrics.totalSpent),
                     color = Color.White,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
@@ -365,17 +365,17 @@ private fun EarningsBreakdownSection(metrics: CollectorPerformanceMetrics) {
                     tint = PrimaryGreen
                 )
                 Text(
-                    text = "Earnings Breakdown",
+                    text = "Purchase Breakdown",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            EarningsRow("Today", metrics.earningsToday)
+            EarningsRow("Today", metrics.spentToday)
             Divider(color = Color.LightGray.copy(alpha = 0.3f))
-            EarningsRow("This Week", metrics.earningsThisWeek)
+            EarningsRow("This Week", metrics.spentThisWeek)
             Divider(color = Color.LightGray.copy(alpha = 0.3f))
-            EarningsRow("This Month", metrics.earningsThisMonth)
+            EarningsRow("This Month", metrics.spentThisMonth)
         }
     }
 }
@@ -562,13 +562,13 @@ private fun CollectorPerformancePreview() {
             completionRate = 0.78,
             cancellationRate = 0.06,
             totalTransactions = 24,
-            totalEarnings = 2450000.0,
+            totalSpent = 2450000.0,
             totalWasteKg = 512.5,
             averagePerPickup = 102000.0,
             averagePerKg = 4800.0,
-            earningsToday = 120000.0,
-            earningsThisWeek = 540000.0,
-            earningsThisMonth = 2100000.0,
+            spentToday = 120000.0,
+            spentThisWeek = 540000.0,
+            spentThisMonth = 2100000.0,
             recentTransactions = sampleTransactions
         ),
         isLoading = false,

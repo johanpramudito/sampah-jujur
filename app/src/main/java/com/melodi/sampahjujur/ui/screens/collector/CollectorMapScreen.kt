@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -156,7 +157,7 @@ fun CollectorMapScreen(
     }
 
     val navBarHeight = 72.dp
-    val collapsedHeaderHeight = navBarHeight + 120.dp
+    val collapsedHeaderHeight = navBarHeight + 120.dp // Increased to show more info by default
 
     Box(modifier = Modifier.fillMaxSize()) {
         BottomSheetScaffold(
@@ -168,17 +169,6 @@ fun CollectorMapScreen(
                         containerColor = Color.White
                     )
                 )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = {
-                        shouldCenterCollector = true
-                        viewModel.refreshCollectorLocation()
-                    },
-                    containerColor = PrimaryGreen
-                ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "My Location", tint = Color.White)
-                }
             },
             sheetPeekHeight = if (pendingRequests.isEmpty()) 0.dp else collapsedHeaderHeight,
             sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -329,9 +319,28 @@ fun CollectorMapScreen(
                         view.invalidate()
                     }
                 )
+
+                // Floating Action Button - on top of map, will be covered by bottom sheet
+                FloatingActionButton(
+                    onClick = {
+                        shouldCenterCollector = true
+                        viewModel.refreshCollectorLocation()
+                    },
+                    containerColor = PrimaryGreen,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 30.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        contentDescription = "My Location",
+                        tint = Color.White
+                    )
+                }
             }
         }
 
+        // Bottom Navigation Bar
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)

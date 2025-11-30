@@ -108,22 +108,35 @@ fun SampahJujurNavGraph(
             Log.d("NavGraph", "Pending Navigation: $pendingNavigation")
             Log.d("NavGraph", "Auth State: Authenticated")
 
-            val route = when (pendingNavigation) {
+            when (pendingNavigation) {
                 is PendingNavigation.Chat -> {
                     Log.d("NavGraph", "Navigating to Chat with requestId: ${pendingNavigation.requestId}")
-                    Screen.Chat.createRoute(pendingNavigation.requestId)
+
+                    // Determine user type to navigate to correct request details first
+                    val user = (authState as AuthViewModel.AuthState.Authenticated).user
+                    val requestDetailsRoute = if (user.isHousehold()) {
+                        Screen.HouseholdRequestDetail.createRoute(pendingNavigation.requestId)
+                    } else {
+                        Screen.CollectorRequestDetail.createRoute(pendingNavigation.requestId)
+                    }
+
+                    // Navigate to request details first (adds it to back stack)
+                    Log.d("NavGraph", "Adding parent screen to back stack: $requestDetailsRoute")
+                    navController.navigate(requestDetailsRoute)
+
+                    // Then navigate to chat (current screen)
+                    navController.navigate(Screen.Chat.createRoute(pendingNavigation.requestId))
                 }
                 is PendingNavigation.HouseholdRequestDetail -> {
                     Log.d("NavGraph", "Navigating to Household Request Detail: ${pendingNavigation.requestId}")
-                    Screen.HouseholdRequestDetail.createRoute(pendingNavigation.requestId)
+                    navController.navigate(Screen.HouseholdRequestDetail.createRoute(pendingNavigation.requestId))
                 }
                 is PendingNavigation.CollectorRequestDetail -> {
                     Log.d("NavGraph", "Navigating to Collector Request Detail: ${pendingNavigation.requestId}")
-                    Screen.CollectorRequestDetail.createRoute(pendingNavigation.requestId)
+                    navController.navigate(Screen.CollectorRequestDetail.createRoute(pendingNavigation.requestId))
                 }
             }
 
-            navController.navigate(route)
             onNavigationHandled()
             Log.d("NavGraph", "Navigation completed, pending navigation cleared")
         }
@@ -566,7 +579,7 @@ fun SampahJujurNavGraph(
                 user = user,
                 totalCollections = performanceMetrics.totalCompleted,
                 totalWasteCollected = performanceMetrics.totalWasteKg,
-                totalEarnings = performanceMetrics.totalEarnings,
+                totalSpent = performanceMetrics.totalSpent,
                 completionRate = performanceMetrics.completionRate,
                 vehicleType = user.vehicleType,
                 vehiclePlateNumber = user.vehiclePlateNumber,

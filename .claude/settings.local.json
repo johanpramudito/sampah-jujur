@@ -20,7 +20,8 @@
       "Bash(git rm:*)",
       "WebSearch",
       "Bash(gh.exe pr view:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

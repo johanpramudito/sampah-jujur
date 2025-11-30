@@ -21,6 +21,10 @@ class SampahJujurApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Force IPv4 to fix Firestore gRPC DNS issues on emulators
+        System.setProperty("java.net.preferIPv4Stack", "true")
+        System.setProperty("java.net.preferIPv6Addresses", "false")
+
         // Configure OpenStreetMap user agent and preferences cache (must be on main thread)
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this))
         Configuration.getInstance().userAgentValue = BuildConfig.APPLICATION_ID
