@@ -35,6 +35,8 @@ fun ChatScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isSending by viewModel.isSending.collectAsState()
     val error by viewModel.error.collectAsState()
+    val isChatReadOnly by viewModel.isChatReadOnly.collectAsState()
+    val requestStatus by viewModel.requestStatus.collectAsState()
 
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -88,73 +90,93 @@ fun ChatScreen(
             )
         },
         bottomBar = {
-            // Message input
+            // Message input or read-only indicator
             Surface(
                 shadowElevation = 8.dp,
                 tonalElevation = 3.dp
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = messageText,
-                        onValueChange = { messageText = it },
-                        placeholder = { Text("Type a message...") },
+                if (isChatReadOnly) {
+                    // Show read-only indicator
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .onPreviewKeyEvent { keyEvent ->
-                                // Handle Enter key to send message on physical keyboards
-                                if (keyEvent.key == Key.Enter) {
-                                    if (keyEvent.type == KeyEventType.KeyDown) {
-                                        if (messageText.isNotBlank() && !isSending && currentChat != null) {
-                                            viewModel.sendMessage(messageText)
-                                            messageText = ""
-                                        }
-                                    }
-                                    // Consume both KeyDown and KeyUp
-                                    true
-                                } else {
-                                    false
-                                }
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (requestStatus == "completed") {
+                                "This request is completed. Chat is view-only."
+                            } else {
+                                "This request is cancelled. Chat is view-only."
                             },
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Send
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onSend = {
-                                if (messageText.isNotBlank() && !isSending && currentChat != null) {
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            placeholder = { Text("Type a message...") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .onPreviewKeyEvent { keyEvent ->
+                                    // Handle Enter key to send message on physical keyboards
+                                    if (keyEvent.key == Key.Enter) {
+                                        if (keyEvent.type == KeyEventType.KeyDown) {
+                                            if (messageText.isNotBlank() && !isSending && currentChat != null) {
+                                                viewModel.sendMessage(messageText)
+                                                messageText = ""
+                                            }
+                                        }
+                                        // Consume both KeyDown and KeyUp
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Send
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onSend = {
+                                    if (messageText.isNotBlank() && !isSending && currentChat != null) {
+                                        viewModel.sendMessage(messageText)
+                                        messageText = ""
+                                    }
+                                }
+                            ),
+                            maxLines = 4,
+                            enabled = !isSending && currentChat != null
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        IconButton(
+                            onClick = {
+                                if (messageText.isNotBlank()) {
                                     viewModel.sendMessage(messageText)
                                     messageText = ""
                                 }
-                            }
-                        ),
-                        maxLines = 4,
-                        enabled = !isSending && currentChat != null
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    IconButton(
-                        onClick = {
-                            if (messageText.isNotBlank()) {
-                                viewModel.sendMessage(messageText)
-                                messageText = ""
-                            }
-                        },
-                        enabled = messageText.isNotBlank() && !isSending && currentChat != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                            tint = if (messageText.isNotBlank() && !isSending) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            }
-                        )
+                            },
+                            enabled = messageText.isNotBlank() && !isSending && currentChat != null
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                                tint = if (messageText.isNotBlank() && !isSending) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
+                            )
+                        }
                     }
                 }
             }

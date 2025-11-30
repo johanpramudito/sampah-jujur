@@ -802,6 +802,33 @@ fun RequestDetailScreen(
                             }
                         }
                     }
+                    "completed", "cancelled" -> {
+                        // Show View Chat History button for completed/cancelled requests
+                        if (collectorName != null) {
+                            OutlinedButton(
+                                onClick = onOpenChat,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(28.dp),
+                                border = BorderStroke(2.dp, PrimaryGreen),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = PrimaryGreen
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = "View Chat History"
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "View Chat History",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

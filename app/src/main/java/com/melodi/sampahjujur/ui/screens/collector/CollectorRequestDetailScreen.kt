@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -464,76 +465,80 @@ fun CollectorRequestDetailScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
-                            Text(
-                                text = "Household Information",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Household",
+                                    tint = PrimaryGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Household Information",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 ProfileImage(
                                     imageUrl = household?.profileImageUrl,
-                                    size = 48.dp,
-                                    iconSize = 28.dp
+                                    size = 56.dp,
+                                    iconSize = 32.dp
                                 )
 
-                                Spacer(modifier = Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = displayName,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
                                     if (phoneNumber != null) {
-                                        Text(
-                                            text = phoneNumber,
-                                            fontSize = 14.sp,
-                                            color = Color.Gray
-                                        )
-                                    } else {
-                                        Text(
-                                            text = "Phone not provided",
-                                            fontSize = 12.sp,
-                                            color = Color.Gray
-                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.clickable(onClick = { onContactHousehold(household) })
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Phone,
+                                                contentDescription = "Call household",
+                                                tint = PrimaryGreen,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = phoneNumber,
+                                                fontSize = 14.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
                                     }
                                     if (emailAddress != null) {
-                                        Text(
-                                            text = emailAddress,
-                                            fontSize = 12.sp,
-                                            color = Color.Gray
-                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Email,
+                                                contentDescription = "Email",
+                                                tint = Color.Gray,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = emailAddress,
+                                                fontSize = 14.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
                                     }
-                                }
-
-                                // Show chat button only for accepted/in-progress requests
-                                if (request.status == PickupRequest.STATUS_ACCEPTED ||
-                                    request.status == PickupRequest.STATUS_IN_PROGRESS) {
-                                    IconButton(
-                                        onClick = onOpenChat
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Message,
-                                            contentDescription = "Chat",
-                                            tint = PrimaryGreen
-                                        )
-                                    }
-                                }
-
-                                IconButton(
-                                    onClick = { onContactHousehold(household) },
-                                    enabled = phoneNumber != null
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Phone,
-                                        contentDescription = "Call",
-                                        tint = if (phoneNumber != null) PrimaryGreen else Color.Gray
-                                    )
                                 }
                             }
                         }
@@ -795,6 +800,52 @@ fun CollectorRequestDetailScreen(
                                     )
                                 }
 
+                                // Chat and Call buttons
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Open Chat Button
+                                    Button(
+                                        onClick = onOpenChat,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(52.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = PrimaryGreen
+                                        ),
+                                        shape = RoundedCornerShape(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Message,
+                                            contentDescription = "Chat",
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Open Chat",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+
+                                    // Call Household Button
+                                    OutlinedButton(
+                                        onClick = { onContactHousehold(household) },
+                                        modifier = Modifier.height(52.dp),
+                                        shape = RoundedCornerShape(28.dp),
+                                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                                            width = 2.dp
+                                        )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Phone,
+                                            contentDescription = "Call",
+                                            tint = PrimaryGreen
+                                        )
+                                    }
+                                }
+
                                 OutlinedButton(
                                     onClick = { showCancelDialog = true },
                                     modifier = Modifier
@@ -839,6 +890,52 @@ fun CollectorRequestDetailScreen(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
+
+                                // Chat and Call buttons
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Open Chat Button
+                                    Button(
+                                        onClick = onOpenChat,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(52.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = PrimaryGreen
+                                        ),
+                                        shape = RoundedCornerShape(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Message,
+                                            contentDescription = "Chat",
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Open Chat",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+
+                                    // Call Household Button
+                                    OutlinedButton(
+                                        onClick = { onContactHousehold(household) },
+                                        modifier = Modifier.height(52.dp),
+                                        shape = RoundedCornerShape(28.dp),
+                                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                                            width = 2.dp
+                                        )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Phone,
+                                            contentDescription = "Call",
+                                            tint = PrimaryGreen
+                                        )
+                                    }
+                                }
                             }
                             PickupRequest.STATUS_COMPLETED -> {
                                 Surface(
@@ -854,6 +951,29 @@ fun CollectorRequestDetailScreen(
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
+
+                                // View Chat History button for completed requests
+                                OutlinedButton(
+                                    onClick = onOpenChat,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    shape = RoundedCornerShape(28.dp),
+                                    border = BorderStroke(2.dp, PrimaryGreen),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = PrimaryGreen
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = "View Chat History"
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "View Chat History",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             }
                             PickupRequest.STATUS_CANCELLED -> {
                                 Surface(
@@ -867,6 +987,29 @@ fun CollectorRequestDetailScreen(
                                             .padding(horizontal = 16.dp, vertical = 12.dp),
                                         color = Color.Red,
                                         fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                // View Chat History button for cancelled requests
+                                OutlinedButton(
+                                    onClick = onOpenChat,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    shape = RoundedCornerShape(28.dp),
+                                    border = BorderStroke(2.dp, PrimaryGreen),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = PrimaryGreen
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = "View Chat History"
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "View Chat History",
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
