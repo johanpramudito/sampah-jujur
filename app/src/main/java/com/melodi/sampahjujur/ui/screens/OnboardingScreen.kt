@@ -16,6 +16,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import com.melodi.sampahjujur.ui.theme.PrimaryGreen
 import com.melodi.sampahjujur.ui.theme.SampahJujurTheme
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -68,7 +72,8 @@ fun OnboardingScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .windowInsetsPadding(WindowInsets.systemBars)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.TopEnd
             ) {
                 TextButton(onClick = onSkip) {
@@ -138,7 +143,8 @@ fun OnboardingScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Bottom spacing for navigation bar
+            Spacer(modifier = Modifier.navigationBarsPadding())
         }
     }
 }

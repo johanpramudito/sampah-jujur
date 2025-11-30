@@ -562,16 +562,16 @@ class WasteRepository @Inject constructor(
                 val currentTime = System.currentTimeMillis()
                 val earnings = Earnings(
                     collectorId = collectorId,
-                    totalEarnings = transactions.sumOf { it.finalAmount },
+                    totalSpent = transactions.sumOf { it.finalAmount },
                     totalTransactions = transactions.size,
                     totalWasteCollected = transactions.sumOf { it.getTotalWeight() },
-                    earningsToday = transactions
+                    spentToday = transactions
                         .filter { it.completedAt >= startOfDayMillis(currentTime) }
                         .sumOf { it.finalAmount },
-                    earningsThisWeek = transactions
+                    spentThisWeek = transactions
                         .filter { it.completedAt >= startOfWeekMillis(currentTime) }
                         .sumOf { it.finalAmount },
-                    earningsThisMonth = transactions
+                    spentThisMonth = transactions
                         .filter { it.completedAt >= startOfMonthMillis(currentTime) }
                         .sumOf { it.finalAmount },
                     transactionHistory = transactions

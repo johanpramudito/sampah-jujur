@@ -566,7 +566,7 @@ fun SampahJujurNavGraph(
                 user = user,
                 totalCollections = performanceMetrics.totalCompleted,
                 totalWasteCollected = performanceMetrics.totalWasteKg,
-                totalEarnings = performanceMetrics.totalEarnings,
+                totalSpent = performanceMetrics.totalSpent,
                 completionRate = performanceMetrics.completionRate,
                 vehicleType = user.vehicleType,
                 vehiclePlateNumber = user.vehiclePlateNumber,

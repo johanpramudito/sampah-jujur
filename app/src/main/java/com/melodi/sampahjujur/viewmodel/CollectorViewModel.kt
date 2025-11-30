@@ -44,13 +44,13 @@ data class CollectorPerformanceMetrics(
     val completionRate: Double = 0.0,
     val cancellationRate: Double = 0.0,
     val totalTransactions: Int = 0,
-    val totalEarnings: Double = 0.0,
+    val totalSpent: Double = 0.0,
     val totalWasteKg: Double = 0.0,
     val averagePerPickup: Double = 0.0,
     val averagePerKg: Double = 0.0,
-    val earningsToday: Double = 0.0,
-    val earningsThisWeek: Double = 0.0,
-    val earningsThisMonth: Double = 0.0,
+    val spentToday: Double = 0.0,
+    val spentThisWeek: Double = 0.0,
+    val spentThisMonth: Double = 0.0,
     val recentTransactions: List<Transaction> = emptyList()
 )
 
@@ -194,19 +194,19 @@ class CollectorViewModel @Inject constructor(
         if (transactions.isEmpty()) return Earnings()
 
         val now = System.currentTimeMillis()
-        val totalEarnings = transactions.sumOf { it.finalAmount }
+        val totalSpent = transactions.sumOf { it.finalAmount }
         val totalWasteKg = transactions.sumOf { it.getTotalWeight() }
-        val earningsToday = transactions.filter { it.completedAt >= now - 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
-        val earningsThisWeek = transactions.filter { it.completedAt >= now - 7 * 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
-        val earningsThisMonth = transactions.filter { it.completedAt >= now - 30 * 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
+        val spentToday = transactions.filter { it.completedAt >= now - 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
+        val spentThisWeek = transactions.filter { it.completedAt >= now - 7 * 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
+        val spentThisMonth = transactions.filter { it.completedAt >= now - 30 * 24 * 60 * 60 * 1000 }.sumOf { it.finalAmount }
 
         return Earnings(
             totalTransactions = transactions.size,
-            totalEarnings = totalEarnings,
+            totalSpent = totalSpent,
             totalWasteCollected = totalWasteKg,
-            earningsToday = earningsToday,
-            earningsThisWeek = earningsThisWeek,
-            earningsThisMonth = earningsThisMonth,
+            spentToday = spentToday,
+            spentThisWeek = spentThisWeek,
+            spentThisMonth = spentThisMonth,
             transactionHistory = transactions
         )
     }
@@ -618,13 +618,13 @@ class CollectorViewModel @Inject constructor(
             completionRate = completionRate,
             cancellationRate = cancellationRate,
             totalTransactions = earnings.totalTransactions,
-            totalEarnings = earnings.totalEarnings,
+            totalSpent = earnings.totalSpent,
             totalWasteKg = earnings.totalWasteCollected,
             averagePerPickup = earnings.getAveragePerTransaction(),
             averagePerKg = earnings.getAveragePerKg(),
-            earningsToday = earnings.earningsToday,
-            earningsThisWeek = earnings.earningsThisWeek,
-            earningsThisMonth = earnings.earningsThisMonth,
+            spentToday = earnings.spentToday,
+            spentThisWeek = earnings.spentThisWeek,
+            spentThisMonth = earnings.spentThisMonth,
             recentTransactions = sortedTransactions
         )
     }

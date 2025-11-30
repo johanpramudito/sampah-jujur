@@ -113,7 +113,8 @@ class TransactionCacheRepository @Inject constructor(
     }
 
     /**
-     * Calculate collector earnings from cached transactions (offline-capable).
+     * Calculate collector spending from cached transactions (offline-capable).
+     * Tracks money spent by collectors purchasing waste from households.
      * Much faster than Firebase aggregation queries.
      *
      * @param collectorId The collector ID
@@ -123,11 +124,11 @@ class TransactionCacheRepository @Inject constructor(
         val transactions = transactionDao.getAllTransactionsForCollector(collectorId)
         val transactionModels = transactions.map { it.toTransaction() }
 
-        val totalEarnings = transactionModels.sumOf { it.finalAmount }
+        val totalSpent = transactionModels.sumOf { it.finalAmount }
         val totalTransactions = transactionModels.size
         val totalWeight = transactionModels.sumOf { it.getTotalWeight() }
 
-        // Calculate time-based earnings
+        // Calculate time-based spending
         val calendar = Calendar.getInstance()
 
         // Today
@@ -138,30 +139,30 @@ class TransactionCacheRepository @Inject constructor(
         val todayStart = calendar.timeInMillis
 
         val todayTransactions = transactionModels.filter { it.completedAt >= todayStart }
-        val todayEarnings = todayTransactions.sumOf { it.finalAmount }
+        val spentToday = todayTransactions.sumOf { it.finalAmount }
 
         // This week
         calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
         val weekStart = calendar.timeInMillis
 
         val weekTransactions = transactionModels.filter { it.completedAt >= weekStart }
-        val weekEarnings = weekTransactions.sumOf { it.finalAmount }
+        val spentThisWeek = weekTransactions.sumOf { it.finalAmount }
 
         // This month
         calendar.set(Calendar.DAY_OF_MONTH, 1)
         val monthStart = calendar.timeInMillis
 
         val monthTransactions = transactionModels.filter { it.completedAt >= monthStart }
-        val monthEarnings = monthTransactions.sumOf { it.finalAmount }
+        val spentThisMonth = monthTransactions.sumOf { it.finalAmount }
 
         return Earnings(
             collectorId = collectorId,
-            totalEarnings = totalEarnings,
+            totalSpent = totalSpent,
             totalTransactions = totalTransactions,
             totalWasteCollected = totalWeight,
-            earningsToday = todayEarnings,
-            earningsThisWeek = weekEarnings,
-            earningsThisMonth = monthEarnings,
+            spentToday = spentToday,
+            spentThisWeek = spentThisWeek,
+            spentThisMonth = spentThisMonth,
             transactionHistory = transactionModels
         )
     }
