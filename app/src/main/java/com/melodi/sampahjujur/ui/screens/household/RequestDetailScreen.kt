@@ -2,11 +2,19 @@ package com.melodi.sampahjujur.ui.screens.household
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.BottomSheetScaffold
+import androidx.compose.material.BottomSheetValue
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.rememberBottomSheetScaffoldState
+import androidx.compose.material.rememberBottomSheetState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -50,6 +58,11 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.cos
+import kotlin.math.atan2
+import kotlin.math.sqrt
 
 /**
  * Route composable for Household Request Detail Screen
@@ -289,55 +302,112 @@ fun RequestDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Live Tracking Info Banner (only for in_progress status)
+                        // Live Tracking Info Banner with Collector Details (only for in_progress status)
                         if (request.status == "in_progress") {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFFE3F2FD) // Light blue
+                                    containerColor = Color.White
                                 ),
-                                elevation = CardDefaults.cardElevation(0.dp),
-                                shape = RoundedCornerShape(8.dp)
+                                elevation = CardDefaults.cardElevation(2.dp),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Row(
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(12.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MyLocation,
-                                        contentDescription = "Live Tracking",
-                                        tint = Color(0xFF1976D2), // Blue
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Live Tracking Active",
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp,
-                                            color = Color(0xFF1976D2)
+                                    // Live tracking indicator
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MyLocation,
+                                            contentDescription = "Live Tracking",
+                                            tint = Color(0xFF1976D2),
+                                            modifier = Modifier.size(18.dp)
                                         )
-                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = if (collectorLocation != null)
                                                 "Collector is on the way"
                                             else
                                                 "Waiting for collector location...",
-                                            fontSize = 12.sp,
-                                            color = Color(0xFF424242)
+                                            fontSize = 13.sp,
+                                            color = Color(0xFF424242),
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .background(
+                                                    Color(0xFF2196F3),
+                                                    CircleShape
+                                                )
                                         )
                                     }
-                                    // Pulsing indicator dot
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .background(
-                                                Color(0xFF2196F3), // Blue dot
-                                                CircleShape
-                                            )
-                                    )
+
+                                    // Collector info (if available)
+                                    if (collectorName != null) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        HorizontalDivider(
+                                            color = Color.LightGray.copy(alpha = 0.3f)
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Collector Avatar
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .background(
+                                                        PrimaryGreen.copy(alpha = 0.1f),
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Person,
+                                                    contentDescription = "Collector",
+                                                    tint = PrimaryGreen,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(12.dp))
+
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = collectorName,
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.Black
+                                                )
+                                                if (collectorVehicle != null) {
+                                                    Spacer(modifier = Modifier.height(3.dp))
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.LocalShipping,
+                                                            contentDescription = "Vehicle",
+                                                            tint = Color.Gray,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                            text = collectorVehicle,
+                                                            fontSize = 13.sp,
+                                                            color = Color.Gray
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -351,30 +421,36 @@ fun RequestDetailScreen(
                                 pickupLongitude = request.pickupLocation.longitude,
                                 collectorLocation = collectorLocation
                             )
-                            // Expand button overlay (only for in_progress)
+                            // Track Location button overlay (only for in_progress)
                             if (request.status == "in_progress") {
-                                IconButton(
+                                Button(
                                     onClick = { showExpandedMap = true },
                                     modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(4.dp)
+                                        .align(Alignment.BottomEnd)
+                                        .padding(8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = PrimaryGreen
+                                    ),
+                                    shape = RoundedCornerShape(20.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                    elevation = ButtonDefaults.buttonElevation(
+                                        defaultElevation = 4.dp,
+                                        pressedElevation = 8.dp
+                                    )
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .background(
-                                                Color.White.copy(alpha = 0.95f),
-                                                RoundedCornerShape(18.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ZoomOutMap,
-                                            contentDescription = "Expand Map",
-                                            tint = PrimaryGreen,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.MyLocation,
+                                        contentDescription = "Track Location",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Track Location",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }
@@ -792,11 +868,13 @@ fun RequestDetailScreen(
     // Expanded Map Dialog
     if (showExpandedMap) {
         ExpandedMapDialog(
-            pickupLatitude = request.pickupLocation.latitude,
-            pickupLongitude = request.pickupLocation.longitude,
-            pickupAddress = request.pickupLocation.address,
+            request = request,
             collectorLocation = collectorLocation,
-            onDismiss = { showExpandedMap = false }
+            collectorName = collectorName,
+            collectorVehicle = collectorVehicle,
+            onDismiss = { showExpandedMap = false },
+            onContactCollector = onContactCollector,
+            onOpenChat = onOpenChat
         )
     }
 
@@ -1055,19 +1133,37 @@ fun LiveTrackingMapPreview(
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ExpandedMapDialog(
-    pickupLatitude: Double,
-    pickupLongitude: Double,
-    pickupAddress: String,
+    request: PickupRequest,
     collectorLocation: LocationUpdate?,
-    onDismiss: () -> Unit
+    collectorName: String? = null,
+    collectorVehicle: String? = null,
+    onDismiss: () -> Unit,
+    onContactCollector: () -> Unit = {},
+    onOpenChat: () -> Unit = {}
 ) {
+    val pickupLatitude = request.pickupLocation.latitude
+    val pickupLongitude = request.pickupLocation.longitude
+    val pickupAddress = request.pickupLocation.address
     val context = LocalContext.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var pickupMarker by remember { mutableStateOf<Marker?>(null) }
     var collectorMarker by remember { mutableStateOf<Marker?>(null) }
     var hasInitialCentering by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Bottom sheet state for collector info
+    val bottomSheetState = rememberBottomSheetState(
+        initialValue = if (collectorName != null) BottomSheetValue.Collapsed else BottomSheetValue.Collapsed
+    )
+    val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = bottomSheetState
+    )
+    val isSheetCollapsed by remember {
+        derivedStateOf { bottomSheetState.currentValue == BottomSheetValue.Collapsed }
+    }
 
     // Initialize OSMDroid configuration
     LaunchedEffect(Unit) {
@@ -1117,42 +1213,324 @@ fun ExpandedMapDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-        ) {
-            // Full-screen interactive map
-            AndroidView(
-                factory = { ctx ->
-                    MapView(ctx).apply {
-                        setTileSource(TileSourceFactory.MAPNIK)
+        BottomSheetScaffold(
+            scaffoldState = bottomSheetScaffoldState,
+            sheetPeekHeight = if (collectorName != null) 250.dp else 0.dp,
+            sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            sheetElevation = 8.dp,
+            sheetBackgroundColor = Color.White,
+            backgroundColor = Color.White,
+            sheetContent = {
+                // Collector Info Bottom Sheet
+                if (collectorName != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.85f) // Use 85% of screen height
+                            .padding(16.dp)
+                    ) {
+                        // Drag handle
+                        Box(
+                            modifier = Modifier
+                                .width(48.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color.LightGray.copy(alpha = 0.6f))
+                                .align(Alignment.CenterHorizontally)
+                        )
 
-                        // Make interactive
-                        setMultiTouchControls(true)
-                        isClickable = true
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        val pickupPoint = GeoPoint(pickupLatitude, pickupLongitude)
-                        controller.setZoom(16.0)
-                        controller.setCenter(pickupPoint)
+                        // Row 1: Vehicle info and action buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            // Vehicle info (Icon + License plate)
+                            if (collectorVehicle != null) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocalShipping,
+                                        contentDescription = "Vehicle",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = collectorVehicle,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
 
-                        // Add pickup location marker (uses default OSMDroid marker)
-                        pickupMarker = Marker(this).apply {
-                            position = pickupPoint
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            title = "Pickup Location"
-                            snippet = pickupAddress
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Action Buttons (Message and Call)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Call Button
+                                FloatingActionButton(
+                                    onClick = onContactCollector,
+                                    modifier = Modifier.size(44.dp),
+                                    containerColor = PrimaryGreen,
+                                    shape = CircleShape
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Phone,
+                                        contentDescription = "Call Collector",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+
+                                // Message Button
+                                FloatingActionButton(
+                                    onClick = onOpenChat,
+                                    modifier = Modifier.size(44.dp),
+                                    containerColor = Color.White,
+                                    shape = CircleShape,
+                                    elevation = FloatingActionButtonDefaults.elevation(
+                                        defaultElevation = 2.dp
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Message,
+                                        contentDescription = "Message Collector",
+                                        tint = PrimaryGreen,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
                         }
-                        overlays.add(pickupMarker)
 
-                        // Store reference
-                        mapView = this
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Row 2: Collector Avatar and Name
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.White
+                            ),
+                            border = BorderStroke(2.dp, PrimaryGreen.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Collector Avatar
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .background(
+                                            PrimaryGreen.copy(alpha = 0.1f),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Collector",
+                                        tint = PrimaryGreen,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                // Collector Name
+                                Text(
+                                    text = collectorName,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Black
+                                )
+                            }
+                        }
+
+                        // Expanded content - show waste items
+                        if (!isSheetCollapsed) {
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // Waste Items Section (scrollable)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Section Header
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Waste Items (${request.wasteItems.size})",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Black
+                                    )
+                                }
+
+                                // Waste Items List
+                                request.wasteItems.forEach { item ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFF9F9F9)
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Icon based on waste type
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .background(
+                                                        PrimaryGreen.copy(alpha = 0.1f),
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = getWasteTypeIcon(item.type),
+                                                    contentDescription = item.type,
+                                                    tint = PrimaryGreen,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(12.dp))
+
+                                            // Item details
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = item.type.replaceFirstChar { it.uppercase() },
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 14.sp
+                                                )
+                                                Text(
+                                                    text = "${item.weight} kg",
+                                                    fontSize = 12.sp,
+                                                    color = Color.Gray
+                                                )
+                                            }
+
+                                            // Estimated value
+                                            Text(
+                                                text = "Rp ${String.format("%,d", item.estimatedValue.toInt())}",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = PrimaryGreen
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Total Summary
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = PrimaryGreen.copy(alpha = 0.1f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Total Weight",
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                text = "${request.getTotalWeight()} kg",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text = "Estimated Value",
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                text = "Rp ${String.format("%,d", request.totalValue.toInt())}",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp,
+                                                color = PrimaryGreen
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+                } else {
+                    Box(modifier = Modifier.height(1.dp))
+                }
+            }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White)
+            ) {
+                // Full-screen interactive map
+                AndroidView(
+                    factory = { ctx ->
+                        MapView(ctx).apply {
+                            setTileSource(TileSourceFactory.MAPNIK)
 
-            // Header with address and close button
+                            // Make interactive
+                            setMultiTouchControls(true)
+                            isClickable = true
+
+                            val pickupPoint = GeoPoint(pickupLatitude, pickupLongitude)
+                            controller.setZoom(16.0)
+                            controller.setCenter(pickupPoint)
+
+                            // Add pickup location marker (uses default OSMDroid marker)
+                            pickupMarker = Marker(this).apply {
+                                position = pickupPoint
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                title = "Pickup Location"
+                                snippet = pickupAddress
+                            }
+                            overlays.add(pickupMarker)
+
+                            // Store reference
+                            mapView = this
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+            // Header with address and back button
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1172,9 +1550,22 @@ fun ExpandedMapDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Back button on left
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.DarkGray
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -1199,22 +1590,15 @@ fun ExpandedMapDialog(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.Gray
-                            )
-                        }
                     }
                 }
             }
 
-            // Zoom controls (right side)
+            // Zoom controls (right side, positioned behind bottom sheet)
             Column(
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp),
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 270.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Zoom In Button
@@ -1245,41 +1629,6 @@ fun ExpandedMapDialog(
                     )
                 }
             }
-
-            // Accuracy warning card - positioned above bottom
-            if (collectorLocation != null && !collectorLocation.isAccurate()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .padding(start = 16.dp, end = 16.dp, bottom = 100.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFF3CD)
-                    ),
-                    elevation = CardDefaults.cardElevation(4.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Warning",
-                            tint = Color(0xFFFF9800),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${collectorLocation.getAccuracyDescription()} - Location may be approximate",
-                            fontSize = 13.sp,
-                            color = Color(0xFF856404),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
             }
         }
     }
@@ -1395,4 +1744,26 @@ fun RequestDetailScreenPreview() {
             collectorVehicle = "Blue Truck - B 1234 XYZ"
         )
     }
+}
+
+// Helper function to calculate distance between two coordinates
+private fun haversineDistanceKm(
+    lat1: Double,
+    lon1: Double,
+    lat2: Double,
+    lon2: Double
+): Double {
+    val earthRadiusKm = 6371.0
+
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+
+    val originLat = Math.toRadians(lat1)
+    val destinationLat = Math.toRadians(lat2)
+
+    val a = sin(dLat / 2).pow(2.0) +
+        sin(dLon / 2).pow(2.0) * cos(originLat) * cos(destinationLat)
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return earthRadiusKm * c
 }
