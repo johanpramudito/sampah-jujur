@@ -57,6 +57,7 @@ captures/
 .idea/shelf/
 .idea/usage.statistics.xml
 .idea/androidTestResultsUserPreferences.xml
+.idea/markdown.xml
 
 # Keystore files (IMPORTANT: Don't commit these!)
 *.jks
