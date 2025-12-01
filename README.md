@@ -245,7 +245,6 @@ The app follows **MVVM (Model-View-ViewModel)** with **Clean Architecture** prin
 5. **Collector Accepts** → Receive notification, status becomes "Accepted"
 6. **Chat** → Communicate with collector if needed
 7. **Pickup Completed** → Collector marks as complete
-8. **Rate & Review** → Provide feedback
 
 ### Collector User Flow
 
@@ -256,7 +255,6 @@ The app follows **MVVM (Model-View-ViewModel)** with **Clean Architecture** prin
 5. **Navigate** → Use built-in routing to pickup location
 6. **Chat** → Communicate with household
 7. **Complete Pickup** → Mark request as completed
-8. **Get Rated** → Receive rating from household
 
 ## Testing
 
